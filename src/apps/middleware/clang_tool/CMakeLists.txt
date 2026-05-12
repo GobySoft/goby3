@@ -33,7 +33,7 @@ if(enable_llvm)
   endif()
 
   
-  set_target_properties(goby_clang_tool PROPERTIES COMPILE_FLAGS "${LLVM_DEFINITIONS} -std=c++17" LINK_FLAGS "${LLVM_LD_FLAGS}" )
+  set_target_properties(goby_clang_tool PROPERTIES COMPILE_FLAGS "${LLVM_DEFINITIONS}" LINK_FLAGS "${LLVM_LD_FLAGS}" )
 
   target_link_libraries(goby_clang_tool
     PRIVATE

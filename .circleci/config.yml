@@ -130,7 +130,7 @@ job-template-deb-amd64: &job-template-deb-amd64
         command: |        
           cd /root/debian &&
           git reset --hard HEAD &&
-          git pull &&
+          git pull --prune &&
           git checkout origin/${CIRCLE_BRANCH} ||
           echo "No branch in debian called ${CIRCLE_BRANCH}, using $(git rev-parse --abbrev-ref HEAD)"
     - run: &run-nest-deb
@@ -183,7 +183,7 @@ job-template-deb-amd64: &job-template-deb-amd64
 job-template-deb-cross: &job-template-deb-cross
   <<: *job-template-deb-amd64
 
-# base sanitizer off Jammy build
+# base sanitizer off Resolute build
 job-template-sanitizers: &job-template-sanitizers
   <<: *job-template-amd64
   environment:
@@ -192,7 +192,7 @@ job-template-sanitizers: &job-template-sanitizers
     <<: *environment-template-amd64
     SANITIZER_NUM_JOBS: 4
     TSAN_OPTIONS: "suppressions=/root/goby3/src/test/suppressions.tsan.txt history_size=6"
-  docker: *docker-base-jammy
+  docker: *docker-base-resolute
 
 # Base upload off Noble build
 job-template-upload: &job-template-upload

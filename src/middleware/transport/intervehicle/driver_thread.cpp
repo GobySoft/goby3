@@ -397,10 +397,11 @@ void goby::middleware::intervehicle::ModemDriverThread<ImplementationTag>::_forw
             if (!subscription_buffer_cfg.has_ack_required())
                 subscription_buffer_cfg.set_ack_required(true);
 
-            using value_base_type =
-                std::result_of<decltype (&goby::acomms::protobuf::DynamicBufferConfig::value_base)(
-                    goby::acomms::protobuf::DynamicBufferConfig)>::type;
-
+	    using value_base_type =
+	      std::invoke_result_t<
+		decltype(&goby::acomms::protobuf::DynamicBufferConfig::value_base),
+		const goby::acomms::protobuf::DynamicBufferConfig&>;
+	    
             // set subscriptions to maximum value
             if (!subscription_buffer_cfg.has_value_base())
                 subscription_buffer_cfg.set_value_base(
