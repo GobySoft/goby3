@@ -201,7 +201,7 @@ macro(goby_install_lib target_lib component)
 endmacro()
 
 ## boost
-set(BOOST_COMPONENTS date_time program_options filesystem)
+set(BOOST_COMPONENTS date_time program_options)
 find_package(Boost 1.58.0 REQUIRED)
 if(Boost_VERSION VERSION_GREATER_EQUAL 1.86.0)
   # boost process is no longer header only in 1.86+

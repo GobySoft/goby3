@@ -32,7 +32,7 @@
 #include <utility> // for pair
 #include <vector>  // for vector
 
-#include <boost/filesystem.hpp> // for path
+#include <filesystem>
 
 #include "goby/middleware/application/configuration_reader.h" // for Config...
 #include "goby/middleware/application/interface.h"            // for run
@@ -107,8 +107,8 @@ class LogTool : public goby::middleware::Application<protobuf::LogConvertToolCon
         }
         else
         {
-            boost::filesystem::path input_path(app_cfg().input_file(0));
-            std::string output_file = input_path.stem().native();
+            std::filesystem::path input_path(app_cfg().input_file(0));
+            std::string output_file = input_path.stem().string();
             switch (app_cfg().format())
             {
                 case protobuf::LogConvertToolConfig::DEBUG_TEXT: output_file += ".txt"; break;

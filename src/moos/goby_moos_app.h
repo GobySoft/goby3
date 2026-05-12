@@ -35,6 +35,7 @@
 #include <iostream>  // for operat...
 #include <map>       // for map
 #include <memory>    // for allocator
+#include <filesystem>
 #include <stdexcept> // for runtim...
 #include <string>    // for string
 #include <unistd.h>  // for symlink
@@ -55,7 +56,6 @@
 #include <boost/date_time/posix_time/posix_time_config.hpp> // for posix_...
 #include <boost/date_time/posix_time/posix_time_types.hpp>  // for second...
 #include <boost/date_time/posix_time/time_formatters.hpp>   // for to_iso...
-#include <boost/filesystem.hpp>                             // for path
 #include <boost/function.hpp>                               // for function
 #include <boost/lexical_cast/bad_lexical_cast.hpp>          // for bad_le...
 #include <boost/program_options/options_description.hpp>    // for operat...
@@ -786,13 +786,8 @@ template <class MOOSAppType>
 void goby::moos::GobyMOOSAppSelector<MOOSAppType>::read_configuration(
     google::protobuf::Message* cfg)
 {
-    boost::filesystem::path launch_path(argv_[0]);
-
-#if BOOST_FILESYSTEM_VERSION == 3
+    std::filesystem::path launch_path(argv_[0]);
     std::string binary_name = launch_path.filename().string();
-#else
-    std::string binary_name = launch_path.filename();
-#endif
     application_name_ = binary_name;
 
     //
