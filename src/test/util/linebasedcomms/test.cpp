@@ -22,6 +22,8 @@
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
 #include <cassert>
+#include <chrono>
+#include <thread>
 
 #include "goby/util/debug_logger.h"
 #include "goby/util/linebasedcomms.h"
@@ -75,7 +77,7 @@ int main(int /*argc*/, char* argv[])
         assert(!client.readline(&line));
         std::string test_string = "hello,world\r\n";
         client.write(test_string);
-        sleep(1);
+        std::this_thread::sleep_for(std::chrono::seconds(1));
         goby::util::protobuf::Datagram d;
         bool data_was_read = server.readline(&d);
         assert(data_was_read);
@@ -93,7 +95,7 @@ int main(int /*argc*/, char* argv[])
         assert(!client.readline(&line));
         std::string test_string = "hello,world!\r\n";
         client.write(test_string);
-        sleep(1);
+        std::this_thread::sleep_for(std::chrono::seconds(1));
         std::string s;
         assert(server.readline(&s));
         assert(s == test_string);
@@ -111,7 +113,7 @@ int main(int /*argc*/, char* argv[])
         d.set_data(test_string2);
         d.set_dest(client_endpoint);
         server.write(d);
-        sleep(1);
+        std::this_thread::sleep_for(std::chrono::seconds(1));
         assert(client.readline(&line));
         assert(line == test_string2);
         assert(!client2.readline(&line));
@@ -122,7 +124,7 @@ int main(int /*argc*/, char* argv[])
         std::string line1, line2;
         std::string test_string3 = "hello,world3\r\n";
         server.write(test_string3);
-        sleep(1);
+        std::this_thread::sleep_for(std::chrono::seconds(1));
         assert(client.readline(&line1));
         assert(client2.readline(&line2));
         assert(line1 == test_string3);

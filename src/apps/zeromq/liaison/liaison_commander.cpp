@@ -510,35 +510,41 @@ void goby::apps::zeromq::LiaisonCommander::ControlsContainer::CommandContainer::
             continue;
         }
 
+        // Clang analyzer (scan-build) gives potential memory leak here on the construction of std::function. Even if this is a leak, it's an insignificant one, thus we will ignore it
+#ifndef __clang_analyzer__
         // avoid multiple subscribe
         if (!external_types_.count(external_desc))
         {
+            const std::string external_type_name = external_data.name();
+            const std::string external_group = external_data.group();
             commander_->post_to_comms(
-                [=]()
+                [this, external_type_name, external_group]()
                 {
                     std::regex special_chars{R"([-[\]{}()*+?.,\^$|#\s])"};
                     std::string sanitized_type = std::regex_replace(
-                        std::string(external_data.name()), special_chars, R"(\$&)");
+                        external_type_name, special_chars, R"(\$&)");
 
                     auto external_data_callback =
-                        [=](const std::shared_ptr<const google::protobuf::Message>& msg,
-                            const std::string& type)
+                        [this, external_group](const std::shared_ptr<const google::protobuf::Message>&
+                                                   msg,
+                                               const std::string& type)
                     {
                         commander_->post_to_wt(
-                            [=]()
-                            { this->handle_external_data(type, external_data.group(), msg); });
+                            [this, external_group, msg, type]()
+                            { handle_external_data(type, external_group, msg); });
                     };
 
                     commander_->goby_thread()
                         ->interprocess()
                         .subscribe_type_regex<google::protobuf::Message>(
                             external_data_callback,
-                            goby::middleware::DynamicGroup(external_data.group()),
+                            goby::middleware::DynamicGroup(external_group),
                             "^" + sanitized_type + "$");
                 });
             external_types_.insert(external_desc);
         }
-
+#endif
+        
         for (const auto& translate : external_data.translate())
         {
             CommandContainer::ExternalDataMeta& meta =

@@ -27,6 +27,7 @@
 
 #include <chrono>
 #include <csignal>
+#include <cstdlib>
 #include <iostream>
 #include <sys/types.h>
 #include <unistd.h>
@@ -308,11 +309,16 @@ template <typename Config> void goby::middleware::Application<Config>::configure
         std::string file_symlink =
             (file_format % "latest" % app3_base_configuration_->name()).str();
         remove(file_symlink.c_str());
-        int result = symlink(realpath(file_name.c_str(), NULL), file_symlink.c_str());
-        if (result != 0)
-            glog.is_warn() &&
-                glog << "Cannot create symlink to latest file. Continuing onwards anyway"
-                     << std::endl;
+        char* resolved = realpath(file_name.c_str(), nullptr);
+        if (resolved != nullptr)
+        {
+            int result = symlink(resolved, file_symlink.c_str());
+            free(resolved);
+            if (result != 0)
+                glog.is_warn() &&
+                    glog << "Cannot create symlink to latest file. Continuing onwards anyway"
+                         << std::endl;
+        }
     }
 
     glog.add_stream(file_log.verbosity(), fout_.get());

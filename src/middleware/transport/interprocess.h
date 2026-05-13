@@ -229,8 +229,8 @@ class InterProcessTransporterBase
         std::string sanitized_group =
             std::regex_replace(std::string(group), special_chars, R"(\$&)");
 
-        auto regex_lambda = [=](const std::vector<unsigned char>& data, int schm,
-                                const std::string& type, const Group& grp)
+        auto regex_lambda = [f = std::move(f)](const std::vector<unsigned char>& data, int schm,
+                                               const std::string& type, const Group& grp)
         {
             auto data_begin = data.begin(), data_end = data.end(), actual_end = data.end();
             auto msg =

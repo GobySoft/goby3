@@ -29,6 +29,7 @@
 // 2. run goby_frontseat_interface or iFrontSeat connecting to that port
 
 #include <cmath>       // for isnan, cos, sin
+#include <chrono>      // for chrono::seconds
 #include <cstdlib>     // for exit, abs
 #include <iomanip>     // for operator<<, set...
 #include <iostream>    // for operator<<, bas...
@@ -37,8 +38,9 @@
 #include <memory>      // for unique_ptr
 #include <stdexcept>   // for runtime_error
 #include <string>      // for string, basic_s...
+#include <thread>      // for this_thread::sleep_for
 #include <type_traits> // for __decay_and_str...
-#include <unistd.h>    // for sleep, usleep
+#include <unistd.h>    // for usleep
 #include <utility>     // for pair, make_pair
 #include <vector>      // for vector
 
@@ -105,7 +107,7 @@ int main(int argc, char* argv[])
     goby::util::TCPServer server(goby::util::as<unsigned>(argv[1]));
     server.start();
 
-    while (!server.active()) sleep(1);
+    while (!server.active()) std::this_thread::sleep_for(std::chrono::seconds(1));
 
     while (server.active())
     {
