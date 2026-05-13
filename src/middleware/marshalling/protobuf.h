@@ -24,7 +24,6 @@
 #ifndef GOBY_MIDDLEWARE_MARSHALLING_PROTOBUF_H
 #define GOBY_MIDDLEWARE_MARSHALLING_PROTOBUF_H
 
-#include <memory>
 #include <mutex>
 
 #include <dccl/dynamic_protobuf_manager.h>
@@ -126,11 +125,9 @@ template <> struct SerializerParserHelper<google::protobuf::Message, Marshalling
             static std::mutex dynamic_protobuf_manager_mutex;
             std::lock_guard<std::mutex> lock(dynamic_protobuf_manager_mutex);
 #ifdef __clang_analyzer__
-            // Keep ownership in unique_ptr until shared_ptr construction succeeds.
-            std::unique_ptr<google::protobuf::Message> msg_raw(
-                dccl::DynamicProtobufManager::new_protobuf_message<google::protobuf::Message*>(
-                    type, user_pool_first));
-            msg = std::shared_ptr<google::protobuf::Message>(std::move(msg_raw));
+            // Use explicit raw pointer + reset for scan-build ownership tracking
+            msg.reset(dccl::DynamicProtobufManager::new_protobuf_message<
+                      google::protobuf::Message*>(type, user_pool_first));
 #else
             msg = dccl::DynamicProtobufManager::new_protobuf_message<
                 std::shared_ptr<google::protobuf::Message>>(type, user_pool_first);
