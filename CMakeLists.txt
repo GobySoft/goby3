@@ -177,7 +177,7 @@ install(
   DIRECTORY ${goby_INC_DIR}/
   DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
   FILES_MATCHING
-    REGEX ".*\\.(h|proto)$"
+    REGEX ".*\\.(h|hpp|proto)$"
   PATTERN "*/test/*" EXCLUDE
 )
 
