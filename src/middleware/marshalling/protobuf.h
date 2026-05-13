@@ -124,14 +124,10 @@ template <> struct SerializerParserHelper<google::protobuf::Message, Marshalling
         {
             static std::mutex dynamic_protobuf_manager_mutex;
             std::lock_guard<std::mutex> lock(dynamic_protobuf_manager_mutex);
-#ifdef __clang_analyzer__
             // Use explicit raw pointer + reset for scan-build ownership tracking
-            msg.reset(dccl::DynamicProtobufManager::new_protobuf_message<
-                      google::protobuf::Message*>(type, user_pool_first));
-#else
-            msg = dccl::DynamicProtobufManager::new_protobuf_message<
-                std::shared_ptr<google::protobuf::Message>>(type, user_pool_first);
-#endif
+            msg.reset(
+                dccl::DynamicProtobufManager::new_protobuf_message<google::protobuf::Message*>(
+                    type, user_pool_first));
         }
 
         msg->ParseFromArray(&*bytes_begin, bytes_end - bytes_begin);

@@ -196,9 +196,10 @@ goby::apps::zeromq::acomms::Bridge::Bridge()
                       q_managers_[i].get()),
             subscribe_groups_.at(qcfg.modem_id()).rx);
 
+        goby::acomms::QueueManager* q_manager = q_managers_[i].get();
         interprocess().subscribe_type_regex<google::protobuf::Message>(
-            std::bind(&Bridge::handle_external_push, this, std::placeholders::_1,
-                      q_managers_[i].get()),
+            [this, q_manager](const std::shared_ptr<const google::protobuf::Message>& msg,
+                              const std::string& type) { handle_external_push(msg, q_manager); },
             subscribe_groups_.at(qcfg.modem_id()).queue_push);
 
         interprocess().subscribe_dynamic<goby::acomms::protobuf::ModemTransmission>(
