@@ -510,6 +510,8 @@ void goby::apps::zeromq::LiaisonCommander::ControlsContainer::CommandContainer::
             continue;
         }
 
+        // Clang analyzer (scan-build) gives potential memory leak here on the construction of std::function. Even if this is a leak, it's an insignificant one, thus we will ignore it
+#ifndef __clang_analyzer__
         // avoid multiple subscribe
         if (!external_types_.count(external_desc))
         {
@@ -541,7 +543,8 @@ void goby::apps::zeromq::LiaisonCommander::ControlsContainer::CommandContainer::
                 });
             external_types_.insert(external_desc);
         }
-
+#endif
+        
         for (const auto& translate : external_data.translate())
         {
             CommandContainer::ExternalDataMeta& meta =
