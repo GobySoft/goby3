@@ -128,6 +128,13 @@ static std::map<std::string, void*>& get_driver_plugins()
     return plugins;
 }
 
+// Require "eager" init of plugins so that Protobuf extensions are loaded early
+static const auto plugins_initialized = []
+{
+    get_driver_plugins();
+    return true;
+}();
+
 template <typename ImplementationTag>
 goby::middleware::intervehicle::ModemDriverThread<ImplementationTag>::ModemDriverThread(
     const intervehicle::protobuf::PortalConfig::LinkConfig& config)
@@ -397,11 +404,10 @@ void goby::middleware::intervehicle::ModemDriverThread<ImplementationTag>::_forw
             if (!subscription_buffer_cfg.has_ack_required())
                 subscription_buffer_cfg.set_ack_required(true);
 
-	    using value_base_type =
-	      std::invoke_result_t<
-		decltype(&goby::acomms::protobuf::DynamicBufferConfig::value_base),
-		const goby::acomms::protobuf::DynamicBufferConfig&>;
-	    
+            using value_base_type = std::invoke_result_t<
+                decltype(&goby::acomms::protobuf::DynamicBufferConfig::value_base),
+                const goby::acomms::protobuf::DynamicBufferConfig&>;
+
             // set subscriptions to maximum value
             if (!subscription_buffer_cfg.has_value_base())
                 subscription_buffer_cfg.set_value_base(
