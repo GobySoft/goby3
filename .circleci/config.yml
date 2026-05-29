@@ -88,10 +88,14 @@ job-template-amd64: &job-template-amd64
     - checkout
     - run: &run-add-continuous-packages
         name: Add continuous build package sources.list (if not a tagged release)
+        # TODO: Remove check for gobysoft.gpg once all Docker containers move off apt-key (resolute/trixie and newer)
         command: |
           [ -z "${CIRCLE_TAG}" ] &&
-          echo "deb [signed-by=/etc/apt/keyrings/gobysoft.gpg] http://packages.gobysoft.org/ubuntu/continuous/ ${DISTRO_RELEASE_CODENAME}/" >> /etc/apt/sources.list.d/gobysoft_continuous.list ||
-          true
+          (if [ -f /etc/apt/keyrings/gobysoft.gpg ]; then
+          echo "deb [signed-by=/etc/apt/keyrings/gobysoft.gpg] http://packages.gobysoft.org/ubuntu/continuous/ ${DISTRO_RELEASE_CODENAME}/"
+          else
+          echo "deb http://packages.gobysoft.org/ubuntu/continuous/ ${DISTRO_RELEASE_CODENAME}/"
+          fi >> /etc/apt/sources.list.d/gobysoft_continuous.list) || true
     - run: &run-update-apt
         name: Update apt packages
         # TODO: Remove libdccl5-dev from this command once all Docker containers are updated to include it
