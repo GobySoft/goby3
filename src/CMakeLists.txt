@@ -209,6 +209,10 @@ if(Boost_VERSION VERSION_GREATER_EQUAL 1.86.0)
 endif()
 goby_find_required_package(Boost 1.58.0 REQUIRED COMPONENTS ${BOOST_COMPONENTS})
 
+# Used by goby-config.cmake.in
+set(Boost_VERSION "${Boost_VERSION}" PARENT_SCOPE)
+set(BOOST_COMPONENTS "${BOOST_COMPONENTS}" PARENT_SCOPE)
+
 include_directories(SYSTEM ${Boost_INCLUDE_DIRS})
 
 protobuf_generate_cpp_dccl(BASE_PROTO_SRCS BASE_PROTO_HDRS 
