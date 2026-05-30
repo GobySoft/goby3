@@ -7,6 +7,7 @@
 //   Henrik Schmidt <henrik@mit.edu>
 //   Thomas McCabe <tom.mccabe@missionsystems.com.au>
 //   Jared Silbermann <jared.silbermann@missionsystems.com.au>
+//   Copilot <198982749+Copilot@users.noreply.github.com>
 //
 //
 // This file is part of the Goby Underwater Autonomy Project Binaries

@@ -5,6 +5,7 @@
 // File authors:
 //   Toby Schneider <toby@gobysoft.org>
 //   Russ Webber <russ@rw.id.au>
+//   Copilot <198982749+Copilot@users.noreply.github.com>
 //
 //
 // This file is part of the Goby Underwater Autonomy Project Libraries

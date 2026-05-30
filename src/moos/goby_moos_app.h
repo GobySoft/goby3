@@ -1,10 +1,11 @@
-// Copyright 2011-2024:
+// Copyright 2011-2026:
 //   GobySoft, LLC (2013-)
 //   Massachusetts Institute of Technology (2007-2014)
 //   Community contributors (see AUTHORS file)
 // File authors:
 //   Toby Schneider <toby@gobysoft.org>
 //   James D. Turner <james.turner@nrl.navy.mil>
+//   Copilot <198982749+Copilot@users.noreply.github.com>
 //   Shawn Dooley <shawn@shawndooley.net>
 //
 //

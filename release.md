@@ -1,5 +1,15 @@
 # Goby Release Notes (Major version 3)
 
+## Version 3.5.0
+
+### Support for new dependency versions
+
+- Add Ubuntu 26.04 (resolute) and Debian 13 (trixie) support
+- Update to DCCL5
+
+### Bug fixes
+
+- Fix regression where loading external modemdriver plugin libraries did not work (bug in 3.4.0)
 
 ## Version 3.4.0
 
