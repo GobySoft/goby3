@@ -120,6 +120,7 @@ goby::apps::zeromq::LiaisonWtThread::LiaisonWtThread(const Wt::WEnvironment& env
     contents_div->setId("contents");
     auto contents_stack = contents_div->addNew<WStackedWidget>();
     contents_stack->setStyleClass("fill");
+    contents_stack->setOverflow(Wt::Overflow::Visible);
 
     /*
      * Setup the menu
