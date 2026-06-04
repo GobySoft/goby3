@@ -345,6 +345,7 @@ class LiaisonCommander
             std::map<Wt::WFormWidget*, const google::protobuf::FieldDescriptor*> time_fields_;
             std::uint64_t latest_time_;
 
+            Wt::WContainerWidget* contents_div_;
             Wt::WContainerWidget* group_div_;
             Wt::WLabel* group_label_;
             Wt::WComboBox* group_selection_;
@@ -367,6 +368,7 @@ class LiaisonCommander
             std::set<const google::protobuf::Descriptor*> external_types_;
 
             Wt::WGroupBox* message_tree_box_;
+            Wt::WContainerWidget* message_tree_div_;
             Wt::WTreeTable* message_tree_table_;
 
             //                    Wt::WStackedWidget* field_info_stack_;
@@ -375,11 +377,13 @@ class LiaisonCommander
             Wt::Dbo::Session* session_;
             std::shared_ptr<Wt::Dbo::QueryModel<Wt::Dbo::ptr<CommandEntry>>> sent_model_;
             Wt::WGroupBox* sent_box_;
+            Wt::WContainerWidget* sent_div_;
             Wt::WPushButton* sent_clear_;
             Wt::WTreeView* sent_table_;
 
             std::shared_ptr<Wt::Dbo::QueryModel<Wt::Dbo::ptr<ExternalData>>> external_data_model_;
             Wt::WGroupBox* external_data_box_;
+            Wt::WContainerWidget* external_data_div_;
             Wt::WPushButton* external_data_clear_;
             Wt::WTreeView* external_data_table_;
 
@@ -408,6 +412,7 @@ class LiaisonCommander
         const protobuf::ProtobufCommanderConfig& pb_commander_config_;
         std::map<std::string, int> commands_;
 
+        Wt::WContainerWidget* contents_div_;
         Wt::WContainerWidget* command_div_;
         Wt::WLabel* command_label_;
         Wt::WComboBox* command_selection_;

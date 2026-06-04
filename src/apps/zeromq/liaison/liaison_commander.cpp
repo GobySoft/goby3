@@ -66,6 +66,7 @@
 #include <Wt/WText.h>                                   // for WText
 #include <Wt/WTreeTable.h>                              // for WTreeTable
 #include <Wt/WTreeView.h>                               // for WTreeView
+#include <Wt/WVBoxLayout.h>                             // for WVBoxLayout
 #include <Wt/WValidator.h>                              // for WValidator
 #include <Wt/WWidget.h>                                 // for WWidget
 #include <boost/algorithm/string/classification.hpp>    // for is_any_ofF
@@ -126,6 +127,17 @@ const std::string EXTERNAL_DATA_LOAD_TEXT = "load";
 
 const std::string STRIPE_ODD_CLASS = "odd";
 const std::string STRIPE_EVEN_CLASS = "even";
+
+namespace
+{
+Wt::WContainerWidget* group_box_contents(Wt::WGroupBox* group_box)
+{
+    auto layout = std::make_unique<Wt::WVBoxLayout>();
+    auto contents = layout->addWidget(std::make_unique<Wt::WContainerWidget>());
+    group_box->setLayout(std::move(layout));
+    return contents;
+}
+} // namespace
 
 goby::apps::zeromq::protobuf::ProtobufCommanderConfig::LoadProtobuf::GroupLayer
 to_group_layer(const std::string& group, const std::string& layer)
@@ -233,11 +245,12 @@ void goby::apps::zeromq::LiaisonCommander::display_notify(
     remove_all->setFloatSide(Wt::Side::Right);
 
     auto box = new_div->addNew<WGroupBox>(title);
+    auto box_contents = group_box_contents(box);
 
     new_div->decorationStyle().setBackgroundColor(Wt::WColor(
         background_color.r(), background_color.g(), background_color.b(), background_color.a()));
 
-    box->addNew<WText>("<pre>" + pb_msg.DebugString() + "</pre>");
+    box_contents->addNew<WText>("<pre>" + pb_msg.DebugString() + "</pre>");
 
     plus->clicked().connect([this](const Wt::WMouseEvent& event)
                             { controls_div_->increment_incoming_messages(event); });
@@ -317,17 +330,18 @@ goby::apps::zeromq::LiaisonCommander::ControlsContainer::ControlsContainer(
     LiaisonCommander* parent)
     : WGroupBox("Controls"),
       pb_commander_config_(pb_commander_config),
-      command_div_(this->addNew<WContainerWidget>()),
+      contents_div_(group_box_contents(this)),
+      command_div_(contents_div_->addNew<WContainerWidget>()),
       command_label_(command_div_->addNew<WLabel>("Message: ")),
       command_selection_(command_div_->addNew<WComboBox>()),
-      buttons_div_(this->addNew<WContainerWidget>()),
+      buttons_div_(contents_div_->addNew<WContainerWidget>()),
       comment_label_(buttons_div_->addNew<WLabel>("Log comment: ")),
       comment_line_(buttons_div_->addNew<WLineEdit>()),
       send_button_(buttons_div_->addNew<WPushButton>("Send")),
       clear_button_(buttons_div_->addNew<WPushButton>("Clear")),
       commands_div_(commands_div),
       //      incoming_message_panel_(this->addNew<Wt::WPanel>()),
-      incoming_message_stack_(this->addNew<Wt::WStackedWidget>()),
+      incoming_message_stack_(contents_div_->addNew<Wt::WStackedWidget>()),
       //      master_field_info_panel_(this->addNew<Wt::WPanel>()),
       //      master_field_info_stack_(this->addNew<Wt::WStackedWidget>()),
       commander_(parent)
@@ -765,15 +779,18 @@ void goby::apps::zeromq::LiaisonCommander::ControlsContainer::send_message()
     WDialog dialog("Confirm sending of message: " + command_selection_->currentText());
 
     auto comment_box = dialog.contents()->addNew<WGroupBox>("Log comment");
-    auto comment_line = comment_box->addNew<WLineEdit>();
+    auto comment_box_contents = group_box_contents(comment_box);
+    auto comment_line = comment_box_contents->addNew<WLineEdit>();
     comment_line->setText(comment_line_->text());
 
     auto group_box = dialog.contents()->addNew<WGroupBox>("Group");
-    auto group_div = group_box->addNew<WContainerWidget>();
+    auto group_box_contents_div = group_box_contents(group_box);
+    auto group_div = group_box_contents_div->addNew<WContainerWidget>();
     group_div->addNew<WText>("Group: " + to_string(grouplayer, group_numeric));
 
     auto message_box = dialog.contents()->addNew<WGroupBox>("Message to send");
-    auto message_div = message_box->addNew<WContainerWidget>();
+    auto message_box_contents = group_box_contents(message_box);
+    auto message_div = message_box_contents->addNew<WContainerWidget>();
 
     auto message_to_send = current_command->message_;
 
@@ -895,21 +912,25 @@ goby::apps::zeromq::LiaisonCommander::ControlsContainer::CommandContainer::Comma
       message_(dccl::DynamicProtobufManager::new_protobuf_message<
                std::shared_ptr<google::protobuf::Message>>(protobuf_name)),
       latest_time_(0),
-      group_div_(this->addNew<WContainerWidget>()),
+      contents_div_(group_box_contents(this)),
+      group_div_(contents_div_->addNew<WContainerWidget>()),
       group_label_(group_div_->addNew<WLabel>("Group: ")),
       group_selection_(group_div_->addNew<WComboBox>()),
-      message_tree_box_(this->addNew<WGroupBox>("Contents")),
-      message_tree_table_(message_tree_box_->addNew<WTreeTable>()),
+      message_tree_box_(contents_div_->addNew<WGroupBox>("Contents")),
+      message_tree_div_(group_box_contents(message_tree_box_)),
+      message_tree_table_(message_tree_div_->addNew<WTreeTable>()),
       //      field_info_stack_(master_field_info_stack->addNew<WStackedWidget>()),
       session_(session),
       sent_model_(std::make_shared<Dbo::QueryModel<Dbo::ptr<CommandEntry>>>()),
-      sent_box_(this->addNew<WGroupBox>("Sent message log (click for details)")),
-      sent_clear_(sent_box_->addNew<WPushButton>("Clear")),
-      sent_table_(sent_box_->addNew<WTreeView>()),
+      sent_box_(contents_div_->addNew<WGroupBox>("Sent message log (click for details)")),
+      sent_div_(group_box_contents(sent_box_)),
+      sent_clear_(sent_div_->addNew<WPushButton>("Clear")),
+      sent_table_(sent_div_->addNew<WTreeView>()),
       external_data_model_(std::make_shared<Dbo::QueryModel<Dbo::ptr<ExternalData>>>()),
-      external_data_box_(this->addNew<WGroupBox>("External Data")),
-      external_data_clear_(external_data_box_->addNew<WPushButton>("Clear")),
-      external_data_table_(external_data_box_->addNew<WTreeView>()),
+      external_data_box_(contents_div_->addNew<WGroupBox>("External Data")),
+      external_data_div_(group_box_contents(external_data_box_)),
+      external_data_clear_(external_data_div_->addNew<WPushButton>("Clear")),
+      external_data_table_(external_data_div_->addNew<WTreeView>()),
       last_reload_time_(boost::posix_time::neg_infin),
       pb_commander_config_(pb_commander_config),
       load_config_(load_config),
@@ -1123,12 +1144,14 @@ void goby::apps::zeromq::LiaisonCommander::ControlsContainer::CommandContainer::
                                        " posted at " + entry->time.toString()));
 
     auto comment_box = database_dialog_->contents()->addNew<WGroupBox>("Log comment");
-    comment_box->addNew<WText>(entry->comment);
+    auto comment_box_contents = group_box_contents(comment_box);
+    comment_box_contents->addNew<WText>(entry->comment);
 
     auto contents_div = database_dialog_->contents()->addNew<WContainerWidget>();
     auto message_box = contents_div->addNew<WGroupBox>("Message posted to " + group);
+    auto message_box_contents = group_box_contents(message_box);
 
-    auto message_div = message_box->addNew<WContainerWidget>();
+    auto message_div = message_box_contents->addNew<WContainerWidget>();
 
     message_div->addNew<WText>("<pre>" + message->DebugString() + "</pre>");
 
@@ -1136,7 +1159,8 @@ void goby::apps::zeromq::LiaisonCommander::ControlsContainer::CommandContainer::
     acks.ParseFromArray(&entry->acks[0], entry->acks.size());
 
     auto acks_box = contents_div->addNew<WGroupBox>("Acks posted");
-    auto acks_div = acks_box->addNew<WContainerWidget>();
+    auto acks_box_contents = group_box_contents(acks_box);
+    auto acks_div = acks_box_contents->addNew<WContainerWidget>();
     acks_div->addNew<WText>("<pre>" + acks.DebugString() + "</pre>");
 
     contents_div->setMaximumSize(pb_commander_config_.modal_dimensions().width(),
@@ -2224,7 +2248,8 @@ void goby::apps::zeromq::LiaisonCommander::ControlsContainer::CommandContainer::
                    " (click to select)");
 
     auto choice_box = dialog.contents()->addNew<WGroupBox>("Choose external data message");
-    auto choice_div = choice_box->addNew<WContainerWidget>(); //
+    auto choice_box_contents = group_box_contents(choice_box);
+    auto choice_div = choice_box_contents->addNew<WContainerWidget>(); //
 
     auto external_data_model = std::make_shared<Dbo::QueryModel<Dbo::ptr<ExternalData>>>();
     auto external_data_table(choice_div->addNew<WTreeView>());
@@ -2258,7 +2283,8 @@ void goby::apps::zeromq::LiaisonCommander::ControlsContainer::CommandContainer::
     set_external_data_table_params(external_data_table);
 
     auto message_box = dialog.contents()->addNew<WGroupBox>("External data to load");
-    auto message_div = message_box->addNew<WContainerWidget>();
+    auto message_box_contents = group_box_contents(message_box);
+    auto message_div = message_box_contents->addNew<WContainerWidget>();
     auto message_text = message_div->addNew<WText>("");
 
     auto ok = dialog.contents()->addNew<WPushButton>("Load");

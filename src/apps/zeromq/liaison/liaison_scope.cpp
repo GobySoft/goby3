@@ -73,6 +73,17 @@ using namespace Wt;
 using namespace goby::util::logger_lock;
 using namespace goby::util::logger;
 
+namespace
+{
+Wt::WContainerWidget* group_box_contents(Wt::WGroupBox* group_box)
+{
+    auto layout = std::make_unique<Wt::WVBoxLayout>();
+    auto contents = layout->addWidget(std::make_unique<Wt::WContainerWidget>());
+    group_box->setLayout(std::move(layout));
+    return contents;
+}
+} // namespace
+
 goby::apps::zeromq::LiaisonScope::LiaisonScope(const protobuf::LiaisonConfig& cfg)
     : LiaisonContainerWithComms<LiaisonScope, ScopeCommsThread>(cfg),
       pb_scope_config_(cfg.pb_scope_config()),
@@ -83,15 +94,19 @@ goby::apps::zeromq::LiaisonScope::LiaisonScope(const protobuf::LiaisonConfig& cf
 {
     auto main_layout = std::make_unique<Wt::WVBoxLayout>();
     auto main_box = std::make_unique<Wt::WGroupBox>("Interprocess Messages");
+    auto main_box_contents = group_box_contents(main_box.get());
 
-    subscriptions_div_ = main_box->addNew<SubscriptionsContainer>(model_, history_model_, msg_map_);
-    controls_div_ = main_box->addNew<ControlsContainer>(&scope_timer_, cfg.start_paused(), this,
-                                                        subscriptions_div_, cfg.update_freq());
-    history_header_div_ = main_box->addNew<HistoryContainer>(main_layout.get(), history_model_,
-                                                             pb_scope_config_, this);
+    subscriptions_div_ =
+        main_box_contents->addNew<SubscriptionsContainer>(model_, history_model_, msg_map_);
+    controls_div_ =
+        main_box_contents->addNew<ControlsContainer>(&scope_timer_, cfg.start_paused(), this,
+                                                     subscriptions_div_, cfg.update_freq());
+    history_header_div_ = main_box_contents->addNew<HistoryContainer>(main_layout.get(), history_model_,
+                                                                      pb_scope_config_, this);
 
-    regex_filter_div_ = main_box->addNew<RegexFilterContainer>(this, proxy_, pb_scope_config_);
-    scope_tree_view_ = main_box->addNew<LiaisonScopeProtobufTreeView>(
+    regex_filter_div_ =
+        main_box_contents->addNew<RegexFilterContainer>(this, proxy_, pb_scope_config_);
+    scope_tree_view_ = main_box_contents->addNew<LiaisonScopeProtobufTreeView>(
         pb_scope_config_, pb_scope_config_.scope_height());
 
     //    this->resize(WLength::Auto, WLength(100, WLength::Percentage));
