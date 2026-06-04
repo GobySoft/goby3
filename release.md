@@ -1,5 +1,12 @@
 # Goby Release Notes (Major version 3)
 
+## Version 3.5.1
+
+### Bug fixes
+
+- Rebuild against Wt 4.13.2 for fix to WGroupBox: https://redmine.emweb.be/issues/14469
+- Fix DEPENDENCIES script
+
 ## Version 3.5.0
 
 ### Support for new dependency versions
