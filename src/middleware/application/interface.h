@@ -164,6 +164,7 @@ template <typename Config> class Application
     void configure_logger();
     void configure_glog_file();
     void configure_intervehicle();
+    void load_shared_libraries();
     void check_rotate_glog_file();
 
   private:
@@ -199,6 +200,9 @@ template <typename Config> goby::middleware::Application<Config>::Application() 
     using goby::glog;
 
     configure_logger();
+
+    load_shared_libraries();
+
     if (app3_base_configuration_->has_geodesy())
         configure_geodesy({app3_base_configuration_->geodesy().lat_origin_with_units(),
                            app3_base_configuration_->geodesy().lon_origin_with_units()});
@@ -232,6 +236,18 @@ template <typename Config> void goby::middleware::Application<Config>::configure
 
     if (app3_base_configuration_->glog_config().show_dccl_log())
         goby::middleware::detail::DCCLSerializerParserHelperBase::setup_dlog();
+}
+
+template <typename Config> void goby::middleware::Application<Config>::load_shared_libraries()
+{
+    // environmental variable is loaded first so that configuration file entries can rely on
+    // codecs and messages provided by these libraries
+    if (const char* env_libs = getenv("GOBY_LOAD_SHARED_LIBRARY"))
+        goby::middleware::detail::DCCLSerializerParserHelperBase::load_library(
+            std::string(env_libs));
+
+    for (const auto& lib : app3_base_configuration_->load_shared_library())
+        goby::middleware::detail::DCCLSerializerParserHelperBase::load_library(lib);
 }
 
 template <typename Config> void goby::middleware::Application<Config>::configure_intervehicle()
