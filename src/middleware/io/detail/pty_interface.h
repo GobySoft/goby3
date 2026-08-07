@@ -189,8 +189,11 @@ void goby::middleware::io::detail::PTYThread<line_in_group, line_out_group, publ
     this->mutable_socket().assign(pty_internal);
 
     // re-symlink to new PTY
+    // the kernel assigns the lowest free pty index, so /dev/pts/0 is a valid
+    // choice when no other pseudoterminals are in use (e.g. on an embedded system)
     char pty_external_path[256];
-    ptsname_r(pty_internal, pty_external_path, sizeof(pty_external_path));
+    if (ptsname_r(pty_internal, pty_external_path, sizeof(pty_external_path)) != 0)
+        throw(goby::Exception(std::string("Error in ptsname_r: ") + std::strerror(errno)));
 
     if (symlink(pty_external_path, pty_external_symlink) == -1)
         throw(goby::Exception(std::string("Could not create symlink: ") + pty_external_symlink));
