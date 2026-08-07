@@ -95,7 +95,10 @@ std::map<std::string, void*> load_plugins()
         {
             std::vector<void*> plugin_handles_;
 
-            void* handle = dlopen(i.c_str(), RTLD_LAZY);
+            // RTLD_NODELETE: keep the library mapped for the life of the process (even if
+            // dlclose() is called) as the protobuf descriptor pools may reference memory
+            // (e.g. custom options extensions) owned by this library at static destruction
+            void* handle = dlopen(i.c_str(), RTLD_LAZY | RTLD_NODELETE);
 
             if (handle)
                 plugin_handles_.push_back(handle);

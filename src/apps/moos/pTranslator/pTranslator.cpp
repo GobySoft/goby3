@@ -92,7 +92,10 @@ goby::apps::moos::CpTranslator::CpTranslator()
         glog.is(VERBOSE) && glog << "Loading shared library: " << cfg_.load_shared_library(i)
                                  << std::endl;
 
-        void* handle = dlopen(cfg_.load_shared_library(i).c_str(), RTLD_LAZY);
+        // RTLD_NODELETE: keep the library mapped for the life of the process (even if
+        // dlclose() is called) as the protobuf descriptor pools may reference memory
+        // (e.g. custom options extensions) owned by this library at static destruction
+        void* handle = dlopen(cfg_.load_shared_library(i).c_str(), RTLD_LAZY | RTLD_NODELETE);
         if (!handle)
         {
             glog << die << "Failed ... check path provided or add to /etc/ld.so.conf "

@@ -132,7 +132,10 @@ int main(int argc, char* argv[])
         for (auto& i : plugin_vec)
         {
             glog.is(VERBOSE) && glog << "Loading liaison plugin library: " << i << std::endl;
-            void* handle = dlopen(i.c_str(), RTLD_LAZY);
+            // RTLD_NODELETE: keep the library mapped for the life of the process (even if
+            // dlclose() is called) as the protobuf descriptor pools may reference memory
+            // (e.g. custom options extensions) owned by this library at static destruction
+            void* handle = dlopen(i.c_str(), RTLD_LAZY | RTLD_NODELETE);
             if (handle)
                 goby::apps::zeromq::LiaisonWtThread::plugin_handles_.push_back(handle);
             else

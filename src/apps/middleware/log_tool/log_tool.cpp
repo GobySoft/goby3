@@ -201,7 +201,10 @@ goby::apps::middleware::LogTool::LogTool()
 
     for (const auto& lib : app_cfg().load_shared_library())
     {
-        void* lib_handle = dlopen(lib.c_str(), RTLD_LAZY);
+        // RTLD_NODELETE: keep the library mapped for the life of the process (even if
+        // dlclose() is called) as the protobuf descriptor pools may reference memory
+        // (e.g. custom options extensions) owned by this library at static destruction
+        void* lib_handle = dlopen(lib.c_str(), RTLD_LAZY | RTLD_NODELETE);
         if (!lib_handle)
             glog.is_die() && glog << "Failed to open library: " << lib << std::endl;
         dl_handles_.push_back(lib_handle);

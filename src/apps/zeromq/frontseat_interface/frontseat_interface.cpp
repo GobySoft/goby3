@@ -95,7 +95,10 @@ int main(int argc, char* argv[])
     {
         std::cerr << "Loading frontseat driver library: " << driver_lib_path << std::endl;
         goby::apps::zeromq::FrontSeatInterface::driver_library_handle_ =
-            dlopen(driver_lib_path, RTLD_LAZY);
+            // RTLD_NODELETE: keep the library mapped for the life of the process (even if
+            // dlclose() is called) as the protobuf descriptor pools may reference memory
+            // (e.g. custom options extensions) owned by this library at static destruction
+            dlopen(driver_lib_path, RTLD_LAZY | RTLD_NODELETE);
         if (!goby::apps::zeromq::FrontSeatInterface::driver_library_handle_)
         {
             std::cerr << "Failed to open library: " << driver_lib_path << std::endl;
