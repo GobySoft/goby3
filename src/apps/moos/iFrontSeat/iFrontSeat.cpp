@@ -70,7 +70,11 @@ int main(int argc, char* argv[])
     if (driver_lib_path)
     {
         std::cerr << "Loading iFrontSeat driver library: " << driver_lib_path << std::endl;
-        goby::apps::moos::iFrontSeat::driver_library_handle_ = dlopen(driver_lib_path, RTLD_LAZY);
+        // RTLD_NODELETE: keep the library mapped for the life of the process (even if
+        // dlclose() is called) as the protobuf descriptor pools may reference memory
+        // (e.g. custom options extensions) owned by this library at static destruction
+        goby::apps::moos::iFrontSeat::driver_library_handle_ =
+            dlopen(driver_lib_path, RTLD_LAZY | RTLD_NODELETE);
         if (!goby::apps::moos::iFrontSeat::driver_library_handle_)
         {
             std::cerr << "Failed to open library: " << driver_lib_path << std::endl;

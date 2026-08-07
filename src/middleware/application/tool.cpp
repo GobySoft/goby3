@@ -142,7 +142,10 @@ void goby::middleware::ToolSharedLibraryLoader::load_lib(const std::string& lib)
     for (const auto& l : libs)
     {
         glog.is_debug2() && glog << "Loading library: " << l << std::endl;
-        void* lib_handle = dlopen(l.c_str(), RTLD_LAZY);
+        // RTLD_NODELETE: keep the library mapped for the life of the process (even if
+        // dlclose() is called) as the protobuf descriptor pools may reference memory
+        // (e.g. custom options extensions) owned by this library at static destruction
+        void* lib_handle = dlopen(l.c_str(), RTLD_LAZY | RTLD_NODELETE);
         if (!lib_handle)
             glog.is_die() && glog << "Failed to open library: " << lib << std::endl;
         dl_handles_.push_back(lib_handle);

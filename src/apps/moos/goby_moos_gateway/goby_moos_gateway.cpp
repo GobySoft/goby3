@@ -82,7 +82,10 @@ int main(int argc, char* argv[])
         for (const auto& plugin : plugin_vec)
         {
             glog.is(VERBOSE) && glog << "Loading plugin library: " << plugin << std::endl;
-            void* handle = dlopen(plugin.c_str(), RTLD_LAZY);
+            // RTLD_NODELETE: keep the library mapped for the life of the process (even if
+            // dlclose() is called) as the protobuf descriptor pools may reference memory
+            // (e.g. custom options extensions) owned by this library at static destruction
+            void* handle = dlopen(plugin.c_str(), RTLD_LAZY | RTLD_NODELETE);
             if (handle)
             {
                 goby::moos::GobyMOOSGateway::dl_handles_.push_back(handle);
