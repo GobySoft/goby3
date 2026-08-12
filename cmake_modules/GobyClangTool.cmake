@@ -1,6 +1,13 @@
 # must output json compile commands for goby_clang_tool to work
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON CACHE BOOL "Enable/Disable output of compile commands during generation." FORCE)
 
+# 'dot' (from the 'graphviz' package) renders the interface diagrams into images.
+# It's not required to build Goby itself, so degrade gracefully if it's absent.
+find_program(GOBY_DOT_BINARY dot)
+if(NOT GOBY_DOT_BINARY)
+  message(STATUS "dot (from the 'graphviz' package) not found: skipping generation of interface visualization images. Install graphviz and re-run cmake to enable this.")
+endif()
+
 # usage: goby_export_interface(target_name ${OUTPUT_DIR} YML)
 # sets YML to path to yml file
 function(GOBY_EXPORT_INTERFACE TARGET YML_OUT_DIR STUB_OUT_DIR YML)
@@ -34,33 +41,37 @@ function(GOBY_EXPORT_INTERFACE TARGET YML_OUT_DIR STUB_OUT_DIR YML)
   if(NOT "${STUB_OUT_DIR}" STREQUAL "")
     file(MAKE_DIRECTORY ${STUB_OUT_DIR})
 
+    if(GOBY_DOT_BINARY)
+      # create stub image
+      set(STUB_DOT_OUT "${TARGET}_stub_deployment.dot")
+      add_custom_command(
+        OUTPUT ${STUB_OUT_DIR}/${STUB_DOT_OUT}
+        COMMAND goby_clang_tool
+        ARGS -viz -include-all -outdir ${STUB_OUT_DIR} -o ${STUB_DOT_OUT} ${${YML}}
+        COMMENT "Running goby_clang_tool (viz) on ${TARGET}"
+        DEPENDS ${${YML}}
+        VERBATIM)
 
-    # create stub image
-    set(STUB_DOT_OUT "${TARGET}_stub_deployment.dot")
-    add_custom_command(
-      OUTPUT ${STUB_OUT_DIR}/${STUB_DOT_OUT}
-      COMMAND goby_clang_tool
-      ARGS -viz -include-all -outdir ${STUB_OUT_DIR} -o ${STUB_DOT_OUT} ${${YML}}
-      COMMENT "Running goby_clang_tool (viz) on ${TARGET}"
-      DEPENDS ${${YML}}
-      VERBATIM)
-    
-    set_source_files_properties(${STUB_OUT_DIR}/${STUB_DOT_OUT} PROPERTIES GENERATED TRUE)
-    
-    
-    set(STUB_PNG_OUT "${TARGET}_stub_deployment.png")
-    add_custom_command(
-      OUTPUT ${STUB_OUT_DIR}/${STUB_PNG_OUT}
-      COMMAND dot
-      ARGS -Tpng -o ${STUB_OUT_DIR}/${STUB_PNG_OUT} ${STUB_OUT_DIR}/${STUB_DOT_OUT}
-      DEPENDS ${STUB_OUT_DIR}/${STUB_DOT_OUT}
-      )
-    
-    set_source_files_properties(${STUB_OUT_DIR}/${STUB_PNG_OUT} PROPERTIES GENERATED TRUE)
-    
-    add_custom_target(${TARGET}_stub_interface_viz ALL DEPENDS ${STUB_OUT_DIR}/${STUB_PNG_OUT})
+      set_source_files_properties(${STUB_OUT_DIR}/${STUB_DOT_OUT} PROPERTIES GENERATED TRUE)
+
+
+      set(STUB_PNG_OUT "${TARGET}_stub_deployment.png")
+      add_custom_command(
+        OUTPUT ${STUB_OUT_DIR}/${STUB_PNG_OUT}
+        COMMAND ${GOBY_DOT_BINARY}
+        ARGS -Tpng -o ${STUB_OUT_DIR}/${STUB_PNG_OUT} ${STUB_OUT_DIR}/${STUB_DOT_OUT}
+        DEPENDS ${STUB_OUT_DIR}/${STUB_DOT_OUT}
+        )
+
+      set_source_files_properties(${STUB_OUT_DIR}/${STUB_PNG_OUT} PROPERTIES GENERATED TRUE)
+
+      add_custom_target(${TARGET}_stub_interface_viz ALL DEPENDS ${STUB_OUT_DIR}/${STUB_PNG_OUT})
+    else()
+      # dot not available: still generate the interface yml, but skip the image
+      add_custom_target(${TARGET}_stub_interface_viz ALL DEPENDS ${${YML}})
+    endif()
   else()
-    add_custom_target(${TARGET}_interface ALL DEPENDS ${${YML}})    
+    add_custom_target(${TARGET}_interface ALL DEPENDS ${${YML}})
   endif()
     
 endfunction()
@@ -103,14 +114,19 @@ function(GOBY_VISUALIZE_INTERFACES YML_DIR DEPLOYMENT_YAML IMAGE_OUT PARAMETERS)
 
   set_source_files_properties(${ABS_DOT_OUT} PROPERTIES GENERATED TRUE)
 
-  add_custom_command(
-    OUTPUT ${ABS_IMAGE_OUT}
-    COMMAND dot
-    ARGS -T${IMAGE_TYPE} -o ${ABS_IMAGE_OUT} ${ABS_DOT_OUT} 
-    DEPENDS ${ABS_DOT_OUT}
-    )
+  if(GOBY_DOT_BINARY)
+    add_custom_command(
+      OUTPUT ${ABS_IMAGE_OUT}
+      COMMAND ${GOBY_DOT_BINARY}
+      ARGS -T${IMAGE_TYPE} -o ${ABS_IMAGE_OUT} ${ABS_DOT_OUT}
+      DEPENDS ${ABS_DOT_OUT}
+      )
 
-  set_source_files_properties(${ABS_IMAGE_OUT} PROPERTIES GENERATED TRUE)
-  
-  add_custom_target(${DEPLOYMENT_NAME_FROM_FILENAME}${PARAMETERS_SUFFIX}_interface_viz ALL DEPENDS ${ABS_IMAGE_OUT})
+    set_source_files_properties(${ABS_IMAGE_OUT} PROPERTIES GENERATED TRUE)
+
+    add_custom_target(${DEPLOYMENT_NAME_FROM_FILENAME}${PARAMETERS_SUFFIX}_interface_viz ALL DEPENDS ${ABS_IMAGE_OUT})
+  else()
+    # dot not available: still generate the dot source, but skip rendering the image
+    add_custom_target(${DEPLOYMENT_NAME_FROM_FILENAME}${PARAMETERS_SUFFIX}_interface_viz ALL DEPENDS ${ABS_DOT_OUT})
+  endif()
 endfunction()
