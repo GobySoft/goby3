@@ -48,14 +48,26 @@ if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/.git")
    today(GOBY_VERSION_DATE)  
    execute_process(COMMAND git rev-parse --short HEAD
      WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
-     OUTPUT_VARIABLE GOBY_LAST_REV)
-   string(STRIP ${GOBY_LAST_REV} GOBY_LAST_REV)
+     OUTPUT_VARIABLE GOBY_LAST_REV
+     RESULT_VARIABLE GOBY_LAST_REV_RESULT
+     OUTPUT_STRIP_TRAILING_WHITESPACE)
+   if(NOT GOBY_LAST_REV_RESULT EQUAL 0 OR "${GOBY_LAST_REV}" STREQUAL "")
+     set(GOBY_LAST_REV "unknown")
+   endif()
 
-   string(REPLACE "~" "_" GOBY_GIT_VERSION ${GOBY_VERSION_MAJOR}.${GOBY_VERSION_MINOR}.${GOBY_VERSION_PATCH}) 
+   string(REPLACE "~" "_" GOBY_GIT_VERSION ${GOBY_VERSION_MAJOR}.${GOBY_VERSION_MINOR}.${GOBY_VERSION_PATCH})
+   # this fails (e.g. tag not present) on a shallow clone that hasn't fetched tags,
+   # so fall back to a rev count of 0 rather than aborting the configure
    execute_process(COMMAND git rev-list ${GOBY_GIT_VERSION}..HEAD --count
      WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
-     OUTPUT_VARIABLE GOBY_REVS_SINCE_TAG)
-   string(STRIP ${GOBY_REVS_SINCE_TAG} GOBY_REVS_SINCE_TAG)
+     OUTPUT_VARIABLE GOBY_REVS_SINCE_TAG
+     RESULT_VARIABLE GOBY_REVS_SINCE_TAG_RESULT
+     ERROR_QUIET
+     OUTPUT_STRIP_TRAILING_WHITESPACE)
+   if(NOT GOBY_REVS_SINCE_TAG_RESULT EQUAL 0 OR "${GOBY_REVS_SINCE_TAG}" STREQUAL "")
+     message(STATUS "Could not determine revisions since tag ${GOBY_GIT_VERSION} (shallow clone without tags?); defaulting to 0")
+     set(GOBY_REVS_SINCE_TAG "0")
+   endif()
       
    execute_process(COMMAND git diff-index --quiet HEAD
      WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}

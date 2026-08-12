@@ -164,9 +164,21 @@ endif()
 ## LLVM (for goby_clang_tool)
 include(FindLLVMForGoby)
 
-macro(generate_middleware_interfaces target) 
+#latex, for documentation
+find_package(LATEX QUIET)
+set(LATEX_DOC_STRING "Build documentation (requires Doxygen, LaTeX, XeLaTeX, and certain fonts)")
+option(build_doc ${LATEX_DOC_STRING} OFF)
+
+# the *_stub_interface_viz targets require graphviz's 'dot' to render the interface
+# diagrams into images, so only build them (and thus require graphviz) as part of the
+# documentation build, not the default build
+macro(generate_middleware_interfaces target)
   if(enable_llvm)
-    goby_export_interface(${target} ${goby_INTERFACES_DIR} "${CMAKE_BINARY_DIR}/share/goby/doc/html/images" ${target}_YML_OUT)
+    if(build_doc)
+      goby_export_interface(${target} ${goby_INTERFACES_DIR} "${CMAKE_BINARY_DIR}/share/goby/doc/html/images" ${target}_YML_OUT)
+    else()
+      goby_export_interface(${target} ${goby_INTERFACES_DIR} "" ${target}_YML_OUT)
+    endif()
   endif()
 endmacro()
 
@@ -344,11 +356,6 @@ if(build_moos)
   #configuration export - local build version
   export(TARGETS ${GOBY_MOOS_LIBRARY_LIST} FILE ${CMAKE_BINARY_DIR}/goby_moos-config.cmake)
 endif(build_moos)
-
-#latex, for documentation
-find_package(LATEX QUIET)
-set(LATEX_DOC_STRING "Build documentation (requires Doxygen, LaTeX, XeLaTeX, and certain fonts)")
-option(build_doc ${LATEX_DOC_STRING} OFF)
 
 if(build_doc)
   add_subdirectory(doc)
