@@ -128,10 +128,10 @@ case $OS_ID in
         # install clang if GCC is less than 7.2
         dpkg --compare-versions `dpkg-query --showformat='${Version}' --show gcc` ">=" 4:7.2~ ||  (set -x; echo "Installing clang as your GCC version is less than 7.2"; apt-get install clang)
         
-        [[ "${INSTALL_MOOS_DEPENDS}" == "true" ]] && (depends "libgoby3-moos-dev"; set -x; apt-get install $DEPENDS_RETVAL)
-        [[ "${INSTALL_GUI_DEPENDS}" == "true" ]] && (depends "libgoby3-gui-dev"; set -x; apt-get install $DEPENDS_RETVAL)
-        [[ "${INSTALL_DOC_DEPENDS}" == "true" ]] && (set -x; apt-get build-dep goby3 --indep-only)
-        [[ "${INSTALL_ALL_DEPENDS}" == "true" ]] && (set -x; apt-get build-dep goby3 --arch-only)
+        [[ "${INSTALL_MOOS_DEPENDS}" == "true" ]] && (depends "libgoby3-moos-dev"; set -x; apt-get -y install $DEPENDS_RETVAL)
+        [[ "${INSTALL_GUI_DEPENDS}" == "true" ]] && (depends "libgoby3-gui-dev"; set -x; apt-get -y install $DEPENDS_RETVAL)
+        [[ "${INSTALL_DOC_DEPENDS}" == "true" ]] && (set -x; apt-get -y build-dep goby3 --indep-only)
+        [[ "${INSTALL_ALL_DEPENDS}" == "true" ]] && (set -x; apt-get -y build-dep goby3 --arch-only)
 
         ;;
     *)
