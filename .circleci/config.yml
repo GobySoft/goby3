@@ -212,6 +212,19 @@ filter-template-master-only: &filter-template-master-only
         - "3.0"
         - "packages"
 
+# the Debian packaging build also runs on these branches, so that changes to it can be tested
+# before merging. The continuous upload deliberately does NOT: packages are only published from
+# the branches above. Remove a feature branch from this list once it has merged.
+filter-template-deb-build: &filter-template-deb-build
+  filters:
+    tags:
+      only: /.*/
+    branches:
+      only:
+        - "3.0"
+        - "packages"
+        - "claude/goby3-python-api-design-j8jb40"
+
 filter-template-non-master: &filter-template-non-master
   filters:
     branches:
@@ -243,73 +256,74 @@ workflows:
           <<: *filter-template-non-master
       
       - get-orig-source:
-          <<: *filter-template-master-only
+          <<: *filter-template-deb-build
 
       - amd64-bookworm-deb-build:
-          <<: *filter-template-master-only
+          <<: *filter-template-deb-build
           requires:
             - get-orig-source
       - amd64-trixie-deb-build:
-          <<: *filter-template-master-only
+          <<: *filter-template-deb-build
           requires:
             - get-orig-source
       - arm64-bookworm-deb-build:
-          <<: *filter-template-master-only
+          <<: *filter-template-deb-build
           requires:
             - get-orig-source
       - arm64-trixie-deb-build:
-          <<: *filter-template-master-only
+          <<: *filter-template-deb-build
           requires:
             - get-orig-source
       - armhf-bookworm-deb-build:
-          <<: *filter-template-master-only
+          <<: *filter-template-deb-build
           requires:
             - get-orig-source
       - armhf-trixie-deb-build:
-          <<: *filter-template-master-only
+          <<: *filter-template-deb-build
           requires:
             - get-orig-source
 
       - amd64-jammy-deb-build:
-          <<: *filter-template-master-only
+          <<: *filter-template-deb-build
           requires:
             - get-orig-source
       - arm64-jammy-deb-build:
-          <<: *filter-template-master-only
+          <<: *filter-template-deb-build
           requires:
             - get-orig-source
       - armhf-jammy-deb-build:
-          <<: *filter-template-master-only
+          <<: *filter-template-deb-build
           requires:
             - get-orig-source
             
       - amd64-noble-deb-build:
-          <<: *filter-template-master-only
+          <<: *filter-template-deb-build
           requires:
             - get-orig-source
       - amd64-resolute-deb-build:
-          <<: *filter-template-master-only
+          <<: *filter-template-deb-build
           requires:
             - get-orig-source
       - arm64-noble-deb-build:
-          <<: *filter-template-master-only
+          <<: *filter-template-deb-build
           requires:
             - get-orig-source
       - arm64-resolute-deb-build:
-          <<: *filter-template-master-only
+          <<: *filter-template-deb-build
           requires:
             - get-orig-source
       - armhf-noble-deb-build:
-          <<: *filter-template-master-only
+          <<: *filter-template-deb-build
           requires:
             - get-orig-source
       - armhf-resolute-deb-build:
-          <<: *filter-template-master-only
+          <<: *filter-template-deb-build
           requires:
             - get-orig-source
             
       # always do the continuous upload if we did the deb builds
       - continuous-upload:
+          <<: *filter-template-master-only
           requires:
             - amd64-bookworm-deb-build
             - amd64-trixie-deb-build
