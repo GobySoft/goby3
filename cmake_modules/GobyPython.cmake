@@ -20,22 +20,28 @@
 #
 # Requires pybind11 and the goby Python package (for goby_gen_cpp).
 
-find_package(Python3 COMPONENTS Interpreter Development.Module QUIET)
+# Searching for the Python interpreter while cross-compiling is a hard error, not a quiet
+# failure, unless CMAKE_CROSSCOMPILING_EMULATOR is set (CMake's FindPython, CMP0190). A Goby
+# Python application has to be built natively anyway, so leave Python3_FOUND and pybind11_FOUND
+# unset there: build_python then detects as OFF, which is what a cross build wants.
+if(NOT CMAKE_CROSSCOMPILING OR CMAKE_CROSSCOMPILING_EMULATOR)
+  find_package(Python3 COMPONENTS Interpreter Development.Module QUIET)
 
-if(Python3_FOUND AND NOT pybind11_DIR)
-  # pybind11 is often installed with pip rather than as a system package, where CMake has no
-  # reason to look for it; the module knows where it put itself
-  execute_process(COMMAND ${Python3_EXECUTABLE} -m pybind11 --cmakedir
-    OUTPUT_VARIABLE PYBIND11_PYTHON_CMAKE_DIR
-    RESULT_VARIABLE PYBIND11_PYTHON_CMAKE_DIR_RESULT
-    OUTPUT_STRIP_TRAILING_WHITESPACE
-    ERROR_QUIET)
-  if(PYBIND11_PYTHON_CMAKE_DIR_RESULT EQUAL 0 AND IS_DIRECTORY "${PYBIND11_PYTHON_CMAKE_DIR}")
-    set(pybind11_DIR "${PYBIND11_PYTHON_CMAKE_DIR}" CACHE PATH "The directory containing a CMake configuration file for pybind11.")
+  if(Python3_FOUND AND NOT pybind11_DIR)
+    # pybind11 is often installed with pip rather than as a system package, where CMake has no
+    # reason to look for it; the module knows where it put itself
+    execute_process(COMMAND ${Python3_EXECUTABLE} -m pybind11 --cmakedir
+      OUTPUT_VARIABLE PYBIND11_PYTHON_CMAKE_DIR
+      RESULT_VARIABLE PYBIND11_PYTHON_CMAKE_DIR_RESULT
+      OUTPUT_STRIP_TRAILING_WHITESPACE
+      ERROR_QUIET)
+    if(PYBIND11_PYTHON_CMAKE_DIR_RESULT EQUAL 0 AND IS_DIRECTORY "${PYBIND11_PYTHON_CMAKE_DIR}")
+      set(pybind11_DIR "${PYBIND11_PYTHON_CMAKE_DIR}" CACHE PATH "The directory containing a CMake configuration file for pybind11.")
+    endif()
   endif()
-endif()
 
-find_package(pybind11 QUIET)
+  find_package(pybind11 QUIET)
+endif()
 
 # The generator ships with the goby Python package. Prefer the console script; fall back to
 # running the module out of the build or source tree, which is what an uninstalled build needs.

@@ -146,14 +146,16 @@ job-template-deb-amd64: &job-template-deb-amd64
         # image yet. This is the same mk-build-deps call the images make, against the debian/
         # that was just checked out, so it installs whatever this branch declares.
         # TODO: Remove once the images are rebuilt against a goby-debian that declares these.
+        # Run from a scratch directory: mk-build-deps writes its .deb to the working directory,
+        # and dpkg-source refuses to build a source package with an unrepresentable binary in it.
         command: |
-          cd ${CIRCLE_WORKING_DIRECTORY} &&
+          mkdir -p /root/build-deps && cd /root/build-deps &&
           apt-get update &&
           case "${TARGET_ARCH}" in
             amd64) \
-              mk-build-deps -t "apt-get -y --no-install-recommends -o Debug::pkgProblemResolver=yes" -i "debian/control" ;;
+              mk-build-deps -t "apt-get -y --no-install-recommends -o Debug::pkgProblemResolver=yes" -i "${CIRCLE_WORKING_DIRECTORY}/debian/control" ;;
             *) \
-              mk-build-deps --build-dep -a "${TARGET_ARCH}" --host-arch "${TARGET_ARCH}" --build-arch amd64 -t "apt-get -y --no-install-recommends -o Debug::pkgProblemResolver=yes" -i "debian/control" ;;
+              mk-build-deps --build-dep -a "${TARGET_ARCH}" --host-arch "${TARGET_ARCH}" --build-arch amd64 -t "apt-get -y --no-install-recommends -o Debug::pkgProblemResolver=yes" -i "${CIRCLE_WORKING_DIRECTORY}/debian/control" ;;
           esac
     - run: &run-patch-version
         name: Patch the version patch number automatically in CMakeLists.txt
