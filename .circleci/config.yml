@@ -139,6 +139,22 @@ job-template-deb-amd64: &job-template-deb-amd64
           mv /root/debian ${CIRCLE_WORKING_DIRECTORY} &&
           cp /root/src/changelog ${CIRCLE_WORKING_DIRECTORY}/debian &&
           sed -i "s/DISTRORELEASEVERSION/${DISTRO_RELEASE_VERSION}/;s/DISTRORELEASECODENAME/${DISTRO_RELEASE_CODENAME}/" ${CIRCLE_WORKING_DIRECTORY}/debian/changelog
+    - run: &run-install-build-deps
+        name: Install build dependencies the image does not already have
+        # The Docker images install the build dependencies declared by goby-debian's 3.0 branch
+        # (see .circleci/docker/*/Dockerfile), so a branch that adds one cannot have it in the
+        # image yet. This is the same mk-build-deps call the images make, against the debian/
+        # that was just checked out, so it installs whatever this branch declares.
+        # TODO: Remove once the images are rebuilt against a goby-debian that declares these.
+        command: |
+          cd ${CIRCLE_WORKING_DIRECTORY} &&
+          apt-get update &&
+          case "${TARGET_ARCH}" in
+            amd64) \
+              mk-build-deps -t "apt-get -y --no-install-recommends -o Debug::pkgProblemResolver=yes" -i "debian/control" ;;
+            *) \
+              mk-build-deps --build-dep -a "${TARGET_ARCH}" --host-arch "${TARGET_ARCH}" --build-arch amd64 -t "apt-get -y --no-install-recommends -o Debug::pkgProblemResolver=yes" -i "debian/control" ;;
+          esac
     - run: &run-patch-version
         name: Patch the version patch number automatically in CMakeLists.txt
         command: |
