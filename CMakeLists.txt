@@ -28,20 +28,12 @@ if(enable_testing)
 endif()
 
 ## Python language bindings (see src/python and src/middleware/languages/python)
-find_package(Python3 COMPONENTS Interpreter Development.Module QUIET)
-if(Python3_FOUND AND NOT pybind11_DIR)
-  # pybind11 is often installed with pip rather than as a system package, where CMake has no
-  # reason to look for it; the module knows where it put itself
-  execute_process(COMMAND ${Python3_EXECUTABLE} -m pybind11 --cmakedir
-    OUTPUT_VARIABLE PYBIND11_PYTHON_CMAKE_DIR
-    RESULT_VARIABLE PYBIND11_PYTHON_CMAKE_DIR_RESULT
-    OUTPUT_STRIP_TRAILING_WHITESPACE
-    ERROR_QUIET)
-  if(PYBIND11_PYTHON_CMAKE_DIR_RESULT EQUAL 0 AND IS_DIRECTORY "${PYBIND11_PYTHON_CMAKE_DIR}")
-    set(pybind11_DIR "${PYBIND11_PYTHON_CMAKE_DIR}" CACHE PATH "The directory containing a CMake configuration file for pybind11.")
-  endif()
-endif()
-find_package(pybind11 QUIET)
+# The goby Python package is a standalone PEP 517 project (src/python) so that it can be built
+# with pip or pybuild without CMake having run first.
+set(GOBY_PYTHON_SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/src/python CACHE PATH "Source directory of the goby Python package")
+# provides goby_add_python_app() for the tests here and for downstream projects, and looks for
+# everything the Python bindings need
+include(GobyPython)
 set(PYTHON_DOC_STRING "Build support for Goby applications written in Python (requires python3-dev and pybind11-dev)")
 if(Python3_FOUND AND pybind11_FOUND)
   option(build_python ${PYTHON_DOC_STRING} ON)
@@ -230,7 +222,6 @@ unset(GOBY_ZEROMQ_LIBRARY_LIST CACHE)
 
 ## start adding subdirectories
 ## Python bindings
-set(GOBY_PYTHON_SOURCE_DIR ${goby_SRC_DIR}/python CACHE PATH "Source directory of the goby Python package")
 if(build_python)
   include(GobyPythonPackage)
 endif()
@@ -272,6 +263,10 @@ configure_file(${goby_SRC_DIR}/share/Goby.jl/Project.toml ${goby_SHARE_DIR}/goby
 # usable by downstream projects through find_package(goby)
 install(FILES ${CMAKE_CURRENT_SOURCE_DIR}/cmake_modules/GobyPython.cmake
   DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/goby)
+# goby-config.cmake looks for it next to itself, which is the build directory for a project
+# building against an uninstalled Goby (find_package(GOBY) with GOBY_DIR=/path/to/goby3/build)
+configure_file(${CMAKE_CURRENT_SOURCE_DIR}/cmake_modules/GobyPython.cmake
+  ${CMAKE_BINARY_DIR}/GobyPython.cmake COPYONLY)
 
 # configuration export - installed version
 include(CMakePackageConfigHelpers)

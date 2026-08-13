@@ -21,6 +21,20 @@
 # Requires pybind11 and the goby Python package (for goby_gen_cpp).
 
 find_package(Python3 COMPONENTS Interpreter Development.Module QUIET)
+
+if(Python3_FOUND AND NOT pybind11_DIR)
+  # pybind11 is often installed with pip rather than as a system package, where CMake has no
+  # reason to look for it; the module knows where it put itself
+  execute_process(COMMAND ${Python3_EXECUTABLE} -m pybind11 --cmakedir
+    OUTPUT_VARIABLE PYBIND11_PYTHON_CMAKE_DIR
+    RESULT_VARIABLE PYBIND11_PYTHON_CMAKE_DIR_RESULT
+    OUTPUT_STRIP_TRAILING_WHITESPACE
+    ERROR_QUIET)
+  if(PYBIND11_PYTHON_CMAKE_DIR_RESULT EQUAL 0 AND IS_DIRECTORY "${PYBIND11_PYTHON_CMAKE_DIR}")
+    set(pybind11_DIR "${PYBIND11_PYTHON_CMAKE_DIR}" CACHE PATH "The directory containing a CMake configuration file for pybind11.")
+  endif()
+endif()
+
 find_package(pybind11 QUIET)
 
 # The generator ships with the goby Python package. Prefer the console script; fall back to
@@ -29,11 +43,18 @@ if(NOT GOBY_GEN_CPP_COMMAND)
   find_program(GOBY_GEN_CPP_EXECUTABLE goby_gen_cpp)
   if(GOBY_GEN_CPP_EXECUTABLE)
     set(GOBY_GEN_CPP_COMMAND ${GOBY_GEN_CPP_EXECUTABLE} CACHE STRING "Command that runs the Goby Python generator")
-  elseif(GOBY_PYTHON_SOURCE_DIR AND Python3_EXECUTABLE)
+  elseif(Python3_EXECUTABLE AND EXISTS "${GOBY_PYTHON_SOURCE_DIR}/goby/gen.py")
     set(GOBY_GEN_CPP_COMMAND ${CMAKE_COMMAND} -E env PYTHONPATH=${GOBY_PYTHON_SOURCE_DIR}
         ${Python3_EXECUTABLE} -m goby.gen
         CACHE STRING "Command that runs the Goby Python generator")
   endif()
+endif()
+
+# When the generator is being run out of a source tree rather than from an installed console
+# script, changing it has to regenerate what it wrote
+set(GOBY_GEN_CPP_DEPENDS)
+if(EXISTS "${GOBY_PYTHON_SOURCE_DIR}/goby/gen.py")
+  set(GOBY_GEN_CPP_DEPENDS "${GOBY_PYTHON_SOURCE_DIR}/goby/gen.py")
 endif()
 
 function(GOBY_ADD_PYTHON_APP)
@@ -100,7 +121,7 @@ function(GOBY_ADD_PYTHON_APP)
             --python-out "${_python_out}"
             --module "${_module_name}"
             ${_include_args} ${_proto_module_args}
-    DEPENDS "${_interface_yml}"
+    DEPENDS "${_interface_yml}" ${GOBY_GEN_CPP_DEPENDS}
     COMMENT "Generating Goby Python bindings for ${GAPA_TARGET} from ${GAPA_INTERFACE_YML}"
     VERBATIM)
 

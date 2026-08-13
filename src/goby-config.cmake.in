@@ -39,6 +39,11 @@ endif()
 
 # goby_add_python_app() for building Goby applications written in Python
 if(EXISTS ${CMAKE_CURRENT_LIST_DIR}/GobyPython.cmake)
+  # where the goby Python package lives in the source tree, so that a project building against an
+  # uninstalled Goby can still run the generator. Ignored once goby_gen_cpp is installed.
+  if(NOT GOBY_PYTHON_SOURCE_DIR)
+    set(GOBY_PYTHON_SOURCE_DIR "@GOBY_PYTHON_SOURCE_DIR@")
+  endif()
   include(${CMAKE_CURRENT_LIST_DIR}/GobyPython.cmake)
 endif()
 

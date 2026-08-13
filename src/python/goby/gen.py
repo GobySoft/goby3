@@ -279,8 +279,13 @@ def generate_cpp(interface: Interface, includes: Sequence[str], module: str, sou
     ]
     for entry in interface.publishes:
         lines.append(
-            "        GOBY_PYTHON_IF_PUBLICATION({}, {}, {}, {}, {})".format(
-                entry.scheme, entry.layer_enum, entry.accessor, entry.group, entry.type
+            '        GOBY_PYTHON_IF_PUBLICATION({}, {}, {}, {}, "{}", {})'.format(
+                entry.scheme,
+                entry.layer_enum,
+                entry.accessor,
+                entry.group,
+                entry.group,
+                entry.type,
             )
         )
     lines += [
@@ -293,8 +298,13 @@ def generate_cpp(interface: Interface, includes: Sequence[str], module: str, sou
     ]
     for entry in interface.subscribes:
         lines.append(
-            "        GOBY_PYTHON_IF_SUBSCRIPTION({}, {}, {}, {}, {})".format(
-                entry.scheme, entry.layer_enum, entry.accessor, entry.group, entry.type
+            '        GOBY_PYTHON_IF_SUBSCRIPTION({}, {}, {}, {}, "{}", {})'.format(
+                entry.scheme,
+                entry.layer_enum,
+                entry.accessor,
+                entry.group,
+                entry.group,
+                entry.type,
             )
         )
     lines += [

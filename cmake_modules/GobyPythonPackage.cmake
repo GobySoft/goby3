@@ -1,11 +1,8 @@
 # GobyPythonPackage.cmake - build and install the goby Python package
 #
 # Included by the top level CMakeLists.txt when build_python is ON. Compiles Goby's own .proto
-# files to Python, works out where the package should be installed, and installs it.
-#
-# The goby Python package is a standalone PEP 517 project (src/python) so that it can be built
-# with pip or pybuild without CMake having run first; it is pure Python, so all that is needed
-# here is to put it somewhere importable.
+# files to Python, works out where the package should be installed, and installs it. The package
+# itself is pure Python, so all that is needed is to put it somewhere importable.
 #
 # Sets:
 #   GOBY_PYTHON_PROTO_DIR    directory holding the generated Goby Python protobuf modules
@@ -13,11 +10,10 @@
 #
 # Adds the target goby_python_protos.
 
+# GobyPython.cmake has already looked for these; fail loudly if build_python was forced ON
+# without them
 find_package(Python3 COMPONENTS Interpreter Development.Module REQUIRED)
 find_package(pybind11 REQUIRED)
-
-# provides goby_add_python_app() for the tests here and for downstream projects
-include(GobyPython)
 
 # Goby's own .proto files have to be compiled to Python once and shipped with the goby package:
 # every application configuration embeds goby.middleware.protobuf.AppConfig, and protobuf

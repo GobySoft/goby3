@@ -95,7 +95,7 @@ Each entry may independently declare `publishes` and/or `subscribes`.
 
 | Field | Required | Description |
 |-------|----------|-------------|
-| `group` | **Yes** | C++ group expression, e.g. `project::groups::my_group`. Using `GOBY_DEFINE_GROUP` to declare the group keeps the C++ variable name and the group's string name identical. |
+| `group` | **Yes** | C++ group expression, e.g. `project::groups::my_group`. This expression, not the group's runtime name, is how the group is named from Julia or Python — the two need not be the same, and `constexpr Group nav{"navigation"}` is written `project::groups::nav` here. |
 | `scheme` | **Yes** | Marshalling scheme. Only `PROTOBUF` is currently supported. |
 | `type` | **Yes** | Protobuf message type. May be written with `.` scoping (`project.protobuf.MyMsg`) or C++ `::` scoping (`project::protobuf::MyMsg`); both are normalized to `::` in the generated C++. |
 

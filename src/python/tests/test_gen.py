@@ -169,14 +169,17 @@ class GenerateCppTest(unittest.TestCase):
         self.assertIn('#include "project/comms.pb.h"', self.cpp)
 
     def test_emits_publication_and_subscription_macros(self):
+        # the group is passed twice: as the C++ expression for the Goby call, and as a string for
+        # matching what Python asked for. The two are not interchangeable -- a group's runtime
+        # name is not necessarily its C++ variable name, and Python only knows the latter.
         self.assertIn(
             "GOBY_PYTHON_IF_PUBLICATION(PROTOBUF, INTERPROCESS, interprocess, "
-            "project::groups::modem_tx, project::protobuf::CommsTx)",
+            'project::groups::modem_tx, "project::groups::modem_tx", project::protobuf::CommsTx)',
             self.cpp,
         )
         self.assertIn(
             "GOBY_PYTHON_IF_SUBSCRIPTION(PROTOBUF, INTERPROCESS, interprocess, "
-            "project::groups::modem_rx, project::protobuf::CommsRx)",
+            'project::groups::modem_rx, "project::groups::modem_rx", project::protobuf::CommsRx)',
             self.cpp,
         )
 
