@@ -33,7 +33,10 @@ class VersionTest(unittest.TestCase):
                 r'set\(GOBY_VERSION_' + component + r'\s+"([^"]+)"\)', source
             )
             self.assertIsNotNone(match, f"GOBY_VERSION_{component} not found in {CMAKELISTS}")
-            parts.append(match.group(1))
+            # The Debian packaging build patches the git description into GOBY_VERSION_PATCH
+            # (3.5.1+21+g2e2a9862 is written as PATCH "1+21+g2e2a9862"), so compare against the
+            # release version only -- drift in the checked-in version is what this guards.
+            parts.append(match.group(1).split("+", 1)[0])
 
         expected = ".".join(parts)
         self.assertEqual(
