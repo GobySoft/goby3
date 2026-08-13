@@ -1,8 +1,6 @@
 # GobyPythonPackage.cmake - build and install the goby Python package
 #
-# Included by the top level CMakeLists.txt when build_python is ON. Compiles Goby's own .proto
-# files to Python, works out where the package should be installed, and installs it. The package
-# itself is pure Python, so all that is needed is to put it somewhere importable.
+# Compiles Goby's own .proto files to Python and installs the package.
 #
 # Sets:
 #   GOBY_PYTHON_PROTO_DIR    directory holding the generated Goby Python protobuf modules
@@ -10,26 +8,20 @@
 #
 # Adds the target goby_python_protos.
 
-# GobyPython.cmake has already looked for these; fail loudly if build_python was forced ON
-# without them
 find_package(Python3 COMPONENTS Interpreter Development.Module REQUIRED)
 find_package(pybind11 REQUIRED)
 
-# Goby's own .proto files have to be compiled to Python once and shipped with the goby package:
-# every application configuration embeds goby.middleware.protobuf.AppConfig, and protobuf
-# refuses to register the same descriptor file twice in one process, so applications cannot
-# each generate their own copy.
+# protobuf refuses to register the same descriptor file twice in one process, so these are
+# compiled once here rather than by each application that embeds AppConfig
 set(GOBY_PYTHON_PROTO_DIR ${goby_BUILD_DIR}/python CACHE PATH "Directory holding the generated Goby Python protobuf modules")
 file(MAKE_DIRECTORY ${GOBY_PYTHON_PROTO_DIR})
 
-# protobuf itself is found in the src/ scope, so find what we need here rather than reaching
-# into a child scope
+# protobuf is found in the src/ scope, which is not visible here
 find_program(GOBY_PROTOC_EXECUTABLE NAMES protoc REQUIRED)
 find_path(GOBY_DCCL_PROTO_DIR dccl/option_extensions.proto)
 
 file(GLOB_RECURSE GOBY_PYTHON_PROTOBUF_FILES RELATIVE ${goby_SRC_DIR} src/*.proto)
-# Goby's own test messages are not part of the public interface, and several of them reuse the
-# same message names, which protoc rejects when they are compiled in one invocation
+# several test messages reuse the same message names, which protoc rejects in one invocation
 list(FILTER GOBY_PYTHON_PROTOBUF_FILES EXCLUDE REGEX "^test/")
 
 set(GOBY_PYTHON_PROTO_INPUTS)
@@ -58,8 +50,7 @@ add_custom_command(
 add_custom_target(goby_python_protos ALL DEPENDS ${GOBY_PYTHON_PROTO_OUTPUTS})
 
 if(NOT GOBY_PYTHON_INSTALL_DIR)
-  # Debian and derivatives use dist-packages rather than site-packages; ask the interpreter
-  # rather than guessing, and let the caller override
+  # site-packages or dist-packages depending on the distribution; ask rather than guess
   execute_process(
     COMMAND ${Python3_EXECUTABLE} -c
       "import sysconfig, os; print(os.path.relpath(sysconfig.get_path('purelib'), sysconfig.get_path('data')))"
@@ -75,26 +66,19 @@ if(GOBY_INSTALL_PYTHON_RUNTIME)
     DESTINATION ${GOBY_PYTHON_INSTALL_DIR}
     PATTERN "__pycache__" EXCLUDE
     PATTERN "interface.schema.json" EXCLUDE)
-  # In the source tree that file is a symlink to share/interface/interface.schema.json, which is
-  # the copy the Julia bindings use. Installing the symlink leaves it dangling, since the same
-  # relative path does not lead anywhere from dist-packages, so install what it points at: the
-  # package is meant to carry its own schema.
+  # a symlink into share/interface in the source tree, whose relative path does not survive the
+  # move to dist-packages
   install(FILES ${goby_SRC_DIR}/share/interface/interface.schema.json
     DESTINATION ${GOBY_PYTHON_INSTALL_DIR}/goby/schema)
-  # the generated protobuf modules merge into the same package tree; goby/__init__.py extends
-  # __path__ so that they can also be found from a separate directory (an uninstalled build)
+  # merged into the same package tree, which goby/__init__.py extends __path__ to allow
   install(DIRECTORY ${GOBY_PYTHON_PROTO_DIR}/
     DESTINATION ${GOBY_PYTHON_INSTALL_DIR}
     FILES_MATCHING PATTERN "*_pb2.py")
 
-  # the [project.scripts] entry point from pyproject.toml, which pip or pybuild would write but
-  # a plain install(DIRECTORY) does not. GobyPython.cmake looks for it on PATH, so without it a
-  # project building a Goby Python application against an installed Goby has no generator.
-  # not written into goby_BIN_DIR: that whole directory is installed unconditionally, and this
-  # script must not be when pybuild is the one installing the package
+  # the [project.scripts] entry point pip and pybuild write for themselves. Kept out of
+  # goby_BIN_DIR, which is installed whatever GOBY_INSTALL_PYTHON_RUNTIME says.
   file(GENERATE OUTPUT ${GOBY_PYTHON_PROTO_DIR}/scripts/goby_gen_cpp
     CONTENT "#!/usr/bin/env python3
-# Entry point for the Goby interface.yml generator; see goby/gen.py in the goby Python package.
 import sys
 
 from goby.gen import main

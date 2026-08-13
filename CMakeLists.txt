@@ -28,11 +28,7 @@ if(enable_testing)
 endif()
 
 ## Python language bindings (see src/python and src/middleware/languages/python)
-# The goby Python package is a standalone PEP 517 project (src/python) so that it can be built
-# with pip or pybuild without CMake having run first.
 set(GOBY_PYTHON_SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/src/python CACHE PATH "Source directory of the goby Python package")
-# provides goby_add_python_app() for the tests here and for downstream projects, and looks for
-# everything the Python bindings need
 include(GobyPython)
 set(PYTHON_DOC_STRING "Build support for Goby applications written in Python (requires python3-dev and pybind11-dev)")
 if(Python3_FOUND AND pybind11_FOUND)
@@ -263,8 +259,7 @@ configure_file(${goby_SRC_DIR}/share/Goby.jl/Project.toml ${goby_SHARE_DIR}/goby
 # usable by downstream projects through find_package(goby)
 install(FILES ${CMAKE_CURRENT_SOURCE_DIR}/cmake_modules/GobyPython.cmake
   DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/goby)
-# goby-config.cmake looks for it next to itself, which is the build directory for a project
-# building against an uninstalled Goby (find_package(GOBY) with GOBY_DIR=/path/to/goby3/build)
+# goby-config.cmake looks for it next to itself, which for an uninstalled Goby is the build directory
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/cmake_modules/GobyPython.cmake
   ${CMAKE_BINARY_DIR}/GobyPython.cmake COPYONLY)
 

@@ -20,16 +20,13 @@
 #
 # Requires pybind11 and the goby Python package (for goby_gen_cpp).
 
-# Searching for the Python interpreter while cross-compiling is a hard error, not a quiet
-# failure, unless CMAKE_CROSSCOMPILING_EMULATOR is set (CMake's FindPython, CMP0190). A Goby
-# Python application has to be built natively anyway, so leave Python3_FOUND and pybind11_FOUND
-# unset there: build_python then detects as OFF, which is what a cross build wants.
+# FindPython makes searching for the interpreter a hard error when cross-compiling without
+# CMAKE_CROSSCOMPILING_EMULATOR (CMP0190), and a Python application is built natively anyway
 if(NOT CMAKE_CROSSCOMPILING OR CMAKE_CROSSCOMPILING_EMULATOR)
   find_package(Python3 COMPONENTS Interpreter Development.Module QUIET)
 
   if(Python3_FOUND AND NOT pybind11_DIR)
-    # pybind11 is often installed with pip rather than as a system package, where CMake has no
-    # reason to look for it; the module knows where it put itself
+    # a pip-installed pybind11 is somewhere CMake has no reason to look; the module knows where
     execute_process(COMMAND ${Python3_EXECUTABLE} -m pybind11 --cmakedir
       OUTPUT_VARIABLE PYBIND11_PYTHON_CMAKE_DIR
       RESULT_VARIABLE PYBIND11_PYTHON_CMAKE_DIR_RESULT
@@ -56,8 +53,7 @@ if(NOT GOBY_GEN_CPP_COMMAND)
   endif()
 endif()
 
-# When the generator is being run out of a source tree rather than from an installed console
-# script, changing it has to regenerate what it wrote
+# a generator run out of the source tree has to regenerate what it wrote when it changes
 set(GOBY_GEN_CPP_DEPENDS)
 if(EXISTS "${GOBY_PYTHON_SOURCE_DIR}/goby/gen.py")
   set(GOBY_GEN_CPP_DEPENDS "${GOBY_PYTHON_SOURCE_DIR}/goby/gen.py")
