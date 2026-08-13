@@ -73,7 +73,14 @@ if(GOBY_INSTALL_PYTHON_RUNTIME)
   message(STATUS "Installing the goby Python package to ${GOBY_PYTHON_INSTALL_DIR}")
   install(DIRECTORY ${GOBY_PYTHON_SOURCE_DIR}/goby
     DESTINATION ${GOBY_PYTHON_INSTALL_DIR}
-    PATTERN "__pycache__" EXCLUDE)
+    PATTERN "__pycache__" EXCLUDE
+    PATTERN "interface.schema.json" EXCLUDE)
+  # In the source tree that file is a symlink to share/interface/interface.schema.json, which is
+  # the copy the Julia bindings use. Installing the symlink leaves it dangling, since the same
+  # relative path does not lead anywhere from dist-packages, so install what it points at: the
+  # package is meant to carry its own schema.
+  install(FILES ${goby_SRC_DIR}/share/interface/interface.schema.json
+    DESTINATION ${GOBY_PYTHON_INSTALL_DIR}/goby/schema)
   # the generated protobuf modules merge into the same package tree; goby/__init__.py extends
   # __path__ so that they can also be found from a separate directory (an uninstalled build)
   install(DIRECTORY ${GOBY_PYTHON_PROTO_DIR}/
