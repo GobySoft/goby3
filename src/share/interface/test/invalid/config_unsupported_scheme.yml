@@ -1,0 +1,7 @@
+# the application configuration must be PROTOBUF
+application:
+  name: BadDemo
+  cpp_type: goby::zeromq::SingleThreadApplication
+  config:
+    scheme: JSON
+    type: project.config.BadDemoConfig

@@ -37,6 +37,11 @@ find_dependency(DCCL)
 find_dependency(Protobuf)
 endif()
 
+# goby_add_python_app() for building Goby applications written in Python
+if(EXISTS ${CMAKE_CURRENT_LIST_DIR}/GobyPython.cmake)
+  include(${CMAKE_CURRENT_LIST_DIR}/GobyPython.cmake)
+endif()
+
 get_target_property(GOBY_INCLUDE_DIR goby INTERFACE_INCLUDE_DIRECTORIES)
 
 # goby_clang_tool interfaces files

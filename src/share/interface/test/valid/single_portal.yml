@@ -1,0 +1,17 @@
+# Typical usage: one portal per layer, mapping form
+application:
+  name: PythonDemo
+  cpp_type: goby::zeromq::SingleThreadApplication
+  config:
+    scheme: PROTOBUF
+    type: project.config.protobuf.PythonDemoConfig
+
+interprocess:
+  publishes:
+    - group: project::groups::modem_tx
+      scheme: PROTOBUF
+      type: project.protobuf.CommsTx
+  subscribes:
+    - group: project::groups::modem_rx
+      scheme: PROTOBUF
+      type: project.protobuf.CommsRx

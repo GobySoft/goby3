@@ -1,0 +1,46 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "goby3"
+description = "Python support for the Goby3 underwater autonomy middleware"
+readme = "README.md"
+requires-python = ">=3.8"
+license = { text = "LGPL-2.1-or-later" }
+authors = [{ name = "GobySoft, LLC", email = "toby@gobysoft.org" }]
+keywords = ["goby", "middleware", "robotics", "autonomy", "publish-subscribe"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: GNU Lesser General Public License v2 or later (LGPLv2+)",
+    "Programming Language :: Python :: 3",
+    "Topic :: Scientific/Engineering",
+]
+dependencies = [
+    "protobuf",
+    "PyYAML",
+]
+dynamic = ["version"]
+
+[project.optional-dependencies]
+# strict validation of interface.yml against interface.schema.json; the generator checks the
+# format itself without this, so it is kept optional to hold the runtime dependencies down
+validate = ["jsonschema"]
+
+[project.urls]
+Homepage = "https://goby.software"
+Source = "https://github.com/GobySoft/goby3"
+
+[project.scripts]
+goby_gen_cpp = "goby.gen:main"
+
+[tool.setuptools]
+packages = ["goby", "goby.schema"]
+
+[tool.setuptools.dynamic]
+version = { attr = "goby._version.__version__" }
+
+[tool.setuptools.package-data]
+goby = ["py.typed"]
+"goby.schema" = ["interface.schema.json"]
