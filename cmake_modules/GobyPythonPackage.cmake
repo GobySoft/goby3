@@ -79,6 +79,23 @@ if(GOBY_INSTALL_PYTHON_RUNTIME)
   install(DIRECTORY ${GOBY_PYTHON_PROTO_DIR}/
     DESTINATION ${GOBY_PYTHON_INSTALL_DIR}
     FILES_MATCHING PATTERN "*_pb2.py")
+
+  # the [project.scripts] entry point from pyproject.toml, which pip or pybuild would write but
+  # a plain install(DIRECTORY) does not. GobyPython.cmake looks for it on PATH, so without it a
+  # project building a Goby Python application against an installed Goby has no generator.
+  # not written into goby_BIN_DIR: that whole directory is installed unconditionally, and this
+  # script must not be when pybuild is the one installing the package
+  file(GENERATE OUTPUT ${GOBY_PYTHON_PROTO_DIR}/scripts/goby_gen_cpp
+    CONTENT "#!/usr/bin/env python3
+# Entry point for the Goby interface.yml generator; see goby/gen.py in the goby Python package.
+import sys
+
+from goby.gen import main
+
+if __name__ == \"__main__\":
+    sys.exit(main())
+")
+  install(PROGRAMS ${GOBY_PYTHON_PROTO_DIR}/scripts/goby_gen_cpp DESTINATION ${CMAKE_INSTALL_BINDIR})
 else()
   message(STATUS "Not installing the goby Python package (GOBY_INSTALL_PYTHON_RUNTIME=OFF)")
 endif()
