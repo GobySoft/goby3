@@ -37,6 +37,9 @@ find_dependency(DCCL)
 find_dependency(Protobuf)
 endif()
 
+# so that a consumer can include(GobyJulia), which defines targets and so is not automatic
+list(APPEND CMAKE_MODULE_PATH ${CMAKE_CURRENT_LIST_DIR})
+
 # goby_add_python_app() for building Goby applications written in Python
 if(EXISTS ${CMAKE_CURRENT_LIST_DIR}/GobyPython.cmake)
   # let a project building against an uninstalled Goby run the generator and import the package

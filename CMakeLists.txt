@@ -258,10 +258,13 @@ configure_file(${goby_SRC_DIR}/share/Goby.jl/Project.toml ${goby_SHARE_DIR}/goby
 
 # usable by downstream projects through find_package(goby)
 install(FILES ${CMAKE_CURRENT_SOURCE_DIR}/cmake_modules/GobyPython.cmake
+              ${CMAKE_CURRENT_SOURCE_DIR}/cmake_modules/GobyJulia.cmake
   DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/goby)
-# goby-config.cmake looks for it next to itself, which for an uninstalled Goby is the build directory
+# goby-config.cmake looks for them next to itself, which for an uninstalled Goby is the build directory
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/cmake_modules/GobyPython.cmake
   ${CMAKE_BINARY_DIR}/GobyPython.cmake COPYONLY)
+configure_file(${CMAKE_CURRENT_SOURCE_DIR}/cmake_modules/GobyJulia.cmake
+  ${CMAKE_BINARY_DIR}/GobyJulia.cmake COPYONLY)
 
 # configuration export - installed version
 include(CMakePackageConfigHelpers)
