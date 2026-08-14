@@ -188,13 +188,18 @@ function(GOBY_ADD_PYTHON_APP)
 
     file(MAKE_DIRECTORY "${_proto_dir}")
 
-    # the caller's directories first: they decide the module paths
+    # the caller's directories first: they decide the module paths. Existence is deliberately not
+    # checked: these are usually build tree directories that nothing has written to yet when the
+    # application is declared, and dropping one silently moves the module protoc writes.
     set(_import_dirs ${GAPA_PROTO_IMPORT_DIRS} ${_goby_proto_dir} ${GOBY_DCCL_PROTO_DIR})
     set(_import_args)
     set(_seen_dirs)
     foreach(_dir ${_import_dirs})
+      if("${_dir}" STREQUAL "" OR "${_dir}" MATCHES "NOTFOUND$")
+        continue()
+      endif()
       get_filename_component(_abs_dir "${_dir}" ABSOLUTE)
-      if(IS_DIRECTORY "${_abs_dir}" AND NOT "${_abs_dir}" IN_LIST _seen_dirs)
+      if(NOT "${_abs_dir}" IN_LIST _seen_dirs)
         list(APPEND _seen_dirs "${_abs_dir}")
         list(APPEND _import_args -I "${_abs_dir}")
       endif()
