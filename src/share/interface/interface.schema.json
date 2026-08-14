@@ -1,0 +1,85 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "https://goby.software/schema/interface.schema.json",
+    "title": "Goby language binding interface definition",
+    "description": "Static declaration of the publish/subscribe interface of a Goby application written in a bound language (Julia, Python). Shared by all Goby language bindings; see README.md in this directory for the normative prose.",
+    "type": "object",
+    "required": ["application"],
+    "additionalProperties": false,
+    "properties": {
+        "application": { "$ref": "#/$defs/application" },
+        "interthread": { "$ref": "#/$defs/layer" },
+        "interprocess": { "$ref": "#/$defs/layer" },
+        "intermodule": { "$ref": "#/$defs/layer" }
+    },
+    "$defs": {
+        "identifier": {
+            "description": "A scoped name, using either protobuf/Julia/Python ('.') or C++ ('::') scoping",
+            "type": "string",
+            "pattern": "^[A-Za-z_][A-Za-z0-9_]*((\\.|::)[A-Za-z_][A-Za-z0-9_]*)*$"
+        },
+        "scheme": {
+            "description": "Marshalling scheme. Only PROTOBUF is implemented today; the enumeration grows as the bindings gain support for more of goby::middleware::MarshallingScheme.",
+            "type": "string",
+            "enum": ["PROTOBUF"]
+        },
+        "application": {
+            "type": "object",
+            "required": ["name", "cpp_type", "config"],
+            "additionalProperties": false,
+            "properties": {
+                "name": {
+                    "description": "Application name, used as the generated C++ class name",
+                    "type": "string",
+                    "pattern": "^[A-Za-z_][A-Za-z0-9_]*$"
+                },
+                "cpp_type": {
+                    "description": "C++ application class template, e.g. goby::zeromq::SingleThreadApplication",
+                    "$ref": "#/$defs/identifier"
+                },
+                "config": {
+                    "type": "object",
+                    "required": ["scheme", "type"],
+                    "additionalProperties": false,
+                    "properties": {
+                        "scheme": { "$ref": "#/$defs/scheme" },
+                        "type": { "$ref": "#/$defs/identifier" }
+                    }
+                }
+            }
+        },
+        "entry": {
+            "type": "object",
+            "required": ["group", "scheme", "type"],
+            "additionalProperties": false,
+            "properties": {
+                "group": {
+                    "description": "C++ group expression, e.g. project::groups::my_group",
+                    "$ref": "#/$defs/identifier"
+                },
+                "scheme": { "$ref": "#/$defs/scheme" },
+                "type": { "$ref": "#/$defs/identifier" }
+            }
+        },
+        "portal": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+                "alias": {
+                    "description": "Name of the C++ accessor for this portal, when it differs from the layer name (e.g. interprocess_udpm). Also the name of the accessor in the bound language.",
+                    "type": "string",
+                    "pattern": "^[A-Za-z_][A-Za-z0-9_]*$"
+                },
+                "publishes": { "type": "array", "items": { "$ref": "#/$defs/entry" } },
+                "subscribes": { "type": "array", "items": { "$ref": "#/$defs/entry" } }
+            }
+        },
+        "layer": {
+            "description": "Either a single portal (mapping) or several portals (array of mappings, each with its own alias)",
+            "oneOf": [
+                { "$ref": "#/$defs/portal" },
+                { "type": "array", "items": { "$ref": "#/$defs/portal" }, "minItems": 1 }
+            ]
+        }
+    }
+}

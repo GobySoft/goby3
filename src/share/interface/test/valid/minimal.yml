@@ -1,0 +1,7 @@
+# Smallest legal interface: an application that neither publishes nor subscribes
+application:
+  name: MinimalDemo
+  cpp_type: goby::zeromq::SingleThreadApplication
+  config:
+    scheme: PROTOBUF
+    type: project.config.protobuf.MinimalDemoConfig

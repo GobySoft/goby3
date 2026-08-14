@@ -139,6 +139,18 @@ job-template-deb-amd64: &job-template-deb-amd64
           mv /root/debian ${CIRCLE_WORKING_DIRECTORY} &&
           cp /root/src/changelog ${CIRCLE_WORKING_DIRECTORY}/debian &&
           sed -i "s/DISTRORELEASEVERSION/${DISTRO_RELEASE_VERSION}/;s/DISTRORELEASECODENAME/${DISTRO_RELEASE_CODENAME}/" ${CIRCLE_WORKING_DIRECTORY}/debian/changelog
+    - run: &run-install-build-deps
+        name: Install build dependencies the image does not already have
+        # TODO: Remove once the Docker images are rebuilt and have the new (Python) dependencies.
+        command: |
+          mkdir -p /root/build-deps && cd /root/build-deps &&
+          apt-get update &&
+          case "${TARGET_ARCH}" in
+            amd64) \
+              mk-build-deps -t "apt-get -y --no-install-recommends -o Debug::pkgProblemResolver=yes" -i "${CIRCLE_WORKING_DIRECTORY}/debian/control" ;;
+            *) \
+              mk-build-deps --build-dep -a "${TARGET_ARCH}" --host-arch "${TARGET_ARCH}" --build-arch amd64 -t "apt-get -y --no-install-recommends -o Debug::pkgProblemResolver=yes" -i "${CIRCLE_WORKING_DIRECTORY}/debian/control" ;;
+          esac
     - run: &run-patch-version
         name: Patch the version patch number automatically in CMakeLists.txt
         command: |
@@ -210,14 +222,12 @@ filter-template-master-only: &filter-template-master-only
     branches:
       only:
         - "3.0"
-        - "packages"
 
 filter-template-non-master: &filter-template-non-master
   filters:
     branches:
       ignore:
         - "3.0"
-        - "packages"
         
 ## Begin actual config
 version: 2

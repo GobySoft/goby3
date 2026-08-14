@@ -1,0 +1,29 @@
+# All three layers, and C++ (::) scoping for types
+application:
+  name: AllLayersDemo
+  cpp_type: goby::zeromq::MultiThreadApplication
+  config:
+    scheme: PROTOBUF
+    type: project::config::protobuf::AllLayersDemoConfig
+
+interthread:
+  publishes:
+    - group: project::groups::thread_status
+      scheme: PROTOBUF
+      type: project::protobuf::ThreadStatus
+
+interprocess:
+  subscribes:
+    - group: project::groups::nav
+      scheme: PROTOBUF
+      type: project::protobuf::NavigationUpdate
+
+intermodule:
+  publishes:
+    - group: project::groups::module_out
+      scheme: PROTOBUF
+      type: project::protobuf::ModuleOut
+  subscribes:
+    - group: project::groups::module_in
+      scheme: PROTOBUF
+      type: project::protobuf::ModuleIn

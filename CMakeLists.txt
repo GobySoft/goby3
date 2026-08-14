@@ -27,6 +27,18 @@ if(enable_testing)
   include(CTest)
 endif()
 
+## Python language bindings (see src/python and src/middleware/languages/python)
+set(GOBY_PYTHON_SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/src/python CACHE PATH "Source directory of the goby Python package")
+include(GobyPython)
+set(PYTHON_DOC_STRING "Build support for Goby applications written in Python (requires python3-dev and pybind11-dev)")
+if(Python3_FOUND AND pybind11_FOUND)
+  option(build_python ${PYTHON_DOC_STRING} ON)
+else()
+  option(build_python ${PYTHON_DOC_STRING} OFF)
+  message(">> setting build_python to OFF ... if you need this functionality: 1) install python3-dev and pybind11-dev; 2) run cmake -Dbuild_python=ON")
+endif()
+option(GOBY_INSTALL_PYTHON_RUNTIME "Install the goby Python package as part of 'make install'. Set OFF when something else installs it, e.g. pybuild when building the python3-goby3 Debian package." ON)
+
 # If we're using clang, use lld as well
 if ("${CMAKE_CXX_COMPILER_ID}" MATCHES "Clang")
   find_program(LLD_BINARY lld)
@@ -91,6 +103,12 @@ set(GOBY_VERSION "${GOBY_VERSION_MAJOR}.${GOBY_VERSION_MINOR}.${GOBY_VERSION_PAT
 string(REGEX REPLACE "\\+(g[0-9a-f]+)" "\\1" GOBY_VERSION_PATCH_JULIA_TMP "${GOBY_VERSION_PATCH}")
 ## remove remaining '-' (e.g., '-dirty' -> 'dirty')
 string(REPLACE "-" "" GOBY_VERSION_PATCH_JULIA "${GOBY_VERSION_PATCH_JULIA_TMP}")
+
+# PEP 440 allows only one '+' (introducing the local version) and no '-' within it
+## replace the second '+' with '.' (e.g. '1+12+gabc1234' -> '1+12.gabc1234')
+string(REGEX REPLACE "\\+(g[0-9a-f]+)" ".\\1" GOBY_VERSION_PATCH_PYTHON_TMP "${GOBY_VERSION_PATCH}")
+## replace remaining '-' with '.' (e.g. '-dirty' -> '.dirty')
+string(REPLACE "-" "." GOBY_VERSION_PATCH_PYTHON "${GOBY_VERSION_PATCH_PYTHON_TMP}")
 
 # give Goby 1 series a few more soversions
 set(GOBY_SOVERSION "30")
@@ -199,6 +217,11 @@ unset(GOBY_MOOS_LIBRARY_LIST CACHE)
 unset(GOBY_ZEROMQ_LIBRARY_LIST CACHE)
 
 ## start adding subdirectories
+## Python bindings
+if(build_python)
+  include(GobyPythonPackage)
+endif()
+
 add_subdirectory(src)
 
 ## configure to build/include
@@ -232,6 +255,16 @@ endforeach()
 
 # configure Project.toml for Julia version
 configure_file(${goby_SRC_DIR}/share/Goby.jl/Project.toml ${goby_SHARE_DIR}/goby/Goby.jl/Project.toml @ONLY)
+
+# usable by downstream projects through find_package(goby)
+install(FILES ${CMAKE_CURRENT_SOURCE_DIR}/cmake_modules/GobyPython.cmake
+              ${CMAKE_CURRENT_SOURCE_DIR}/cmake_modules/GobyJulia.cmake
+  DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/goby)
+# goby-config.cmake looks for them next to itself, which for an uninstalled Goby is the build directory
+configure_file(${CMAKE_CURRENT_SOURCE_DIR}/cmake_modules/GobyPython.cmake
+  ${CMAKE_BINARY_DIR}/GobyPython.cmake COPYONLY)
+configure_file(${CMAKE_CURRENT_SOURCE_DIR}/cmake_modules/GobyJulia.cmake
+  ${CMAKE_BINARY_DIR}/GobyJulia.cmake COPYONLY)
 
 # configuration export - installed version
 include(CMakePackageConfigHelpers)

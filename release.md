@@ -1,5 +1,29 @@
 # Goby Release Notes (Major version 3)
 
+## Unreleased
+
+### Python Support
+
+Goby applications can now be written in Python, using pybind11 to wrap the C++ implementation.
+Enable with `-Dbuild_python=ON` (requires `pybind11-dev`).
+
+- The Python API is class-based, mirroring the C++ application model: the application is a subclass of the generated application class, subscriptions are made in its constructor, `loop()`/`initialize()`/`finalize()` are method overrides, and `goby.run(App)` stands in for `goby::run<App>(argc, argv)`.
+- Applications are declared in the same `interface.yml` file used by the Julia bindings. The format is now specified once, in `share/goby/interface`, along with a JSON Schema and a conformance corpus that both generators are tested against.
+- The generator (`goby_gen_cpp`, in the new `goby` Python package) emits both the C++ glue code and a Python module holding the application base class, the group names declared in the interface file, and the configuration type.
+- Configuration is read with `goby::middleware::ProtobufConfigurator`, so Python applications accept the same command line as C++ applications (`--help`, `--example_config`, `-v`, `--app_name`, per-field overrides). The application name therefore defaults from `argv[0]` as it does in C++, which means `goby_terminate --target_name` and the coroner work without the configuration file having to set `app { name: ... }`. Configuration can also be passed directly as a protobuf message or as TextFormat, for embedding and tests.
+- `goby_add_python_app()` (available through `find_package(goby)`) generates, compiles and stages an application.
+- Goby's own protobuf files are compiled to Python and installed with the `goby` package, since every application configuration embeds `goby.middleware.protobuf.AppConfig` and protobuf will not register the same descriptor file twice in one process.
+
+### Julia Support
+
+- The `interface.yml` format is now specified in `share/goby/interface`, shared with the Python bindings; the Julia generator is tested against the same conformance corpus.
+- The Julia generator now rejects unknown top-level keys in `interface.yml` (for example the not-yet-supported `intervehicle` layer) rather than silently ignoring them.
+
+### Middleware
+
+- Factored the language-neutral parts of the Julia binding support (`PubSubLayer`, `Identifier`, the marshalling helpers) into `goby/middleware/languages/common/interface.h`, shared with the new Python bindings. The Julia names are unchanged.
+- Factored the simulation time setup shared by `goby::run` and the language bindings into `goby/middleware/application/detail/simulation_time.h`, removing a copy of it from the Julia binding.
+
 ## Version 3.5.1
 
 ### Bug fixes

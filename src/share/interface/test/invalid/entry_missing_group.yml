@@ -1,0 +1,12 @@
+# a publication entry is missing the required 'group' key
+application:
+  name: BadDemo
+  cpp_type: goby::zeromq::SingleThreadApplication
+  config:
+    scheme: PROTOBUF
+    type: project.config.protobuf.BadDemoConfig
+
+interprocess:
+  publishes:
+    - scheme: PROTOBUF
+      type: project.protobuf.CommsTx

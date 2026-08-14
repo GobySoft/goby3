@@ -35,6 +35,21 @@ function check_scheme(scheme)
     end
 end
 
+# the interface.yml format is shared with the other Goby language bindings (see
+# share/goby/interface/README.md), so reject anything we don't implement rather than
+# silently ignoring it
+function check_top_level_keys(yaml, layers)
+    allowed = Set(["application", layers...])
+    for key in keys(yaml)
+        if !(key in allowed)
+            throw(InvalidInterfaceError("Unknown top-level key '$(key)' in interface file. Supported keys are: $(join(sort(collect(allowed)), ", "))"))
+        end
+    end
+    if !haskey(yaml, "application")
+        throw(InvalidInterfaceError("Interface file must have 'application' key"))
+    end
+end
+
 
 function collect_layer(layer::String, layer_yaml)
     publish = Vector{String}()
@@ -132,7 +147,10 @@ function goby_gen_cpp(in_yaml::String, out_cpp::String, includes)
     println("Generating $(out_cpp) from $(in_yaml)")
     
     interface_yaml = YAML.load_file(in_yaml)
-    
+
+    layers = ("interthread", "interprocess", "intermodule")
+    check_top_level_keys(interface_yaml, layers)
+
     io_out::IOStream = open(out_cpp, "w");
     write(io_out, """\
 // ########################
@@ -145,7 +163,6 @@ function goby_gen_cpp(in_yaml::String, out_cpp::String, includes)
     gen_includes(io_out, includes)
     gen_application_macros(io_out, interface_yaml["application"])
 
-    layers = ("interthread", "interprocess", "intermodule")
     publish = Vector{String}()
     subscribe = Vector{String}()
     for layer in layers

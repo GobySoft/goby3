@@ -1,0 +1,13 @@
+# intervehicle is a real Goby layer but is not yet supported by the bindings
+application:
+  name: BadDemo
+  cpp_type: goby::zeromq::SingleThreadApplication
+  config:
+    scheme: PROTOBUF
+    type: project.config.protobuf.BadDemoConfig
+
+intervehicle:
+  publishes:
+    - group: project::groups::modem_tx
+      scheme: PROTOBUF
+      type: project.protobuf.CommsTx
