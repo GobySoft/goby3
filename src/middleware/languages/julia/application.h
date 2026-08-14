@@ -80,13 +80,13 @@ template <typename App> class ApplicationWrapper
     void publish(PubSubLayer layer, std::string type_name, int scheme, std::string group,
                  const std::vector<std::uint8_t>& bytes)
     {
-        app_ptr_->publish(Identifier(layer, type_name, scheme, group), bytes);
+        app_ptr_->publish(Identifier{layer, type_name, scheme, group}, bytes);
     }
 
     void subscribe(PubSubLayer layer, std::string type_name, int scheme, std::string group,
                    std::string func, std::string module)
     {
-        app_ptr_->subscribe(Identifier(layer, type_name, scheme, group), func, module);
+        app_ptr_->subscribe(Identifier{layer, type_name, scheme, group}, func, module);
     }
 
     void set_loop_frequency_hertz(double freq) { app_ptr_->set_loop_frequency_hertz(freq); }
@@ -144,9 +144,9 @@ inline void define_julia_module(jlcxx::Module& types, const std::string& app_nam
     }
 
 #define GOBY_JULIA_IF_SUBSCRIPTION(SCHEME, LAYER_ENUM, LAYER_FUNCTION, GROUP, TYPE)             \
-    if (id == goby::middleware::julia::Identifier(                                              \
+    if (id == goby::middleware::julia::Identifier{                                              \
                   goby::middleware::julia::PubSubLayer::LAYER_ENUM, TYPE::descriptor()->name(), \
-                  goby::middleware::MarshallingScheme::SCHEME, GROUP))                          \
+                  goby::middleware::MarshallingScheme::SCHEME, GROUP})                          \
     {                                                                                           \
         LAYER_FUNCTION().subscribe<GROUP>(                                                      \
             [=](const TYPE& pb)                                                                 \
