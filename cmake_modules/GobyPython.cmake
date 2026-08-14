@@ -80,12 +80,18 @@ find_program(GOBY_PROTOC_EXECUTABLE NAMES protoc)
 # AppConfig imports dccl/option_extensions.proto, so any application configuration needs it
 find_path(GOBY_DCCL_PROTO_DIR dccl/option_extensions.proto)
 
-# The include directory holding Goby's own .proto files, in this project or in a consumer of it
-if(goby_INC_DIR)
-  set(GOBY_PROTO_DIR "${goby_INC_DIR}")
-elseif(GOBY_INCLUDE_DIR)
-  set(GOBY_PROTO_DIR "${GOBY_INCLUDE_DIR}")
-endif()
+# The include directory holding Goby's own .proto files, in this project or in a consumer of it.
+# Resolved when an application is declared rather than here: neither variable is necessarily set
+# by the time this module is included.
+function(GOBY_RESOLVE_PROTO_DIR out_var)
+  if(GOBY_PROTO_DIR)
+    set(${out_var} "${GOBY_PROTO_DIR}" PARENT_SCOPE)
+  elseif(goby_INC_DIR)
+    set(${out_var} "${goby_INC_DIR}" PARENT_SCOPE)
+  else()
+    set(${out_var} "${GOBY_INCLUDE_DIR}" PARENT_SCOPE)
+  endif()
+endfunction()
 
 function(GOBY_ADD_PYTHON_APP)
   set(options)
@@ -174,10 +180,16 @@ function(GOBY_ADD_PYTHON_APP)
   set(_proto_dir "${_out_dir}/proto")
 
   if(GAPA_PYTHON_PROTOS)
+    goby_resolve_proto_dir(_goby_proto_dir)
+    if(NOT _goby_proto_dir)
+      message(FATAL_ERROR "goby_add_python_app: cannot find Goby's .proto files, which every "
+        "application configuration imports. Set GOBY_PROTO_DIR to the directory holding them.")
+    endif()
+
     file(MAKE_DIRECTORY "${_proto_dir}")
 
     # the caller's directories first: they decide the module paths
-    set(_import_dirs ${GAPA_PROTO_IMPORT_DIRS} ${GOBY_PROTO_DIR} ${GOBY_DCCL_PROTO_DIR})
+    set(_import_dirs ${GAPA_PROTO_IMPORT_DIRS} ${_goby_proto_dir} ${GOBY_DCCL_PROTO_DIR})
     set(_import_args)
     set(_seen_dirs)
     foreach(_dir ${_import_dirs})
