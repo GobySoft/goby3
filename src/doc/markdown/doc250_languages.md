@@ -5,14 +5,14 @@ way, and both are driven by the same interface definition file.
 
 ## Why an interface file
 
-Goby3 leans on static analysis: groups are `constexpr`, message types and marshalling schemes are
+Goby3 emphasizesstatic analysis: groups are `constexpr`, message types and marshalling schemes are
 template parameters, and the transporter to use is chosen by which accessor you call
-(`interprocess()`, `intermodule()`, ...). Dynamic languages have none of that at compile time.
+(`interprocess()`, `intermodule()`, ...). Dynamic languages like Python and Julia have none of that at compile time.
 
-Rather than give up those guarantees, the bindings ask the application author to declare the
-application's publish/subscribe interface up front, in an `interface.yml` file. A generator turns
+Rather than give up those guarantees, the bindings ask the application author to still declare the
+application's publish/subscribe interface statically. This is done in an `interface.yml` file. A generator turns
 that declaration into C++ glue code, which makes the ordinary, statically typed Goby calls. The
-application author writes the `interface.yml` and their Julia or Python code, and never any C++.
+application author writes the `interface.yml` and their Julia or Python code, but does not have to write any C++.
 
 The format is shared exactly between the two languages and is documented in
 `share/goby/interface/README.md`, with a machine-readable schema alongside it. A publication or
@@ -90,9 +90,7 @@ it is an accessor of that name in C++.
 ### Configuration and the command line
 
 `goby.run()` reads the command line with `goby::middleware::ProtobufConfigurator`, the same class
-C++ applications use, so a Python application accepts the same command line: `--help`,
-`--example_config`, `-v`, `--app_name`, per-field overrides, and a configuration file. As in C++,
-`--help` and `--example_config` print and exit.
+C++ applications use, so a Python application accepts the same command line.
 
 For embedding an application in a larger program, or for tests that should not need a command
 line, the configuration can be passed directly:
@@ -108,7 +106,7 @@ returns a non-zero value rather than raising or exiting.
 
 ### Threads, signals and the GIL
 
-The Goby event loop runs in C++ with the GIL released, and each callback into Python reacquires
+The Goby event loop runs in C++ with the Python global interpreter lock (GIL) released, and each callback into Python reacquires
 it. While the loop is running, Goby installs its own `SIGINT`/`SIGTERM` handlers in place of the
 interpreter's, so that Ctrl-C asks the application to quit cleanly rather than raising a
 `KeyboardInterrupt` from inside a C++ call stack. An application that is blocked waiting for data
