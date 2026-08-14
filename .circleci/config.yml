@@ -141,11 +141,7 @@ job-template-deb-amd64: &job-template-deb-amd64
           sed -i "s/DISTRORELEASEVERSION/${DISTRO_RELEASE_VERSION}/;s/DISTRORELEASECODENAME/${DISTRO_RELEASE_CODENAME}/" ${CIRCLE_WORKING_DIRECTORY}/debian/changelog
     - run: &run-install-build-deps
         name: Install build dependencies the image does not already have
-        # The images install what goby-debian's 3.0 branch declares (.circleci/docker/*/Dockerfile),
-        # so a branch adding a build dependency has to install it itself.
-        # Run from a scratch directory: mk-build-deps writes its .deb to the working directory, and
-        # dpkg-source refuses to build a source package containing it.
-        # TODO: Remove once the images are rebuilt.
+        # TODO: Remove once the Docker images are rebuilt and have the new (Python) dependencies.
         command: |
           mkdir -p /root/build-deps && cd /root/build-deps &&
           apt-get update &&
