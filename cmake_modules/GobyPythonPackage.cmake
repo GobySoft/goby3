@@ -18,6 +18,8 @@ file(MAKE_DIRECTORY ${GOBY_PYTHON_PROTO_DIR})
 
 # protobuf is found in the src/ scope, which is not visible here
 find_program(GOBY_PROTOC_EXECUTABLE NAMES protoc REQUIRED)
+# AppConfig imports dccl/option_extensions.proto; the module compiled from it comes from DCCL
+# (python3-dccl5), so this is only needed to resolve the import
 find_path(GOBY_DCCL_PROTO_DIR dccl/option_extensions.proto)
 
 file(GLOB_RECURSE GOBY_PYTHON_PROTOBUF_FILES RELATIVE ${goby_SRC_DIR} src/*.proto)
@@ -31,12 +33,6 @@ foreach(I ${GOBY_PYTHON_PROTOBUF_FILES})
   list(APPEND GOBY_PYTHON_PROTO_INPUTS ${goby_INC_DIR}/goby/${I})
   list(APPEND GOBY_PYTHON_PROTO_OUTPUTS ${GOBY_PYTHON_PROTO_DIR}/goby/${PROTO_PY})
 endforeach()
-
-# AppConfig imports dccl/option_extensions.proto, and DCCL ships no Python bindings of its own
-if(GOBY_DCCL_PROTO_DIR)
-  list(APPEND GOBY_PYTHON_PROTO_INPUTS ${GOBY_DCCL_PROTO_DIR}/dccl/option_extensions.proto)
-  list(APPEND GOBY_PYTHON_PROTO_OUTPUTS ${GOBY_PYTHON_PROTO_DIR}/dccl/option_extensions_pb2.py)
-endif()
 
 add_custom_command(
   OUTPUT ${GOBY_PYTHON_PROTO_OUTPUTS}
@@ -76,8 +72,9 @@ if(GOBY_INSTALL_PYTHON_RUNTIME)
     FILES_MATCHING PATTERN "*_pb2.py")
 
   # the [project.scripts] entry point pip and pybuild write for themselves. Kept out of
-  # goby_BIN_DIR, which is installed whatever GOBY_INSTALL_PYTHON_RUNTIME says.
-  file(GENERATE OUTPUT ${GOBY_PYTHON_PROTO_DIR}/scripts/goby_gen_cpp
+  # goby_BIN_DIR, which is installed whatever GOBY_INSTALL_PYTHON_RUNTIME says, and out of
+  # GOBY_PYTHON_PROTO_DIR, whose tree is mirrored into the install.
+  file(GENERATE OUTPUT ${goby_BUILD_DIR}/python_scripts/goby_gen_cpp
     CONTENT "#!/usr/bin/env python3
 import sys
 
@@ -86,7 +83,7 @@ from goby.gen import main
 if __name__ == \"__main__\":
     sys.exit(main())
 ")
-  install(PROGRAMS ${GOBY_PYTHON_PROTO_DIR}/scripts/goby_gen_cpp DESTINATION ${CMAKE_INSTALL_BINDIR})
+  install(PROGRAMS ${goby_BUILD_DIR}/python_scripts/goby_gen_cpp DESTINATION ${CMAKE_INSTALL_BINDIR})
 else()
   message(STATUS "Not installing the goby Python package (GOBY_INSTALL_PYTHON_RUNTIME=OFF)")
 endif()
