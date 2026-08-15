@@ -21,10 +21,25 @@ end
 #    last(split(s, "::"))
 #end
 
-function check_required_keys(required_keys, prefix::String, yaml)
-    for key in required_keys
+const ENTRY_KEYS = ("group", "scheme", "type")
+const PORTAL_KEYS = ("alias", "publishes", "subscribes")
+const APPLICATION_KEYS = ("name", "cpp_type", "config")
+const CONFIG_KEYS = ("scheme", "type")
+
+# a key the format does not define is a typo, not an extension: 'subscribe' for 'subscribes'
+# would otherwise generate an application that silently subscribes to nothing
+function check_keys(yaml, required, allowed, where::String)
+    if !isa(yaml, AbstractDict)
+        throw(InvalidInterfaceError("'$(where)' must be a mapping"))
+    end
+    for key in required
         if !haskey(yaml, key)
-            throw(InvalidInterfaceError("Interface file must have '$(prefix).$(key)' key"))
+            throw(InvalidInterfaceError("Interface file must have '$(where).$(key)' key"))
+        end
+    end
+    for key in keys(yaml)
+        if !(key in allowed)
+            throw(InvalidInterfaceError("Unknown key '$(where).$(key)'. Supported keys are: $(join(allowed, ", "))"))
         end
     end
 end
@@ -52,15 +67,16 @@ end
 
 
 function collect_layer(layer::String, layer_yaml)
+    check_keys(layer_yaml, (), PORTAL_KEYS, layer)
+
     publish = Vector{String}()
     subscribe = Vector{String}()
     layer_function=haskey(layer_yaml, "alias") ? layer_yaml["alias"] : layer
     layer_enum=uppercase(layer)
 
-    required_keys = (["group", "scheme", "type"])
     if haskey(layer_yaml, "publishes")
         for p in layer_yaml["publishes"]
-            check_required_keys(required_keys, "$(layer).publishes", p)
+            check_keys(p, ENTRY_KEYS, ENTRY_KEYS, "$(layer).publishes")
             check_scheme(p["scheme"])
             # Julia ::Method sig does not include scoping, so we need to remove it here
             t = to_cpp_scoping(p["type"])
@@ -70,7 +86,7 @@ function collect_layer(layer::String, layer_yaml)
     
     if haskey(layer_yaml, "subscribes")
         for s in layer_yaml["subscribes"]
-            check_required_keys(required_keys, "$(layer).subscribes", s)
+            check_keys(s, ENTRY_KEYS, ENTRY_KEYS, "$(layer).subscribes")
             check_scheme(s["scheme"])
             t = to_cpp_scoping(s["type"])
             push!(subscribe, "GOBY_JULIA_IF_SUBSCRIPTION($(s["scheme"]), $(layer_enum), $(layer_function), $(s["group"]), $(t))")
@@ -92,16 +108,23 @@ function gen_includes(io_out::IOStream, includes)
 end
 
 function gen_application_macros(io_out::IOStream, application_yaml)
-    check_required_keys(("name", "cpp_type", "config"), "application", application_yaml)
+    check_keys(application_yaml, APPLICATION_KEYS, APPLICATION_KEYS, "application")
     config_yaml = application_yaml["config"]
-    check_required_keys(("scheme", "type"), "application.config", config_yaml)
+    check_keys(config_yaml, CONFIG_KEYS, CONFIG_KEYS, "application.config")
     check_scheme(config_yaml["scheme"])
+
+    # it becomes the generated C++ class name, so a name that is not an identifier has to be
+    # rejected here rather than left to the compiler
+    name = string(application_yaml["name"])
+    if !occursin(r"^[A-Za-z_][A-Za-z0-9_]*$", name)
+        throw(InvalidInterfaceError("'application.name' must be a valid C++ identifier, got '$(name)'"))
+    end
 
     c = to_cpp_scoping(config_yaml["type"])
     write(io_out, "#define CONFIG_TYPE $(c)\n")
     t = to_cpp_scoping(application_yaml["cpp_type"])
     write(io_out, "#define APPLICATION_TYPE $(t)<CONFIG_TYPE>\n")
-    write(io_out, "#define APPLICATION_NAME $(application_yaml["name"])\n")
+    write(io_out, "#define APPLICATION_NAME $(name)\n")
     write(io_out, "\n")
 end
 

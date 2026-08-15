@@ -1,0 +1,13 @@
+# the application name becomes the generated C++ class name, so it must be an identifier
+application:
+  name: 'Bad Demo'
+  cpp_type: goby::zeromq::SingleThreadApplication
+  config:
+    scheme: PROTOBUF
+    type: project.config.protobuf.BadDemoConfig
+
+interprocess:
+  publishes:
+    - group: project::groups::modem_tx
+      scheme: PROTOBUF
+      type: project.protobuf.CommsTx

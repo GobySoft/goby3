@@ -1,0 +1,14 @@
+# 'subscribe' is a typo for 'subscribes'; accepting it would generate an application that
+# silently subscribes to nothing
+application:
+  name: BadDemo
+  cpp_type: goby::zeromq::SingleThreadApplication
+  config:
+    scheme: PROTOBUF
+    type: project.config.protobuf.BadDemoConfig
+
+interprocess:
+  subscribe:
+    - group: project::groups::modem_rx
+      scheme: PROTOBUF
+      type: project.protobuf.CommsRx

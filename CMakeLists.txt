@@ -232,6 +232,11 @@ endforeach()
 # configure Project.toml for Julia version
 configure_file(${goby_SRC_DIR}/share/Goby.jl/Project.toml ${goby_SHARE_DIR}/goby/Goby.jl/Project.toml @ONLY)
 
+# the copy above is what the generators run, so editing Goby.jl has to re-trigger it: otherwise
+# the tests keep passing against the previous version of the generator
+file(GLOB GOBY_JULIA_SOURCES ${goby_SRC_DIR}/share/Goby.jl/src/*.jl)
+set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS ${GOBY_JULIA_SOURCES})
+
 ## Julia bindings (see src/share/Goby.jl and src/middleware/languages/julia)
 include(GobyJulia)
 set(JULIA_DOC_STRING "Build support for Goby applications written in Julia (requires julia and CxxWrap.jl)")
