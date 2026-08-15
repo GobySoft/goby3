@@ -222,6 +222,36 @@ if(build_python)
   include(GobyPythonPackage)
 endif()
 
+## copy to build/share
+# ahead of the subdirectories because GobyJulia below reads Goby.jl out of the share directory
+file(GLOB SHARE_FILES RELATIVE ${goby_SRC_DIR} src/share/*)
+foreach(I ${SHARE_FILES})
+  file(COPY ${goby_SRC_DIR}/${I} DESTINATION ${goby_SHARE_DIR}/goby)
+endforeach()
+
+# configure Project.toml for Julia version
+configure_file(${goby_SRC_DIR}/share/Goby.jl/Project.toml ${goby_SHARE_DIR}/goby/Goby.jl/Project.toml @ONLY)
+
+## Julia bindings (see src/share/Goby.jl and src/middleware/languages/julia)
+include(GobyJulia)
+set(JULIA_DOC_STRING "Build support for Goby applications written in Julia (requires julia and CxxWrap.jl)")
+if(GOBY_JULIA_FOUND)
+  option(build_julia ${JULIA_DOC_STRING} ON)
+else()
+  option(build_julia ${JULIA_DOC_STRING} OFF)
+  message(">> setting build_julia to OFF ... ${GOBY_JULIA_NOT_FOUND_REASON}")
+endif()
+
+if(build_julia)
+  if(NOT GOBY_JULIA_FOUND)
+    message(FATAL_ERROR "build_julia=ON but ${GOBY_JULIA_NOT_FOUND_REASON}")
+  endif()
+  # the generators run out of the build tree copy of Goby.jl, so its dependencies have to be
+  # installed by the ordinary build rather than only when something declares a Julia application
+  add_custom_target(goby_julia ALL)
+  add_dependencies(goby_julia goby_julia_pkgs)
+endif()
+
 add_subdirectory(src)
 
 ## configure to build/include
@@ -246,15 +276,6 @@ foreach(I ${BASE_INCLUDE_FILES} ${INCLUDE_FILES} ${PROTOBUF_FILES})
   configure_file(${goby_SRC_DIR}/${I} ${goby_INC_DIR}/goby/${I} @ONLY)
 endforeach()
 configure_file(${goby_SRC_DIR}/goby.h ${goby_INC_DIR}/goby.h @ONLY)
-
-## copy to build/share
-file(GLOB SHARE_FILES RELATIVE ${goby_SRC_DIR} src/share/*)
-foreach(I ${SHARE_FILES})
-  file(COPY ${goby_SRC_DIR}/${I} DESTINATION ${goby_SHARE_DIR}/goby)
-endforeach()
-
-# configure Project.toml for Julia version
-configure_file(${goby_SRC_DIR}/share/Goby.jl/Project.toml ${goby_SHARE_DIR}/goby/Goby.jl/Project.toml @ONLY)
 
 # usable by downstream projects through find_package(goby)
 install(FILES ${CMAKE_CURRENT_SOURCE_DIR}/cmake_modules/GobyPython.cmake

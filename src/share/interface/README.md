@@ -140,3 +140,7 @@ Reserved for future use, and rejected by both generators today: the `intervehicl
 `test/valid` and `test/invalid` are exercised by both generators. When adding a feature to the
 format, add cases to the corpus in the same commit — the corpus, not the prose, is what keeps the
 two generators honest.
+
+Run both over the corpus with the `goby_test_interface_conformance` test, which needs `build_julia`
+(Julia and CxxWrap.jl); `goby_test_julia_app` and `goby_test_python_app` then compile what each
+generator writes.
