@@ -52,4 +52,19 @@ const LIBRARY = joinpath(@__DIR__, "libgoby_test_julia_app.so")
             @test isdefined(Goby, method)
         end
     end
+
+    # the Julia side generated from the same interface.yml
+    include(joinpath(@__DIR__, "goby_test_julia_app_goby.jl"))
+
+    @testset "generated module" begin
+        @test GobyJuliaTestAppGoby.APPLICATION_NAME == "GobyJuliaTestApp"
+
+        # the group constant is the interface.yml expression, which is what the C++ side matches
+        # on -- not the group's runtime name, which need not be the same
+        @test GobyJuliaTestAppGoby.groups.tx == "goby::test::julia::groups::tx"
+        @test GobyJuliaTestAppGoby.groups.rx == "goby::test::julia::groups::rx"
+
+        # one accessor per portal, named for the layer when no alias is given
+        @test GobyJuliaTestAppGoby.interprocess() == Goby.INTERPROCESS
+    end
 end

@@ -24,6 +24,15 @@
 # the shared library Julia dlopens. SOURCES are compiled into it, which is where
 # already-generated protobuf sources belong: Goby does not compile .proto files to C++ for you.
 #
+# Also writes <TARGET>_goby.jl beside the library, defining module <application name>Goby with
+# the declared groups and one accessor per portal, so an application names its groups instead of
+# repeating the interface.yml expression as a string:
+#
+#   include(joinpath(@__DIR__, "my_app_goby.jl"))
+#   Goby.subscribe(app, MyAppGoby.interprocess(), MyAppGoby.groups.nav, callback)
+#
+# Exports <TARGET>_JULIA_DIRECTORY and <TARGET>_JULIA_MODULE.
+#
 # ProtoBuf.jl has to see every .proto at once to give them consistent modules, so the Julia
 # protobuf bindings are generated for the project rather than per application: declare them with
 # goby_add_julia_protos() and generate them with goby_generate_julia_protos(). On CMake 3.19 and
@@ -153,13 +162,19 @@ function(GOBY_ADD_JULIA_APP)
     string(APPEND _include_str "\"${_include}\",")
   endforeach()
 
+  # the module an application includes for its groups and layer accessors; written beside the
+  # library from the same generator run, so one julia startup produces both sides
+  set(_jl_out "${_out_dir}/${GAJA_TARGET}_goby.jl")
+
   add_custom_command(
-    OUTPUT "${_cpp_out}"
+    OUTPUT "${_cpp_out}" "${_jl_out}"
     DEPENDS "${_interface_yml}"
     COMMAND "${JULIA}"
     ARGS --project=${GOBY_JULIA_DIR}
          -L "${GOBY_JULIA_DIR}/src/gen_goby.jl"
+         # two -e rather than one statement separated by ';', which CMake splits into a list
          -e "'goby_gen_cpp(\"${_interface_yml}\",\"${_cpp_out}\",[${_include_str}])'"
+         -e "'goby_gen_julia(\"${_interface_yml}\",\"${_jl_out}\")'"
     COMMENT "Generating Goby Julia bindings for ${GAJA_TARGET} from ${GAJA_INTERFACE_YML}")
 
   add_library(${GAJA_TARGET} SHARED "${_cpp_out}" ${GAJA_SOURCES})
@@ -189,6 +204,7 @@ exec \"${JULIA}\" \"${_out_dir}/${_main_name}\" \"$@\"
   endif()
 
   set(${GAJA_TARGET}_JULIA_DIRECTORY "${_out_dir}" PARENT_SCOPE)
+  set(${GAJA_TARGET}_JULIA_MODULE "${_jl_out}" PARENT_SCOPE)
 endfunction()
 
 function(GOBY_JULIA_PROTO_INCLUDE_DIRS)

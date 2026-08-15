@@ -80,7 +80,7 @@ function collect_layer(layer::String, layer_yaml)
             check_scheme(p["scheme"])
             # Julia ::Method sig does not include scoping, so we need to remove it here
             t = to_cpp_scoping(p["type"])
-            push!(publish, "GOBY_JULIA_IF_PUBLICATION($(p["scheme"]), $(layer_enum), $(layer_function), $(p["group"]), $(t))")
+            push!(publish, "GOBY_JULIA_IF_PUBLICATION($(p["scheme"]), $(layer_enum), $(layer_function), $(p["group"]), \"$(p["group"])\", $(t))")
         end
     end
     
@@ -89,7 +89,7 @@ function collect_layer(layer::String, layer_yaml)
             check_keys(s, ENTRY_KEYS, ENTRY_KEYS, "$(layer).subscribes")
             check_scheme(s["scheme"])
             t = to_cpp_scoping(s["type"])
-            push!(subscribe, "GOBY_JULIA_IF_SUBSCRIPTION($(s["scheme"]), $(layer_enum), $(layer_function), $(s["group"]), $(t))")
+            push!(subscribe, "GOBY_JULIA_IF_SUBSCRIPTION($(s["scheme"]), $(layer_enum), $(layer_function), $(s["group"]), \"$(s["group"])\", $(t))")
         end
     end
         
@@ -107,18 +107,22 @@ function gen_includes(io_out::IOStream, includes)
     write(io_out, "\n")
 end
 
-function gen_application_macros(io_out::IOStream, application_yaml)
+# it becomes the generated C++ class name, so a name that is not an identifier has to be
+# rejected here rather than left to the compiler
+function application_name(application_yaml)
     check_keys(application_yaml, APPLICATION_KEYS, APPLICATION_KEYS, "application")
-    config_yaml = application_yaml["config"]
-    check_keys(config_yaml, CONFIG_KEYS, CONFIG_KEYS, "application.config")
-    check_scheme(config_yaml["scheme"])
-
-    # it becomes the generated C++ class name, so a name that is not an identifier has to be
-    # rejected here rather than left to the compiler
     name = string(application_yaml["name"])
     if !occursin(r"^[A-Za-z_][A-Za-z0-9_]*$", name)
         throw(InvalidInterfaceError("'application.name' must be a valid C++ identifier, got '$(name)'"))
     end
+    return name
+end
+
+function gen_application_macros(io_out::IOStream, application_yaml)
+    name = application_name(application_yaml)
+    config_yaml = application_yaml["config"]
+    check_keys(config_yaml, CONFIG_KEYS, CONFIG_KEYS, "application.config")
+    check_scheme(config_yaml["scheme"])
 
     c = to_cpp_scoping(config_yaml["type"])
     write(io_out, "#define CONFIG_TYPE $(c)\n")
@@ -205,4 +209,107 @@ function goby_gen_cpp(in_yaml::String, out_cpp::String, includes)
         end
     end
     gen_class(io_out, interface_yaml["application"]["name"], publish, subscribe)
+end
+
+# Every portal declared on a layer, as (accessor name, layer enum). The accessor is the alias
+# where one is given, which is how a project names a layer that has more than one portal.
+function collect_accessors(interface_yaml, layers)
+    accessors = Vector{Tuple{String,String}}()
+    for layer in layers
+        haskey(interface_yaml, layer) || continue
+        value = interface_yaml[layer]
+        for portal in (isa(value, Vector) ? value : [value])
+            accessor = haskey(portal, "alias") ? string(portal["alias"]) : layer
+            if !any(a -> a[1] == accessor, accessors)
+                push!(accessors, (accessor, uppercase(layer)))
+            end
+        end
+    end
+    return accessors
+end
+
+# Group expressions by their last '::' component, which is what an application writes. A short
+# name claimed by two different expressions is dropped rather than guessed at: the expression
+# still works as a string.
+function collect_groups(interface_yaml, layers)
+    groups = Dict{String,String}()
+    ambiguous = Set{String}()
+    for layer in layers
+        haskey(interface_yaml, layer) || continue
+        value = interface_yaml[layer]
+        for portal in (isa(value, Vector) ? value : [value])
+            for key in ("publishes", "subscribes")
+                haskey(portal, key) || continue
+                for entry in portal[key]
+                    expression = string(entry["group"])
+                    short = String(last(split(expression, "::")))
+                    if haskey(groups, short) && groups[short] != expression
+                        push!(ambiguous, short)
+                    else
+                        groups[short] = expression
+                    end
+                end
+            end
+        end
+    end
+    for short in ambiguous
+        delete!(groups, short)
+    end
+    return groups
+end
+
+"""
+    goby_gen_julia(in_yaml, out_jl)
+
+Writes the Julia side of the interface: the groups an application publishes and subscribes to,
+by name rather than as repeated string literals, and one accessor per portal. Publishing to a
+group Goby has no binding for fails at runtime, so the constant is what stops a typo becoming a
+message that goes nowhere.
+"""
+function goby_gen_julia(in_yaml::String, out_jl::String)
+    println("Generating $(out_jl) from $(in_yaml)")
+
+    interface_yaml = YAML.load_file(in_yaml)
+    layers = ("interthread", "interprocess", "intermodule")
+    check_top_level_keys(interface_yaml, layers)
+
+    name = application_name(interface_yaml["application"])
+    groups = collect_groups(interface_yaml, layers)
+    accessors = collect_accessors(interface_yaml, layers)
+
+    open(out_jl, "w") do io
+        write(io, """\
+# ########################
+# #   Goby <--> Julia    #
+# #    Julia interface   #
+# ########################
+# This file was autogenerated from
+# $(in_yaml)
+
+module $(name)Goby
+
+using Goby
+
+const APPLICATION_NAME = "$(name)"
+
+# the interface.yml expression for each group, which is how Goby names it across the boundary
+module groups
+""")
+        for short in sort(collect(keys(groups)))
+            write(io, "const $(short) = \"$(groups[short])\"\n")
+        end
+        write(io, """\
+end
+
+""")
+        # functions rather than constants: the layer enums arrive with the application library,
+        # which is loaded after this file is included
+        for (accessor, layer_enum) in accessors
+            write(io, "$(accessor)() = Goby.$(layer_enum)\n")
+        end
+        write(io, """\
+
+end # module $(name)Goby
+""")
+    end
 end

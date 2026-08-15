@@ -131,9 +131,26 @@ than generating code that silently does the wrong thing.
 | `interthread`, `interprocess`, `intermodule` | yes | yes |
 | `scheme: PROTOBUF` | yes | yes |
 | multiple portals per layer (`alias`) | yes | yes |
+| generated module of group constants and accessors | yes | yes |
 
 Reserved for future use, and rejected by both generators today: the `intervehicle` layer, and the
 `DCCL`, `JSON`, `CSTR` and `MAVLINK` schemes.
+
+An `alias` names the accessor the application calls, but only the layer crosses into C++: two
+portals on the same layer publishing the same type on the same group are matched by whichever the
+generator emitted first, whatever the application called.
+
+## What a generator produces
+
+Each generator writes two files from the interface file: the C++ glue that makes the statically
+typed Goby calls, and a module in its own language holding the declared groups and one accessor
+per portal. The group constant is the `group` expression, which is the name the C++ glue matches
+on, so an application names its groups rather than repeating the expression as a string.
+
+| | Julia | Python |
+|--|-------|--------|
+| C++ glue | `<target>.cpp` | `<target>.cpp` |
+| language module | `<target>_goby.jl`, module `<name>Goby` | `<name_snake>_goby.py` |
 
 ## Conformance corpus
 
