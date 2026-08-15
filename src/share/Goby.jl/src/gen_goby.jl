@@ -69,8 +69,9 @@ end
 function collect_layer(layer::String, layer_yaml)
     check_keys(layer_yaml, (), PORTAL_KEYS, layer)
 
-    publish = Vector{String}()
-    subscribe = Vector{String}()
+    # entries rather than macro calls alone: check_unambiguous needs what each one matches on
+    publish = []
+    subscribe = []
     layer_function=haskey(layer_yaml, "alias") ? layer_yaml["alias"] : layer
     layer_enum=uppercase(layer)
 
@@ -80,20 +81,45 @@ function collect_layer(layer::String, layer_yaml)
             check_scheme(p["scheme"])
             # Julia ::Method sig does not include scoping, so we need to remove it here
             t = to_cpp_scoping(p["type"])
-            push!(publish, "GOBY_JULIA_IF_PUBLICATION($(p["scheme"]), $(layer_enum), $(layer_function), $(p["group"]), \"$(p["group"])\", $(t))")
+            g = to_cpp_scoping(string(p["group"]))
+            push!(publish, (macro_call = "GOBY_JULIA_IF_PUBLICATION($(p["scheme"]), $(layer_enum), $(layer_function), $(g), \"$(g)\", $(t))",
+                            key = (layer, p["scheme"], t, g),
+                            accessor = layer_function))
         end
     end
-    
+
     if haskey(layer_yaml, "subscribes")
         for s in layer_yaml["subscribes"]
             check_keys(s, ENTRY_KEYS, ENTRY_KEYS, "$(layer).subscribes")
             check_scheme(s["scheme"])
             t = to_cpp_scoping(s["type"])
-            push!(subscribe, "GOBY_JULIA_IF_SUBSCRIPTION($(s["scheme"]), $(layer_enum), $(layer_function), $(s["group"]), \"$(s["group"])\", $(t))")
+            g = to_cpp_scoping(string(s["group"]))
+            push!(subscribe, (macro_call = "GOBY_JULIA_IF_SUBSCRIPTION($(s["scheme"]), $(layer_enum), $(layer_function), $(g), \"$(g)\", $(t))",
+                              key = (layer, s["scheme"], t, g),
+                              accessor = layer_function))
         end
     end
-        
+
     return (publish, subscribe)
+end
+
+# Two entries the generated code could not tell apart. A publication or subscription is matched
+# on layer, scheme, type and group; the accessor is not part of that, so two entries agreeing on
+# all four compile to two branches with identical conditions, and the second is unreachable
+# whichever accessor the application called.
+function check_unambiguous(entries, layer_kind::String)
+    seen = Dict{Tuple{String,String,String,String},String}()
+    for entry in entries
+        if haskey(seen, entry.key)
+            layer, scheme, type_name, group = entry.key
+            throw(InvalidInterfaceError(
+                "'$(layer).$(layer_kind)' declares $(type_name) on group $(group) (scheme $(scheme)) " *
+                "twice, as '$(seen[entry.key])' and '$(entry.accessor)'. Only the layer identifies a " *
+                "portal across the language boundary, so the two cannot be told apart and the second " *
+                "would never be reached."))
+        end
+        seen[entry.key] = entry.accessor
+    end
 end
 
 
@@ -190,25 +216,24 @@ function goby_gen_cpp(in_yaml::String, out_cpp::String, includes)
     gen_includes(io_out, includes)
     gen_application_macros(io_out, interface_yaml["application"])
 
-    publish = Vector{String}()
-    subscribe = Vector{String}()
+    publish = []
+    subscribe = []
     for layer in layers
         if haskey(interface_yaml, layer)
             layer_value = interface_yaml[layer]
-            if isa(layer_value, Vector)
-                for entry in layer_value
-                    p, s = collect_layer(layer, entry)
-                    append!(publish, p)
-                    append!(subscribe, s)
-                end
-            else
-                p, s = collect_layer(layer, layer_value)
+            for portal in (isa(layer_value, Vector) ? layer_value : [layer_value])
+                p, s = collect_layer(layer, portal)
                 append!(publish, p)
                 append!(subscribe, s)
             end
         end
     end
-    gen_class(io_out, interface_yaml["application"]["name"], publish, subscribe)
+
+    check_unambiguous(publish, "publishes")
+    check_unambiguous(subscribe, "subscribes")
+
+    gen_class(io_out, interface_yaml["application"]["name"],
+              String[e.macro_call for e in publish], String[e.macro_call for e in subscribe])
 end
 
 # Every portal declared on a layer, as (accessor name, layer enum). The accessor is the alias

@@ -1,0 +1,20 @@
+# two portals on one layer publishing the same type on the same group. The accessor is not part
+# of what the generated code matches on, so the second entry could never be reached.
+application:
+  name: BadDemo
+  cpp_type: project::MultiPortalApplication
+  config:
+    scheme: PROTOBUF
+    type: project.config.protobuf.BadDemoConfig
+
+interprocess:
+  - alias: interprocess_zeromq
+    publishes:
+      - group: project::groups::shared
+        scheme: PROTOBUF
+        type: project.protobuf.Msg
+  - alias: interprocess_udpm
+    publishes:
+      - group: project::groups::shared
+        scheme: PROTOBUF
+        type: project.protobuf.Msg

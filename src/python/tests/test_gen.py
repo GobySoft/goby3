@@ -54,13 +54,14 @@ class CorpusTest(unittest.TestCase):
                 gen.load(os.path.join(directory, name))
 
     def test_invalid_corpus_is_rejected(self):
-        directory = os.path.join(CORPUS, "invalid")
-        names = sorted(os.listdir(directory))
-        self.assertTrue(names, "the invalid corpus is empty")
-        for name in names:
-            with self.subTest(case=name):
-                with self.assertRaises(gen.InterfaceError):
-                    gen.load(os.path.join(directory, name))
+        for subdirectory in ("invalid", "invalid-semantic"):
+            directory = os.path.join(CORPUS, subdirectory)
+            names = sorted(os.listdir(directory))
+            self.assertTrue(names, f"the {subdirectory} corpus is empty")
+            for name in names:
+                with self.subTest(case=f"{subdirectory}/{name}"):
+                    with self.assertRaises(gen.InterfaceError):
+                        gen.load(os.path.join(directory, name))
 
 
 class ParseTest(unittest.TestCase):
@@ -310,6 +311,14 @@ class SchemaTest(unittest.TestCase):
                     document = yaml.safe_load(handle)
                 with self.assertRaises(jsonschema.ValidationError):
                     validator.validate(document)
+
+        # the schema describes the shape of a file, and these are well shaped -- what is wrong
+        # with them is a relationship between two entries, which JSON Schema cannot express.
+        # They are the generators' to reject, and this records where the schema stops.
+        for name in sorted(os.listdir(os.path.join(CORPUS, "invalid-semantic"))):
+            with self.subTest(invalid_semantic=name):
+                with open(os.path.join(CORPUS, "invalid-semantic", name), encoding="utf-8") as handle:
+                    validator.validate(yaml.safe_load(handle))
 
 
 if __name__ == "__main__":

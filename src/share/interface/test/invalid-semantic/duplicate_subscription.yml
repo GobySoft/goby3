@@ -1,0 +1,17 @@
+# the same entry declared twice within one portal, which is the simplest way to reach the same
+# unreachable second branch
+application:
+  name: BadDemo
+  cpp_type: goby::zeromq::SingleThreadApplication
+  config:
+    scheme: PROTOBUF
+    type: project.config.protobuf.BadDemoConfig
+
+interprocess:
+  subscribes:
+    - group: project::groups::modem_rx
+      scheme: PROTOBUF
+      type: project.protobuf.CommsRx
+    - group: project::groups::modem_rx
+      scheme: PROTOBUF
+      type: project.protobuf.CommsRx

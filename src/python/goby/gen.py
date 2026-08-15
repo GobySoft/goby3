@@ -188,6 +188,30 @@ def _collect_portal(layer: str, portal, interface: Interface, where: str) -> Non
             )
 
 
+def _check_unambiguous(interface: Interface) -> None:
+    """Rejects two entries the generated code could not tell apart.
+
+    A publication or subscription is matched on layer, scheme, type and group. The accessor is
+    not part of that, so two entries agreeing on all four compile to two branches with identical
+    conditions: the first always wins and the second is unreachable, whichever accessor the
+    application called.
+    """
+    for kind, entries in (("publishes", interface.publishes), ("subscribes", interface.subscribes)):
+        seen: Dict[tuple, Entry] = {}
+        for entry in entries:
+            key = (entry.layer, entry.scheme, entry.type, entry.group)
+            first = seen.get(key)
+            if first is None:
+                seen[key] = entry
+                continue
+            raise InterfaceError(
+                f"'{entry.layer}.{kind}' declares {entry.type} on group {entry.group} "
+                f"(scheme {entry.scheme}) twice, as '{first.accessor}' and '{entry.accessor}'. "
+                f"Only the layer identifies a portal across the language boundary, so the two "
+                f"cannot be told apart and the second would never be reached."
+            )
+
+
 def parse(document) -> Interface:
     """Validates a loaded interface.yml document and returns the Interface it describes."""
     if not isinstance(document, dict):
@@ -235,6 +259,8 @@ def parse(document) -> Interface:
                 _collect_portal(layer, portal, interface, f"{layer}[{index}]")
         else:
             _collect_portal(layer, value, interface, layer)
+
+    _check_unambiguous(interface)
 
     return interface
 
