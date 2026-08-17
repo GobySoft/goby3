@@ -1,6 +1,5 @@
-// Copyright 2009-2023:
+// Copyright 2026:
 //   GobySoft, LLC (2013-)
-//   Massachusetts Institute of Technology (2007-2014)
 //   Community contributors (see AUTHORS file)
 // File authors:
 //   Toby Schneider <toby@gobysoft.org>
@@ -22,33 +21,14 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-#ifndef GOBY_VERSION_H
-#define GOBY_VERSION_H
+#ifndef GOBY_INTERVEHICLE_API_VERSION_H
+#define GOBY_INTERVEHICLE_API_VERSION_H
 
-#include <sstream>
-#include <string>
-
-#include "goby/intervehicle_api_version.h"
+// Kept out of goby/version.h so that including this does not pull in a header that
+// changes on every commit.
 
 // clang-format off
-#define GOBY_VERSION_MAJOR @GOBY_VERSION_MAJOR@
-#define GOBY_VERSION_MINOR @GOBY_VERSION_MINOR@
-#define GOBY_VERSION_PATCH @GOBY_VERSION_PATCH@
+#define GOBY_INTERVEHICLE_API_VERSION @GOBY_INTERVEHICLE_API_VERSION@
 // clang-format on
-
-namespace goby
-{
-const std::string VERSION_STRING = "@GOBY_VERSION@";
-const std::string VERSION_DATE = "@GOBY_VERSION_DATE@";
-
-inline std::string version_message()
-{
-    std::stringstream ss;
-    ss << "This is Version " << goby::VERSION_STRING
-       << " of the Goby Underwater Autonomy Project released on " << goby::VERSION_DATE
-       << ".\n See https://github.com/GobySoft/goby3 to search for updates.";
-    return ss.str();
-}
-} // namespace goby
 
 #endif
