@@ -13,6 +13,7 @@
 #     [SOURCES <files>...]
 #     [INCLUDES <headers>...]
 #     [LINK_LIBRARIES <libs>...]
+#     [THREADS <n>]
 #     [OUTPUT_DIRECTORY <dir>]
 #     [LAUNCHER_DIRECTORY <dir>])
 #
@@ -30,6 +31,10 @@
 #
 #   include(joinpath(@__DIR__, "my_app_goby.jl"))
 #   Goby.subscribe(app, MyAppGoby.interprocess(), MyAppGoby.groups.nav, callback)
+#
+# THREADS is the number of Julia threads the launcher starts the application with, which an
+# application using Goby.run()'s task modules needs: one per task module plus three, for Main,
+# the loop timer and the C++ application. It is a default, so JULIA_NUM_THREADS still wins.
 #
 # Exports <TARGET>_JULIA_DIRECTORY and <TARGET>_JULIA_MODULE.
 #
@@ -130,7 +135,7 @@ unset(GOBY_JULIA_PROTO_DEPENDS CACHE)
 unset(GOBY_JULIA_PROTO_OUTPUT CACHE)
 
 function(GOBY_ADD_JULIA_APP)
-  set(one_value_args TARGET INTERFACE_YML MAIN OUTPUT_DIRECTORY LAUNCHER_DIRECTORY)
+  set(one_value_args TARGET INTERFACE_YML MAIN THREADS OUTPUT_DIRECTORY LAUNCHER_DIRECTORY)
   set(multi_value_args SOURCES INCLUDES LINK_LIBRARIES)
   cmake_parse_arguments(GAJA "" "${one_value_args}" "${multi_value_args}" ${ARGN})
 
@@ -195,6 +200,18 @@ function(GOBY_ADD_JULIA_APP)
   target_compile_options(${GAJA_TARGET} PRIVATE -Wno-error=deprecated)
 
 
+  # Julia fixes its thread count at startup, so an application using Goby.run()'s task modules
+  # has to be launched with enough: one per task module plus three, for Main, the loop timer and
+  # the C++ application. Written as a default so an operator can still raise it.
+  set(_thread_arg "")
+  if(GAJA_THREADS)
+    if(NOT GAJA_THREADS MATCHES "^([1-9][0-9]*|auto)$")
+      message(FATAL_ERROR "goby_add_julia_app: THREADS must be a positive number or 'auto', "
+        "got '${GAJA_THREADS}'")
+    endif()
+    set(_thread_arg " -t \"\${JULIA_NUM_THREADS:-${GAJA_THREADS}}\"")
+  endif()
+
   if(GAJA_LAUNCHER_DIRECTORY)
     set(_launcher_dir "${GAJA_LAUNCHER_DIRECTORY}")
   else()
@@ -204,7 +221,7 @@ function(GOBY_ADD_JULIA_APP)
     file(GENERATE
       OUTPUT "${_launcher_dir}/${GAJA_TARGET}"
       CONTENT "#!/bin/sh
-exec \"${JULIA}\" \"${_out_dir}/${_main_name}\" \"$@\"
+exec \"${JULIA}\"${_thread_arg} \"${_out_dir}/${_main_name}\" \"$@\"
 "
       FILE_PERMISSIONS OWNER_READ OWNER_WRITE OWNER_EXECUTE GROUP_READ GROUP_EXECUTE WORLD_READ WORLD_EXECUTE)
   endif()

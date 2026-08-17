@@ -15,14 +15,17 @@ goby_add_julia_app(
            goby/test/julia/test.pb.h
            goby/test/julia/groups.h
   LINK_LIBRARIES goby goby_zeromq
+  # nothing here needs threads, but running the launcher is how THREADS gets tested at all
+  THREADS 3
   # a test is not an application, so keep the launcher out of the goby bin directory
   LAUNCHER_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
 
 target_include_directories(goby_test_julia_app PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 
-# run the copy beside the library, which is the layout an application gets
+# through the generated launcher, which runs the copy beside the library: the layout and the
+# entry point an application actually gets
 add_test(NAME goby_test_julia_app
-  COMMAND ${JULIA} ${goby_test_julia_app_JULIA_DIRECTORY}/test_app.jl ${GOBY_JULIA_DIR})
+  COMMAND ${CMAKE_CURRENT_BINARY_DIR}/goby_test_julia_app ${GOBY_JULIA_DIR})
 
 # Julia compiles its dependencies on first use, which is slow on a cold depot
 set_tests_properties(goby_test_julia_app PROPERTIES TIMEOUT 600)

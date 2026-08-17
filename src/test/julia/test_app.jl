@@ -19,6 +19,12 @@ const LIBRARY = joinpath(@__DIR__, "libgoby_test_julia_app.so")
 
     @test isfile(LIBRARY)
 
+    # the launcher passes goby_add_julia_app()'s THREADS to julia, which a multi-threaded
+    # application depends on: Julia cannot change its thread count once started
+    @testset "launcher thread count" begin
+        @test Threads.nthreads() >= 3
+    end
+
     @eval Goby begin
         @wrapmodule(() -> $LIBRARY)
         function __init__()
