@@ -25,7 +25,8 @@ environment-template-armhf: &environment-template-armhf
 
 environment-template-ccache: &environment-template-ccache
   CCACHE_DIR: "/root/.ccache"
-  CCACHE_MAXSIZE: "500M"
+  # one full build is ~370M, so this holds roughly two generations of objects
+  CCACHE_MAXSIZE: "1G"
   # apt dist-upgrade rewrites compiler mtimes without necessarily changing the binary
   CCACHE_COMPILERCHECK: "content"
 
@@ -670,7 +671,7 @@ jobs:
               -v /home/circleci/ccache:/root/.ccache \
               -e TSAN_OPTIONS="suppressions=/root/goby3/src/test/suppressions.tsan.txt history_size=6" \
               -e CCACHE_DIR="/root/.ccache" \
-              -e CCACHE_MAXSIZE="500M" \
+              -e CCACHE_MAXSIZE="1G" \
               -e CCACHE_COMPILERCHECK="content" \
               gobysoft/goby3-ubuntu-build-base:26.04.1 \
               sleep infinity
