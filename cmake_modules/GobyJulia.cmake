@@ -189,9 +189,12 @@ function(GOBY_ADD_JULIA_APP)
 
   target_link_libraries(${GAJA_TARGET} JlCxx::cxxwrap_julia ${GAJA_LINK_LIBRARIES})
 
-  # C++ 20 warns on implicit lambda capture of this for [=]
-  target_compile_options(${GAJA_TARGET} PRIVATE -Wno-error=deprecated-this-capture)
-  
+  # C++ 20 warns on implicit lambda capture of this for [=]. Spelled -Wdeprecated by GCC and
+  # -Wdeprecated-this-capture by clang, but the group covers it on both and an unknown warning
+  # name is a hard error, so the group is the portable one to name.
+  target_compile_options(${GAJA_TARGET} PRIVATE -Wno-error=deprecated)
+
+
   if(GAJA_LAUNCHER_DIRECTORY)
     set(_launcher_dir "${GAJA_LAUNCHER_DIRECTORY}")
   else()
