@@ -518,9 +518,11 @@ jobs:
       - checkout
       - run:
           name: Build
-          # build_julia is requested explicitly rather than left to autodetection, so that a
-          # missing piece fails the job instead of quietly dropping the tests from it
-          command: mkdir -p build && cd build && cmake -Denable_testing=ON -Dbuild_julia=ON -Dbuild_zeromq=ON -Dbuild_python=OFF .. && cmake --build . -- -j4
+          # build_julia and the conformance test are requested explicitly rather than left to
+          # autodetection or their default, so that a missing piece fails the job instead of
+          # quietly dropping the tests from it. This is the only job that runs the conformance
+          # test, which is why it is off by default everywhere else.
+          command: mkdir -p build && cd build && cmake -Denable_testing=ON -Dbuild_julia=ON -Dbuild_zeromq=ON -Dbuild_python=OFF -Denable_interface_conformance_test=ON .. && cmake --build . -- -j4
       - run:
           name: Check that the Julia tests are registered
           command: |

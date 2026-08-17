@@ -162,6 +162,10 @@ prose, is what keeps the two generators honest. A case belongs in `invalid-seman
 `invalid` when the schema cannot express the rule, which is anything relating two entries to each
 other; the schema is checked against both, so putting one in the wrong place fails.
 
-Run both over the corpus with the `goby_test_interface_conformance` test, which needs `build_julia`
-(Julia and CxxWrap.jl); `goby_test_julia_app` and `goby_test_python_app` then compile what each
-generator writes.
+Run both over the corpus with the `goby_test_interface_conformance` test:
+
+    cmake -Denable_testing=ON -Dbuild_julia=ON -Denable_interface_conformance_test=ON ..
+
+It is off by default because it starts Julia once per case, which takes a couple of minutes; CI
+runs it on every commit. `goby_test_julia_app` and `goby_test_python_app` then compile what each
+generator writes, and both run by default.
