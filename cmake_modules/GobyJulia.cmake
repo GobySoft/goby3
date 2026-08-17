@@ -189,6 +189,9 @@ function(GOBY_ADD_JULIA_APP)
 
   target_link_libraries(${GAJA_TARGET} JlCxx::cxxwrap_julia ${GAJA_LINK_LIBRARIES})
 
+  # C++ 20 warns on implicit lambda capture of this for [=]
+  target_compile_options(${GAJA_TARGET} PRIVATE -Wno-error=deprecated-this-capture)
+  
   if(GAJA_LAUNCHER_DIRECTORY)
     set(_launcher_dir "${GAJA_LAUNCHER_DIRECTORY}")
   else()
