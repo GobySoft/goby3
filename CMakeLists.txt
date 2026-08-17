@@ -285,12 +285,15 @@ configure_file(${goby_SRC_DIR}/goby.h ${goby_INC_DIR}/goby.h @ONLY)
 # usable by downstream projects through find_package(goby)
 install(FILES ${CMAKE_CURRENT_SOURCE_DIR}/cmake_modules/GobyPython.cmake
               ${CMAKE_CURRENT_SOURCE_DIR}/cmake_modules/GobyJulia.cmake
+              ${CMAKE_CURRENT_SOURCE_DIR}/cmake_modules/GobyTarget.cmake
   DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/goby)
 # goby-config.cmake looks for them next to itself, which for an uninstalled Goby is the build directory
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/cmake_modules/GobyPython.cmake
   ${CMAKE_BINARY_DIR}/GobyPython.cmake COPYONLY)
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/cmake_modules/GobyJulia.cmake
   ${CMAKE_BINARY_DIR}/GobyJulia.cmake COPYONLY)
+configure_file(${CMAKE_CURRENT_SOURCE_DIR}/cmake_modules/GobyTarget.cmake
+  ${CMAKE_BINARY_DIR}/GobyTarget.cmake COPYONLY)
 
 # configuration export - installed version
 include(CMakePackageConfigHelpers)
