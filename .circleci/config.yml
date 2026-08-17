@@ -23,6 +23,13 @@ environment-template-armhf: &environment-template-armhf
   TARGET_ARCH: "armhf"
   DEB_BUILD_OPTIONS: "parallel=3 nocheck"
 
+environment-template-ccache: &environment-template-ccache
+  CCACHE_DIR: "/root/.ccache"
+  # one full build is ~370M, so this holds roughly two generations of objects
+  CCACHE_MAXSIZE: "1G"
+  # apt dist-upgrade rewrites compiler mtimes without necessarily changing the binary
+  CCACHE_COMPILERCHECK: "content"
+
 environment-template-bookworm: &environment-template-bookworm
   DISTRO_RELEASE_CODENAME: "bookworm"
   DISTRO_RELEASE_VERSION: "debian12"
@@ -103,9 +110,25 @@ job-template-amd64: &job-template-amd64
           apt-get update
           apt-get dist-upgrade -y
           apt-get install libdccl5-dev:${TARGET_ARCH} libdccl5:${TARGET_ARCH} dccl5-compiler -y || true
+    - run: &run-install-ccache
+        name: Install ccache
+        command: apt-get install -y ccache
+    - restore_cache: &restore-ccache
+        keys:
+          - ccache-v1-{{ .Environment.CIRCLE_JOB }}-{{ .Branch }}-{{ .Revision }}
+          - ccache-v1-{{ .Environment.CIRCLE_JOB }}-{{ .Branch }}-
+          - ccache-v1-{{ .Environment.CIRCLE_JOB }}-
     - run: &run-build
         name: Build
-        command: mkdir -p build && cd build && cmake -Denable_testing=ON -Dbuild_doc=ON -Dbuild_doc_pdf=OFF -DCMAKE_BUILD_TYPE=Debug .. && cmake --build . -- -j4
+        command: mkdir -p build && cd build && cmake -Denable_testing=ON -Dbuild_doc=ON -Dbuild_doc_pdf=OFF -DCMAKE_BUILD_TYPE=Debug -DCMAKE_C_COMPILER_LAUNCHER=ccache -DCMAKE_CXX_COMPILER_LAUNCHER=ccache .. && cmake --build . -- -j4
+    - run: &run-ccache-stats
+        name: Show ccache statistics
+        # zero afterwards so each build reports only its own hit rate
+        command: ccache --show-stats && ccache --zero-stats
+    - save_cache: &save-ccache
+        key: ccache-v1-{{ .Environment.CIRCLE_JOB }}-{{ .Branch }}-{{ .Revision }}
+        paths:
+          - /root/.ccache
     - run: &run-tests
         name: Run tests
         command: cd build && ctest --output-on-failure
@@ -361,7 +384,7 @@ workflows:
             - armhf-resolute-deb-build
             
       - amd64-scan-build:
-          <<: *filter-template-non-master
+          <<: *filter-template-master-only
       - amd64-asan-build:
           <<: *filter-template-master-only
 
@@ -410,21 +433,24 @@ jobs:
     docker: *docker-base-bookworm
     environment:
       <<: *environment-template-common
+      <<: *environment-template-ccache
       <<: *environment-template-bookworm
-      
+
   amd64-trixie-build:
     <<: *job-template-amd64
     docker: *docker-base-trixie
     environment:
       <<: *environment-template-common
+      <<: *environment-template-ccache
       <<: *environment-template-trixie
-      
+
 
   amd64-jammy-build:
     <<: *job-template-amd64
     docker: *docker-base-jammy
     environment:
       <<: *environment-template-common
+      <<: *environment-template-ccache
       <<: *environment-template-jammy
 
   amd64-noble-build:
@@ -432,13 +458,15 @@ jobs:
     docker: *docker-base-noble
     environment:
       <<: *environment-template-common
-      <<: *environment-template-noble    
-            
+      <<: *environment-template-ccache
+      <<: *environment-template-noble
+
   amd64-resolute-build:
     <<: *job-template-amd64
     docker: *docker-base-resolute
     environment:
       <<: *environment-template-common
+      <<: *environment-template-ccache
       <<: *environment-template-resolute
 
   amd64-resolute-minimal-build:
@@ -447,6 +475,7 @@ jobs:
     resource_class: large
     working_directory: /root/goby3
     environment:
+      <<: *environment-template-ccache
       DEBIAN_FRONTEND: "noninteractive"
       DEBIAN_PRIORITY: "critical"
     steps:
@@ -463,11 +492,14 @@ jobs:
           name: Install apt packages
           command: |
             apt-get update &&
-            apt-get -y install git build-essential cmake libboost-dev libboost-system-dev libboost-date-time-dev libboost-program-options-dev libboost-filesystem-dev libboost-process-dev libprotobuf-dev libprotoc-dev protobuf-compiler libproj-dev libdccl4-dev dccl4-compiler
+            apt-get -y install ccache git build-essential cmake libboost-dev libboost-system-dev libboost-date-time-dev libboost-program-options-dev libboost-filesystem-dev libboost-process-dev libprotobuf-dev libprotoc-dev protobuf-compiler libproj-dev libdccl4-dev dccl4-compiler
       - checkout
+      - restore_cache: *restore-ccache
       - run:
           name: Build
-          command: mkdir -p build && cd build && cmake -Denable_testing=ON .. && cmake --build . -- -j4
+          command: mkdir -p build && cd build && cmake -Denable_testing=ON -DCMAKE_C_COMPILER_LAUNCHER=ccache -DCMAKE_CXX_COMPILER_LAUNCHER=ccache .. && cmake --build . -- -j4
+      - run: *run-ccache-stats
+      - save_cache: *save-ccache
       - run: *run-tests
 
   amd64-bookworm-deb-build:
@@ -625,12 +657,22 @@ jobs:
           # on Linux kernels >= 6.x. See https://stackoverflow.com/questions/77850769
           name: Set mmap_rnd_bits for ThreadSanitizer compatibility
           command: sudo sysctl vm.mmap_rnd_bits=28
+      - restore_cache:
+          keys:
+            - ccache-v1-{{ .Environment.CIRCLE_JOB }}-{{ .Branch }}-{{ .Revision }}
+            - ccache-v1-{{ .Environment.CIRCLE_JOB }}-{{ .Branch }}-
+            - ccache-v1-{{ .Environment.CIRCLE_JOB }}-
       - run:
           name: Start build container
           command: |
+            mkdir -p /home/circleci/ccache
             docker run -d --name tsan-build \
               -v /home/circleci/goby3:/root/goby3 \
+              -v /home/circleci/ccache:/root/.ccache \
               -e TSAN_OPTIONS="suppressions=/root/goby3/src/test/suppressions.tsan.txt history_size=6" \
+              -e CCACHE_DIR="/root/.ccache" \
+              -e CCACHE_MAXSIZE="1G" \
+              -e CCACHE_COMPILERCHECK="content" \
               gobysoft/goby3-ubuntu-build-base:26.04.1 \
               sleep infinity
             # Fix git "dubious ownership" (host checkout owned by circleci, container runs as root)
@@ -643,10 +685,20 @@ jobs:
             true
       - run:
           name: Update apt packages in container
-          command: docker exec tsan-build bash -c "apt-get update && apt-get dist-upgrade -y"
+          command: docker exec tsan-build bash -c "apt-get update && apt-get dist-upgrade -y && apt-get install -y ccache"
       - run:
           name: Build with ThreadSanitizer
-          command: docker exec tsan-build bash -c "mkdir -p /root/goby3/build && cd /root/goby3/build && cmake -DSANITIZE_THREAD=ON -Denable_testing=ON -Denable_llvm=OFF .. && cmake --build . -- -j${SANITIZER_NUM_JOBS}"
+          command: docker exec tsan-build bash -c "mkdir -p /root/goby3/build && cd /root/goby3/build && cmake -DSANITIZE_THREAD=ON -Denable_testing=ON -Denable_llvm=OFF -DCMAKE_C_COMPILER_LAUNCHER=ccache -DCMAKE_CXX_COMPILER_LAUNCHER=ccache .. && cmake --build . -- -j${SANITIZER_NUM_JOBS}"
+      - run:
+          name: Show ccache statistics
+          command: |
+            docker exec tsan-build bash -c "ccache --show-stats && ccache --zero-stats"
+            # the container writes the cache as root; save_cache runs as circleci
+            sudo chown -R circleci:circleci /home/circleci/ccache
+      - save_cache:
+          key: ccache-v1-{{ .Environment.CIRCLE_JOB }}-{{ .Branch }}-{{ .Revision }}
+          paths:
+            - /home/circleci/ccache
       - run:
           name: Run tests
           command: docker exec tsan-build bash -c "cd /root/goby3/build && ctest --output-on-failure"

@@ -33,7 +33,7 @@
 #include "goby/util/debug_logger/flex_ostreambuf.h"             // for DEBUG3
 #include "goby/util/debug_logger/logger_manipulators.h"         // for oper...
 #include "goby/util/debug_logger/term_color.h"                  // for Colors
-#include "goby/version.h"
+#include "goby/intervehicle_api_version.h"
 
 #include "dccl_serializer_parser.h"
 
