@@ -7,21 +7,6 @@ add_test(NAME goby_test_python_unit
 set_tests_properties(goby_test_python_unit PROPERTIES
   ENVIRONMENT "PYTHONPATH=${GOBY_PYTHON_SOURCE_DIR}")
 
-# The Julia generator reads the same interface.yml format, so it must accept and reject the same
-# corpus. Skipped when Julia isn't available.
-find_program(JULIA_EXECUTABLE julia)
-if(JULIA_EXECUTABLE)
-  add_test(NAME goby_test_interface_conformance
-    COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/conformance.py
-            --julia ${JULIA_EXECUTABLE}
-            --goby-jl ${goby_SRC_DIR}/share/Goby.jl
-            --corpus ${goby_SRC_DIR}/share/interface/test)
-  set_tests_properties(goby_test_interface_conformance PROPERTIES
-    ENVIRONMENT "PYTHONPATH=${GOBY_PYTHON_SOURCE_DIR}")
-else()
-  message(STATUS "julia not found: skipping the interface.yml cross-language conformance test")
-endif()
-
 # End-to-end: generate the glue from interface.yml, compile it into an extension module, and
 # import it. This is the test that proves the generated C++ actually builds.
 protobuf_generate_cpp_dccl(PROTO_SRCS PROTO_HDRS test.proto)

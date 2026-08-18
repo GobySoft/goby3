@@ -63,7 +63,11 @@ def main(argv=None):
 
     failures = []
 
-    for expected_accept, subdirectory in ((True, "valid"), (False, "invalid")):
+    for expected_accept, subdirectory in (
+        (True, "valid"),
+        (False, "invalid"),
+        (False, "invalid-semantic"),
+    ):
         directory = os.path.join(args.corpus, subdirectory)
         for name in sorted(os.listdir(directory)):
             interface = os.path.join(directory, name)

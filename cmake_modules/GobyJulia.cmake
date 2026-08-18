@@ -13,6 +13,7 @@
 #     [SOURCES <files>...]
 #     [INCLUDES <headers>...]
 #     [LINK_LIBRARIES <libs>...]
+#     [THREADS <n>]
 #     [OUTPUT_DIRECTORY <dir>]
 #     [LAUNCHER_DIRECTORY <dir>])
 #
@@ -23,6 +24,19 @@
 # Reads INTERFACE_YML, generates the C++ bridge with Goby.jl's gen_goby.jl, and builds it into
 # the shared library Julia dlopens. SOURCES are compiled into it, which is where
 # already-generated protobuf sources belong: Goby does not compile .proto files to C++ for you.
+#
+# Also writes <TARGET>_goby.jl beside the library, defining module <application name>Goby with
+# the declared groups and one accessor per portal, so an application names its groups instead of
+# repeating the interface.yml expression as a string:
+#
+#   include(joinpath(@__DIR__, "my_app_goby.jl"))
+#   Goby.subscribe(app, MyAppGoby.interprocess(), MyAppGoby.groups.nav, callback)
+#
+# THREADS is the number of Julia threads the launcher starts the application with, which an
+# application using Goby.run()'s task modules needs: one per task module plus three, for Main,
+# the loop timer and the C++ application. It is a default, so JULIA_NUM_THREADS still wins.
+#
+# Exports <TARGET>_JULIA_DIRECTORY and <TARGET>_JULIA_MODULE.
 #
 # ProtoBuf.jl has to see every .proto at once to give them consistent modules, so the Julia
 # protobuf bindings are generated for the project rather than per application: declare them with
@@ -121,7 +135,7 @@ unset(GOBY_JULIA_PROTO_DEPENDS CACHE)
 unset(GOBY_JULIA_PROTO_OUTPUT CACHE)
 
 function(GOBY_ADD_JULIA_APP)
-  set(one_value_args TARGET INTERFACE_YML MAIN OUTPUT_DIRECTORY LAUNCHER_DIRECTORY)
+  set(one_value_args TARGET INTERFACE_YML MAIN THREADS OUTPUT_DIRECTORY LAUNCHER_DIRECTORY)
   set(multi_value_args SOURCES INCLUDES LINK_LIBRARIES)
   cmake_parse_arguments(GAJA "" "${one_value_args}" "${multi_value_args}" ${ARGN})
 
@@ -153,13 +167,19 @@ function(GOBY_ADD_JULIA_APP)
     string(APPEND _include_str "\"${_include}\",")
   endforeach()
 
+  # the module an application includes for its groups and layer accessors; written beside the
+  # library from the same generator run, so one julia startup produces both sides
+  set(_jl_out "${_out_dir}/${GAJA_TARGET}_goby.jl")
+
   add_custom_command(
-    OUTPUT "${_cpp_out}"
+    OUTPUT "${_cpp_out}" "${_jl_out}"
     DEPENDS "${_interface_yml}"
     COMMAND "${JULIA}"
     ARGS --project=${GOBY_JULIA_DIR}
          -L "${GOBY_JULIA_DIR}/src/gen_goby.jl"
+         # two -e rather than one statement separated by ';', which CMake splits into a list
          -e "'goby_gen_cpp(\"${_interface_yml}\",\"${_cpp_out}\",[${_include_str}])'"
+         -e "'goby_gen_julia(\"${_interface_yml}\",\"${_jl_out}\")'"
     COMMENT "Generating Goby Julia bindings for ${GAJA_TARGET} from ${GAJA_INTERFACE_YML}")
 
   add_library(${GAJA_TARGET} SHARED "${_cpp_out}" ${GAJA_SOURCES})
@@ -174,6 +194,24 @@ function(GOBY_ADD_JULIA_APP)
 
   target_link_libraries(${GAJA_TARGET} JlCxx::cxxwrap_julia ${GAJA_LINK_LIBRARIES})
 
+  # C++ 20 warns on implicit lambda capture of this for [=]. Spelled -Wdeprecated by GCC and
+  # -Wdeprecated-this-capture by clang, but the group covers it on both and an unknown warning
+  # name is a hard error, so the group is the portable one to name.
+  target_compile_options(${GAJA_TARGET} PRIVATE -Wno-error=deprecated)
+
+
+  # Julia fixes its thread count at startup, so an application using Goby.run()'s task modules
+  # has to be launched with enough: one per task module plus three, for Main, the loop timer and
+  # the C++ application. Written as a default so an operator can still raise it.
+  set(_thread_arg "")
+  if(GAJA_THREADS)
+    if(NOT GAJA_THREADS MATCHES "^([1-9][0-9]*|auto)$")
+      message(FATAL_ERROR "goby_add_julia_app: THREADS must be a positive number or 'auto', "
+        "got '${GAJA_THREADS}'")
+    endif()
+    set(_thread_arg " -t \"\${JULIA_NUM_THREADS:-${GAJA_THREADS}}\"")
+  endif()
+
   if(GAJA_LAUNCHER_DIRECTORY)
     set(_launcher_dir "${GAJA_LAUNCHER_DIRECTORY}")
   else()
@@ -183,12 +221,13 @@ function(GOBY_ADD_JULIA_APP)
     file(GENERATE
       OUTPUT "${_launcher_dir}/${GAJA_TARGET}"
       CONTENT "#!/bin/sh
-exec \"${JULIA}\" \"${_out_dir}/${_main_name}\" \"$@\"
+exec \"${JULIA}\"${_thread_arg} \"${_out_dir}/${_main_name}\" \"$@\"
 "
       FILE_PERMISSIONS OWNER_READ OWNER_WRITE OWNER_EXECUTE GROUP_READ GROUP_EXECUTE WORLD_READ WORLD_EXECUTE)
   endif()
 
   set(${GAJA_TARGET}_JULIA_DIRECTORY "${_out_dir}" PARENT_SCOPE)
+  set(${GAJA_TARGET}_JULIA_MODULE "${_jl_out}" PARENT_SCOPE)
 endfunction()
 
 function(GOBY_JULIA_PROTO_INCLUDE_DIRS)

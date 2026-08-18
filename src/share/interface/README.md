@@ -9,7 +9,8 @@ language bindings. The format is shared exactly: the same file drives the Julia 
 | `README.md` | This document — the normative description of the format. |
 | `interface.schema.json` | Machine-readable [JSON Schema](https://json-schema.org) for the same format (YAML is JSON-compatible, so the schema applies directly). |
 | `test/valid/*.yml` | Conformance corpus: every generator must accept these. |
-| `test/invalid/*.yml` | Conformance corpus: every generator must reject these. |
+| `test/invalid/*.yml` | Conformance corpus: every generator *and* the schema must reject these. |
+| `test/invalid-semantic/*.yml` | Conformance corpus: every generator must reject these, but the schema accepts them — what is wrong is a relationship between entries, which JSON Schema cannot express. |
 
 ## Why this file exists
 
@@ -131,12 +132,40 @@ than generating code that silently does the wrong thing.
 | `interthread`, `interprocess`, `intermodule` | yes | yes |
 | `scheme: PROTOBUF` | yes | yes |
 | multiple portals per layer (`alias`) | yes | yes |
+| generated module of group constants and accessors | yes | yes |
 
 Reserved for future use, and rejected by both generators today: the `intervehicle` layer, and the
 `DCCL`, `JSON`, `CSTR` and `MAVLINK` schemes.
 
+An `alias` names the accessor the application calls, but only the layer crosses into C++, so it
+cannot distinguish two portals on the same layer that declare the same scheme, type and group.
+Rather than silently resolve that to whichever came first, both generators reject it — declare the
+portals with distinct groups or types.
+
+## What a generator produces
+
+Each generator writes two files from the interface file: the C++ glue that makes the statically
+typed Goby calls, and a module in its own language holding the declared groups and one accessor
+per portal. The group constant is the `group` expression, which is the name the C++ glue matches
+on, so an application names its groups rather than repeating the expression as a string.
+
+| | Julia | Python |
+|--|-------|--------|
+| C++ glue | `<target>.cpp` | `<target>.cpp` |
+| language module | `<target>_goby.jl`, module `<name>Goby` | `<name_snake>_goby.py` |
+
 ## Conformance corpus
 
-`test/valid` and `test/invalid` are exercised by both generators. When adding a feature to the
-format, add cases to the corpus in the same commit — the corpus, not the prose, is what keeps the
-two generators honest.
+`test/valid`, `test/invalid` and `test/invalid-semantic` are exercised by both generators. When
+adding a feature to the format, add cases to the corpus in the same commit — the corpus, not the
+prose, is what keeps the two generators honest. A case belongs in `invalid-semantic` rather than
+`invalid` when the schema cannot express the rule, which is anything relating two entries to each
+other; the schema is checked against both, so putting one in the wrong place fails.
+
+Run both over the corpus with the `goby_test_interface_conformance` test:
+
+    cmake -Denable_testing=ON -Dbuild_julia=ON -Denable_interface_conformance_test=ON ..
+
+It is off by default because it starts Julia once per case, which takes a couple of minutes; CI
+runs it on every commit. `goby_test_julia_app` and `goby_test_python_app` then compile what each
+generator writes, and both run by default.
