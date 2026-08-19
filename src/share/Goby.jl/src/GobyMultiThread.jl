@@ -36,6 +36,32 @@ task_interthread_channels[MultiThread.main_task_id] = Channel(channel_size)
 group_interthread_channels=Dict{String, Vector{Channel}}()
 group_interthread_channels_lock = Threads.ReentrantLock()
 
+# which task asked for each C++ subscription, so that a message arriving on the C++ thread is
+# delivered to the task that wants it rather than always to Main. Keyed the same way the C++
+# side matches: (layer, scheme, type name, group).
+const SubscriptionKey = Tuple{Int32, Int, String, String}
+cxx_subscriber_tasks = Dict{SubscriptionKey, Vector{TaskID}}()
+cxx_subscriber_tasks_lock = Threads.ReentrantLock()
+
+function record_cxx_subscriber(key::SubscriptionKey, task_id::TaskID)
+    Threads.lock(cxx_subscriber_tasks_lock) do
+        tasks = get!(cxx_subscriber_tasks, key) do
+            Vector{TaskID}()
+        end
+        if !(task_id in tasks)
+            push!(tasks, task_id)
+        end
+    end
+end
+
+function cxx_subscriber_channels(key::SubscriptionKey)
+    Threads.lock(cxx_subscriber_tasks_lock) do
+        # anything not registered goes to Main, which is where it went before tasks could subscribe
+        task_ids = get(cxx_subscriber_tasks, key, [MultiThread.main_task_id])
+        return [task_interthread_channels[id] for id in task_ids]
+    end
+end
+
 # Check for and intercept interthread publications
 # Return true if we did, false if this isn't our publication
 function check_and_publish(app, layer, group, msg)
@@ -58,21 +84,40 @@ end
 
 function check_and_subscribe(layer, group, callback::Function)
     layer_int::Int32 = Int32(layer)
-    if layer_int == Int32(Goby.INTERTHREAD)        
+    if layer_int == Int32(Goby.INTERTHREAD)
         task_id = MultiThread.TaskID(Threads.threadid())
         MultiThread.subscribe_interthread(task_id, group, callback)
         return true
-    elseif Threads.threadid() != MultiThread.main_task_id.id
-        throw(AssertionError("subscribe for layer $layer is not yet supported on non-Main threads"))     
     end
 
-    # Pass back to normal subscribe
+    # every other layer needs the scheme and type inferred first, so it is finished by
+    # check_and_cxx_subscribe once Goby.subscribe knows them
     return false
+end
+
+# Registers the subscription with C++ on the task that owns the application, and remembers which
+# task to hand the messages to. Returns true when it took over the call.
+function check_and_cxx_subscribe(app, layer_int::Int32, type_name::String, scheme, group)
+    # single threaded: there is one task, and cxx_task_id is not set up
+    if !Goby.is_multithreaded
+        return false
+    end
+
+    task_id = MultiThread.TaskID(Threads.threadid())
+    record_cxx_subscriber((layer_int, Int(scheme), type_name, string(group)), task_id)
+
+    if Threads.threadid() == MultiThread.cxx_task_id.id
+        return false
+    end
+
+    put!(task_interthread_channels[MultiThread.cxx_task_id],
+         (:cxx_subscribe, app, layer_int, type_name, scheme, group))
+    return true
 end
 
 function check_and_receive(layer, type_name, scheme, group, bytes)
     if Threads.threadid() == MultiThread.cxx_task_id.id
-        receive_forward_interprocess(layer, type_name, scheme, group, bytes)
+        receive_forward_cxx(layer, type_name, scheme, group, bytes)
         return true
     end
     return false
@@ -93,9 +138,10 @@ function publish_forward_cxx(app, layer, group, msg)
     put!(task_interthread_channels[MultiThread.cxx_task_id], (:cxx_publish, app, layer, group, msg))
 end
         
-function receive_forward_interprocess(layer, type_name, scheme, group, bytes)
-    # TODO - support non-main thread subscribe for non-interthread messages
-    put!(task_interthread_channels[MultiThread.main_task_id], (:cxx_receive, layer, type_name, scheme, group, bytes))
+function receive_forward_cxx(layer, type_name, scheme, group, bytes)
+    for channel in cxx_subscriber_channels((Int32(layer), Int(scheme), string(type_name), string(group)))
+        put!(channel, (:cxx_receive, layer, type_name, scheme, group, bytes))
+    end
 end
 
 
@@ -273,6 +319,14 @@ function task_channel_check(task_id::TaskID)
         group = packet[4]
         msg = packet[5]
         Goby.publish(app, layer, group, msg)
+    elseif type == :cxx_subscribe
+        # runs on the task that owns the application, whichever task asked for it
+        app = packet[2]
+        layer_int = packet[3]
+        type_name = packet[4]
+        scheme = packet[5]
+        group = packet[6]
+        Goby.cxx_subscribe(app, layer_int, type_name, scheme, group, "receive", "Goby")
     elseif type == :cxx_receive
         layer = packet[2]
         type_name = packet[3]

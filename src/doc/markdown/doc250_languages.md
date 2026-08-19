@@ -153,3 +153,7 @@ modules can live in different directories without shadowing each other.
 The Julia bindings predate the Python ones and use CxxWrap.jl. Julia has no classes, so its API is
 a set of functions taking the application object. See `share/goby/Goby.jl/README.md` for the
 Julia API and usage examples.
+
+Unlike Python, Julia supports multi-threaded applications: `Goby.run()` takes a list of task
+modules and runs each on its own Julia thread, with `Goby.publish()` and `Goby.subscribe()`
+available from any of them on every layer.
