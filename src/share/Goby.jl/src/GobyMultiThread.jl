@@ -46,17 +46,14 @@ function check_and_publish(app, layer, group, msg)
         publish_interthread(task_id, group, msg)
         return true
     elseif Threads.threadid() == MultiThread.cxx_task_id.id
-        # Pass back to normal publish
+        # this task owns the C++ application, so publish straight through
         return false
-    elseif Threads.threadid() != MultiThread.main_task_id.id
-        throw(AssertionError("publish for layer $layer is not yet supported on non-Main threads (from $task_id)"))
     else
-        publish_forward_interprocess(app, layer, group, msg)
+        # every other task hands the message to the one that does, which is what a C++ thread's
+        # InterProcessForwarder does with its inner interthread transporter
+        publish_forward_cxx(app, layer, group, msg)
         return true
-    end    
-
-    # Pass back to normal publish
-    return false
+    end
 end
 
 function check_and_subscribe(layer, group, callback::Function)
@@ -91,7 +88,8 @@ function publish_interthread(task_id::TaskID, group, msg)
     end
 end
 
-function publish_forward_interprocess(app, layer, group, msg)
+# any layer the C++ side handles, not just interprocess: the layer is passed through untouched
+function publish_forward_cxx(app, layer, group, msg)
     put!(task_interthread_channels[MultiThread.cxx_task_id], (:cxx_publish, app, layer, group, msg))
 end
         
