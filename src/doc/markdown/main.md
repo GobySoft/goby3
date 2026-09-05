@@ -53,6 +53,10 @@ The core `libgoby.so` is comprised of several conceptual components:
 
   * [moos](doc600_moos.md) - classes, applications (e.g. pAcommsHandler and iFrontSeat), and functions for interoperating between Goby and the [MOOS](https://github.com/themoos/core-moos) middleware.
 
+### Maintenance
+
+  * [Cleanups deferred to Goby 4](doc990_v4_cleanup.md) - changes that are worth making but that break released API, ABI or the configuration command line.
+
 ## Publications
 
   * T. Schneider, [Goby3: A new open-source middleware for nested communication on autonomous marine vehicles](http://gobysoft.org/dl/schneider-auv-2016-goby3.pdf). IEEE AUV 2016 / Tokyo.

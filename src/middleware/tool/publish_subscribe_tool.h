@@ -47,6 +47,11 @@
 #include "goby/util/debug_logger.h"
 #include "goby/util/debug_logger/flex_ostream.h"
 
+// after the marshalling headers: the transporters they pull in resolve scheme<Data>() at
+// template definition, so each scheme must already be declared
+#include "goby/middleware/application/single_thread.h"
+#include "goby/middleware/application/tool.h"
+
 namespace goby
 {
 namespace middleware
@@ -219,6 +224,65 @@ void subscribe_tool_impl(
         },
         schemes, cfg.type_regex(), cfg.group_regex());
 }
+
+/// \brief Application implementing "goby <impl> publish" for a given interprocess implementation.
+///
+/// \tparam ImplementationTag Tag selecting the interprocess implementation
+///         (e.g. udpm::detail::InterProcessTag)
+/// \tparam PublishConfig Config type accepted by publish_tool_impl()
+template <typename ImplementationTag, typename PublishConfig>
+class PublishToolApplication
+    : public middleware::SingleThreadApplicationFor<PublishConfig, ImplementationTag>,
+      public middleware::ToolSharedLibraryLoader
+{
+    using Base = middleware::SingleThreadApplicationFor<PublishConfig, ImplementationTag>;
+    using Traits = middleware::detail::implementation_traits<ImplementationTag>;
+
+  public:
+    PublishToolApplication()
+        : Base(1.0 * boost::units::si::hertz),
+          middleware::ToolSharedLibraryLoader(this->app_cfg().load_shared_library())
+    {
+        publish_tool_impl(this->interprocess(), this->cfg(),
+                          std::string("goby ") + Traits::name + " publish");
+    }
+    ~PublishToolApplication() override = default;
+
+  private:
+    void loop() override
+    {
+        // quit on the second call, which gives the publish time to go through
+        if (++loop_count_ > 1)
+            this->quit(0);
+    }
+
+    int loop_count_{0};
+};
+
+/// \brief Application implementing "goby <impl> subscribe" for a given interprocess implementation.
+///
+/// \tparam ImplementationTag Tag selecting the interprocess implementation
+///         (e.g. udpm::detail::InterProcessTag)
+/// \tparam SubscribeConfig Config type accepted by subscribe_tool_impl()
+template <typename ImplementationTag, typename SubscribeConfig>
+class SubscribeToolApplication
+    : public middleware::SingleThreadApplicationFor<SubscribeConfig, ImplementationTag>,
+      public middleware::ToolSharedLibraryLoader
+{
+    using Traits = middleware::detail::implementation_traits<ImplementationTag>;
+
+  public:
+    SubscribeToolApplication()
+        : middleware::ToolSharedLibraryLoader(this->app_cfg().load_shared_library())
+    {
+        subscribe_tool_impl(this->interprocess(), this->cfg(), plugins_,
+                            std::string("goby::") + Traits::name + "::_internal.*");
+    }
+    ~SubscribeToolApplication() override = default;
+
+  private:
+    std::map<int, std::unique_ptr<goby::middleware::log::LogPlugin>> plugins_;
+};
 
 } // namespace tool
 } // namespace middleware

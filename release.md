@@ -23,6 +23,13 @@ Enable with `-Dbuild_python=ON` (requires `pybind11-dev`).
 
 - Factored the language-neutral parts of the Julia binding support (`PubSubLayer`, `Identifier`, the marshalling helpers) into `goby/middleware/languages/common/interface.h`, shared with the new Python bindings. The Julia names are unchanged.
 - Factored the simulation time setup shared by `goby::run` and the language bindings into `goby/middleware/application/detail/simulation_time.h`, removing a copy of it from the Julia binding.
+- Added `goby::middleware::detail::implementation_traits`, which maps an interprocess `ImplementationTag` to the portal that implements it, its configuration type and its short name, so that generic code can be written against a tag alone. Each implementation specializes it alongside its portal.
+- Added `SingleThreadApplicationFor` and `MultiThreadApplicationFor`, which select the interprocess implementation by tag as `SimpleThread` already did, rather than by portal template.
+- Factored the `goby <impl> publish` and `goby <impl> subscribe` applications into `goby::middleware::tool::PublishToolApplication` and `SubscribeToolApplication`, removing the near-identical copies carried by `goby_zeromq_tool` and `goby_udpm_tool`.
+
+### Documentation
+
+- Added `doc990_v4_cleanup.md`, a running list of cleanups that have to wait for Goby 4 because they break released API, ABI or the configuration command line.
 
 ## Version 3.5.1
 

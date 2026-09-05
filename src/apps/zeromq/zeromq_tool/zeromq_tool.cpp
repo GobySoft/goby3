@@ -25,8 +25,8 @@
 #include "goby/middleware/application/interface.h"
 #include "goby/middleware/application/tool.h"
 #include "goby/middleware/tool/publish_subscribe_tool.h"
-#include "goby/zeromq/application/single_thread.h"
 #include "goby/zeromq/protobuf/tool_config.pb.h"
+#include "goby/zeromq/transport/interprocess.h"
 
 namespace goby
 {
@@ -61,27 +61,13 @@ class ZeroMQTool : public goby::middleware::Application<protobuf::ZeroMQToolConf
   private:
 };
 
-class PublishTool : public goby::zeromq::SingleThreadApplication<protobuf::PublishToolConfig>,
-                    public goby::middleware::ToolSharedLibraryLoader
-{
-  public:
-    PublishTool();
-    ~PublishTool() override {}
-    void loop() override;
+using PublishTool =
+    goby::middleware::tool::PublishToolApplication<goby::zeromq::detail::InterProcessTag,
+                                                   protobuf::PublishToolConfig>;
 
-  private:
-};
-
-class SubscribeTool : public goby::zeromq::SingleThreadApplication<protobuf::SubscribeToolConfig>,
-                      public goby::middleware::ToolSharedLibraryLoader
-{
-  public:
-    SubscribeTool();
-    ~SubscribeTool() override {}
-
-  private:
-    std::map<int, std::unique_ptr<goby::middleware::log::LogPlugin>> plugins_;
-};
+using SubscribeTool =
+    goby::middleware::tool::SubscribeToolApplication<goby::zeromq::detail::InterProcessTag,
+                                                     protobuf::SubscribeToolConfig>;
 
 } // namespace zeromq
 } // namespace apps
@@ -142,27 +128,4 @@ goby::apps::zeromq::ZeroMQTool::ZeroMQTool()
     }
 
     quit(0);
-}
-
-goby::apps::zeromq::PublishTool::PublishTool()
-    : goby::zeromq::SingleThreadApplication<protobuf::PublishToolConfig>(1.0 *
-                                                                         boost::units::si::hertz),
-      goby::middleware::ToolSharedLibraryLoader(app_cfg().load_shared_library())
-{
-    goby::middleware::tool::publish_tool_impl(interprocess(), cfg(), "goby zeromq publish");
-}
-
-void goby::apps::zeromq::PublishTool::loop()
-{
-    static int i = 0;
-    ++i;
-    if (i > 1) // exit on second call of loop, plenty of time for publish to go through
-        quit(0);
-}
-
-goby::apps::zeromq::SubscribeTool::SubscribeTool()
-    : goby::middleware::ToolSharedLibraryLoader(app_cfg().load_shared_library())
-{
-    goby::middleware::tool::subscribe_tool_impl(interprocess(), cfg(), plugins_,
-                                                "goby::zeromq::_internal.*");
 }
