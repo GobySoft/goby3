@@ -49,14 +49,6 @@ ABI change that holds this back.
 two structs holding one string. A `GOBY_DECLARE_TRANSPORT_TAGS(ns, "prefix")` macro would make each
 one line. Safe in itself, but only worth doing alongside the tag changes above.
 
-### Give the portals a shared receive queue
-
-Each portal reimplements the same handoff from its I/O thread to `_poll()`: a deque behind a mutex,
-and a brief acquisition of the Poller's mutex before notifying its condition variable so that a
-wakeup cannot be missed between the Poller releasing the lock and waiting on it. The subtlety of
-that handshake is the reason to write it once
-(`udpm/transport/interprocess.h`, `zeromq/transport/interprocess.cpp`).
-
 ### Hand the receive path parsed fields
 
 `InterProcessPortalCommon::_handle_received_data()` takes the identifier, a null delimiter and the

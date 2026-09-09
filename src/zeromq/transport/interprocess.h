@@ -50,6 +50,7 @@
 #include "goby/middleware/protobuf/serializer_transporter.pb.h" // for Seri...
 #include "goby/middleware/protobuf/transporter_config.pb.h"     // for Tran...
 #include "goby/middleware/transport/detail/implementation_traits.h"
+#include "goby/middleware/transport/detail/poller_notify.h"
 #include "goby/middleware/transport/interface.h"              // for Poll...
 #include "goby/middleware/transport/interprocess.h"           // for Inte...
 #include "goby/middleware/transport/null.h"                   // for Null...
@@ -156,6 +157,7 @@ class InterProcessPortalReadThread
   public:
     InterProcessPortalReadThread(const protobuf::InterProcessPortalConfig& cfg,
                                  zmq::context_t& context, std::atomic<bool>& alive,
+                                 std::shared_ptr<std::mutex> poller_mutex,
                                  std::shared_ptr<std::condition_variable> poller_cv);
     void run();
     ~InterProcessPortalReadThread()
@@ -185,6 +187,7 @@ class InterProcessPortalReadThread
     zmq::socket_t subscribe_socket_;
     zmq::socket_t manager_socket_;
     std::atomic<bool>& alive_;
+    std::shared_ptr<std::mutex> poller_mutex_;
     std::shared_ptr<std::condition_variable> poller_cv_;
     std::vector<zmq::pollitem_t> poll_items_;
     enum
@@ -226,7 +229,9 @@ class InterProcessPortalImplementation
         : cfg_(cfg),
           zmq_context_(cfg.zeromq_number_io_threads()),
           zmq_main_(zmq_context_),
-          zmq_read_thread_(cfg_, zmq_context_, zmq_alive_, middleware::PollerInterface::cv())
+          zmq_read_thread_(cfg_, zmq_context_, zmq_alive_,
+                           middleware::PollerInterface::poll_mutex(),
+                           middleware::PollerInterface::cv())
     {
         _init();
     }
@@ -237,7 +242,9 @@ class InterProcessPortalImplementation
           cfg_(cfg),
           zmq_context_(cfg.zeromq_number_io_threads()),
           zmq_main_(zmq_context_),
-          zmq_read_thread_(cfg_, zmq_context_, zmq_alive_, middleware::PollerInterface::cv())
+          zmq_read_thread_(cfg_, zmq_context_, zmq_alive_,
+                           middleware::PollerInterface::poll_mutex(),
+                           middleware::PollerInterface::cv())
     {
         _init();
     }

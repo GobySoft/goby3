@@ -26,6 +26,11 @@ Enable with `-Dbuild_python=ON` (requires `pybind11-dev`).
 - Added `goby::middleware::detail::implementation_traits`, which maps an interprocess `ImplementationTag` to the portal that implements it, its configuration type and its short name, so that generic code can be written against a tag alone. Each implementation specializes it alongside its portal.
 - Added `SingleThreadApplicationFor` and `MultiThreadApplicationFor`, which select the interprocess implementation by tag as `SimpleThread` already did, rather than by portal template.
 - Factored the `goby <impl> publish` and `goby <impl> subscribe` applications into `goby::middleware::tool::PublishToolApplication` and `SubscribeToolApplication`, removing the near-identical copies carried by `goby_zeromq_tool` and `goby_udpm_tool`.
+- Factored the Poller wakeup handshake into `goby::middleware::detail::notify_poller()`, used by the interthread subscription store and by both interprocess portals. The two transports queue received data differently (a deque for UDPM, a ZeroMQ inproc socket pair for ZeroMQ); what they share is the requirement to take the poll mutex before signalling the condition variable.
+
+### Bugs
+
+- Fixed a lost wakeup in the ZeroMQ interprocess portal. Its read thread signalled the Poller's condition variable without first taking the poll mutex, so a signal raised between the poller's last unsuccessful poll and its `wait()` had no waiter and was dropped, leaving data sitting in the inproc socket until some later event polled it. Applications that poll without a loop frequency (`loop_freq_hertz` of 0, which never times out) were the most exposed. The interthread layer and the UDPM portal already took the mutex.
 
 ### Documentation
 
