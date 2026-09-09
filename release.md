@@ -32,6 +32,10 @@ Enable with `-Dbuild_python=ON` (requires `pybind11-dev`).
 
 - Fixed a lost wakeup in the ZeroMQ interprocess portal. Its read thread signalled the Poller's condition variable without first taking the poll mutex, so a signal raised between the poller's last unsuccessful poll and its `wait()` had no waiter and was dropped, leaving data sitting in the inproc socket until some later event polled it. Applications that poll without a loop frequency (`loop_freq_hertz` of 0, which never times out) were the most exposed. The interthread layer and the UDPM portal already took the mutex.
 
+### Build
+
+- `DEPENDENCIES -z` installs the Zenoh dependencies, adding Eclipse's Debian repository (https://download.eclipse.org/zenoh/debian-repo/) rather than mirroring Zenoh into packages.gobysoft.org. Nothing is added to apt unless `-z` is given, or `-a`, which resolves the full Build-Depends list and so needs the repository too.
+
 ### Documentation
 
 - Added `doc990_v4_cleanup.md`, a running list of cleanups that have to wait for Goby 4 because they break released API, ABI or the configuration command line.
