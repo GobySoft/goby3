@@ -275,6 +275,8 @@ workflows:
           <<: *filter-template-non-master
       - amd64-resolute-julia-build:
           <<: *filter-template-non-master
+      - amd64-resolute-zenoh-build:
+          <<: *filter-template-non-master
 
       - get-orig-source:
           <<: *filter-template-master-only
@@ -565,6 +567,60 @@ jobs:
                 exit 1
               fi
             done
+      - run: *run-tests
+
+  # The only job with Zenoh. Eclipse publishes it rather than the distributions or
+  # packages.gobysoft.org, so its repository is added here rather than in the images and every
+  # other job keeps building without it exactly as before.
+  amd64-resolute-zenoh-build:
+    docker:
+      - image: ubuntu:resolute
+    resource_class: large
+    working_directory: /root/goby3
+    environment:
+      <<: *environment-template-ccache
+      DEBIAN_FRONTEND: "noninteractive"
+      DEBIAN_PRIORITY: "critical"
+    steps:
+      - run:
+          name: Install packages server
+          command: |
+            apt-get update && apt-get -y install dirmngr gpg curl
+            export COMPONENT=release
+            export GOBYSOFT_SIGNING_KEY=19478082E2F8D3FE
+            install -d -m 0755 /etc/apt/keyrings
+            gpg --keyserver keyserver.ubuntu.com --recv-keys ${GOBYSOFT_SIGNING_KEY} && gpg --export ${GOBYSOFT_SIGNING_KEY} >/etc/apt/keyrings/gobysoft.gpg
+            echo "deb [signed-by=/etc/apt/keyrings/gobysoft.gpg] http://packages.gobysoft.org/$(. /etc/os-release; echo "$ID")/${COMPONENT}/ $(. /etc/os-release; echo "$VERSION_CODENAME")/" >/etc/apt/sources.list.d/gobysoft_${COMPONENT}.list
+      - run:
+          name: Install Eclipse Zenoh package repository
+          # flat repository: one set of packages for every release, so no codename component
+          command: |
+            curl -fsSL https://download.eclipse.org/zenoh/debian-repo/zenoh-public-key | gpg --dearmor -o /etc/apt/keyrings/zenoh.gpg
+            echo "deb [signed-by=/etc/apt/keyrings/zenoh.gpg] https://download.eclipse.org/zenoh/debian-repo/ /" >/etc/apt/sources.list.d/eclipse_zenoh.list
+      - run:
+          name: Install apt packages
+          command: |
+            apt-get update &&
+            apt-get -y install ccache git build-essential cmake libboost-dev libboost-system-dev libboost-date-time-dev libboost-program-options-dev libboost-filesystem-dev libboost-process-dev libprotobuf-dev libprotoc-dev protobuf-compiler libproj-dev libdccl4-dev dccl4-compiler libzenohc-dev libzenohcpp-dev
+      - checkout
+      - restore_cache: *restore-ccache
+      - run:
+          name: Build
+          # build_zenoh is requested explicitly rather than left to autodetection, so that a
+          # missing Zenoh fails the job instead of quietly dropping its tests from it
+          command: mkdir -p build && cd build && cmake -Denable_testing=ON -Dbuild_zenoh=ON -DCMAKE_C_COMPILER_LAUNCHER=ccache -DCMAKE_CXX_COMPILER_LAUNCHER=ccache .. && cmake --build . -- -j4
+      - run:
+          name: Check that the Zenoh tests are registered
+          command: |
+            cd build
+            for _test in goby_test_zenoh_key_expression goby_test_middleware_single_thread_app1_zenoh goby_test_middleware_multi_thread_app1_zenoh goby_test_middleware_interprocess_forwarder_zenoh; do
+              if ! ctest -N -R "^${_test}$" | grep -q "${_test}"; then
+                echo "${_test} is not registered: it would be silently skipped"
+                exit 1
+              fi
+            done
+      - run: *run-ccache-stats
+      - save_cache: *save-ccache
       - run: *run-tests
 
   amd64-bookworm-deb-build:
