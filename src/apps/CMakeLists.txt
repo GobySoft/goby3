@@ -3,6 +3,10 @@ add_subdirectory(util)
 add_subdirectory(middleware)
 add_subdirectory(udpm)
 
+if(build_zenoh)
+  add_subdirectory(zenoh)
+endif()
+
 if(build_zeromq)
   add_subdirectory(zeromq)
 endif()

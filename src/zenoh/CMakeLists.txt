@@ -1,5 +1,6 @@
 protobuf_generate_cpp_dccl(PROTO_SRCS PROTO_HDRS
   protobuf/interprocess_config.proto
+  protobuf/tool_config.proto
   )
 
 set(SRC

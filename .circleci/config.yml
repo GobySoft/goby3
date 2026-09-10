@@ -137,6 +137,16 @@ job-template-deb-amd64: &job-template-deb-amd64
   <<: *job-template-amd64
   steps:
     - run: *run-add-continuous-packages
+    - run: &run-add-zenoh-packages
+        name: Add the Eclipse Zenoh package repository
+        # Eclipse publishes Zenoh rather than the distributions or packages.gobysoft.org, and the
+        # Zenoh build dependency is [amd64]-qualified, so only the native builds resolve it.
+        # Flat repository: one set of packages for every release, so no codename component.
+        command: |
+          apt-get update && apt-get -y install curl gnupg &&
+          install -d -m 0755 /etc/apt/keyrings &&
+          curl -fsSL https://download.eclipse.org/zenoh/debian-repo/zenoh-public-key | gpg --dearmor -o /etc/apt/keyrings/zenoh.gpg &&
+          echo "deb [signed-by=/etc/apt/keyrings/zenoh.gpg] https://download.eclipse.org/zenoh/debian-repo/ /" > /etc/apt/sources.list.d/eclipse_zenoh.list
     - run: *run-update-apt
     - run: &run-import-gpg
         name: Import GPG key
@@ -245,6 +255,9 @@ filter-template-master-only: &filter-template-master-only
     branches:
       only:
         - "3.0"
+        # exercises the Debian packaging for the Zenoh transport, which cannot be built from 3.0
+        # until it lands there; drop this line once it has
+        - "claude/zenoh-goby-middleware-ncjtfi"
 
 filter-template-non-master: &filter-template-non-master
   filters:

@@ -45,6 +45,10 @@ message GobyToolConfig
             short_help_msg: "Interact with UDPM Goby pub/sub",
             external_command: "goby_udpm_tool"
         }];
+        zenoh = 12 [(goby.ev).cfg = {
+            short_help_msg: "Interact with Zenoh Goby pub/sub",
+            external_command: "goby_zenoh_tool"
+        }];
 
         // middleware/marshalling
         protobuf = 20 [(goby.ev).cfg = {

@@ -40,6 +40,7 @@ Goby's interprocess and intermodule layers can now use [Zenoh](https://zenoh.io)
 - A Goby identifier maps onto the key expression `<key_prefix>/<platform>/<layer>/<group>/<scheme>/<type>/<process>/<thread>`, with the payload carrying only the serialized bytes. Characters Zenoh cannot represent in a key expression chunk are percent-encoded.
 - The layer chunk means one Zenoh session carries both the interprocess and intermodule layers, where the other two implementations need a second port or socket.
 - No hold state is implemented, as for UDPM: `ready()` is a no-op and `hold_state()` is always false.
+- `goby_zenoh_tool` provides `goby zenoh publish` and `goby zenoh subscribe`, as `goby_udpm_tool` and `goby_zeromq_tool` do for their transports.
 - Downstream projects reach the library with `find_package(GOBY 3.0 ... zenoh)`, as for `zeromq` and `moos`; `goby_zenoh` links Zenoh's imported targets, so the package configuration resolves those first.
 
 ### Build
