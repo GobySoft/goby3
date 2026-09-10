@@ -31,6 +31,9 @@
 #elif defined(test_for_udpm)
 #include "goby/udpm/application/single_thread.h"
 #include "goby/test/middleware/single_thread_app1/udpm.pb.h"
+#elif defined(test_for_zenoh)
+#include "goby/test/middleware/single_thread_app1/zenoh.pb.h"
+#include "goby/zenoh/application/single_thread.h"
 #else
 #error "No test_for_<impl> defined"
 #endif
@@ -54,6 +57,9 @@ using TestConfig = TestZeroMQConfig;
 #elif defined(test_for_udpm)
 using Base = goby::udpm::SingleThreadApplication<TestUDPMConfig>;
 using TestConfig = TestUDPMConfig;
+#elif defined(test_for_zenoh)
+using Base = goby::zenoh::SingleThreadApplication<TestZenohConfig>;
+using TestConfig = TestZenohConfig;
 #endif
 
 const std::string platform_name{"single_thread_app1"};
@@ -75,6 +81,11 @@ class TestConfigurator : public goby::middleware::ProtobufConfigurator<TestConfi
 #if defined(test_for_zeromq)
         cfg.mutable_interprocess()->set_platform(platform_name);
         cfg.mutable_interprocess()->set_manager_timeout_seconds(5);
+#elif defined(test_for_zenoh)
+        cfg.mutable_interprocess()->set_platform(platform_name);
+        // Zenoh's default listen endpoint is tcp/[::]:0, which fails where IPv6 is unavailable;
+        // loopback also keeps the test off the host network
+        cfg.mutable_interprocess()->add_listen_endpoint("tcp/127.0.0.1:0");
 #endif
     }
 };

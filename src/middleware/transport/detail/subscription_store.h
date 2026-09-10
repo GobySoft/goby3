@@ -36,6 +36,8 @@
 #include <unordered_map>
 #include <vector>
 
+#include "goby/middleware/transport/detail/poller_notify.h"
+
 #include "goby/middleware/transport/publisher.h"
 
 namespace goby
@@ -215,18 +217,9 @@ template <typename Data> class SubscriptionStore : public SubscriptionStoreBase
             }
         }
 
-        // unlock and notify condition variables from local vector
+        // now that the subscription and data mutexes are released, wake the subscriber threads
         for (const auto& data_protection : cv_to_notify)
-        {
-            {
-                // lock to ensure the other thread isn't in the limbo region
-                // between _poll_all() and wait(), where the condition variable
-                // signal would be lost
-
-                std::lock_guard<std::mutex> l(*data_protection.poller_mutex);
-            }
-            data_protection.poller_cv->notify_all();
-        }
+            notify_poller(*data_protection.poller_mutex, *data_protection.poller_cv);
     }
 
   private:

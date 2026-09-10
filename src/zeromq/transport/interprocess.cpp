@@ -279,12 +279,14 @@ void goby::zeromq::InterProcessPortalMainThread::send_control_msg(
 //
 goby::zeromq::InterProcessPortalReadThread::InterProcessPortalReadThread(
     const protobuf::InterProcessPortalConfig& cfg, zmq::context_t& context,
-    std::atomic<bool>& alive, std::shared_ptr<std::condition_variable> poller_cv)
+    std::atomic<bool>& alive, std::shared_ptr<std::mutex> poller_mutex,
+    std::shared_ptr<std::condition_variable> poller_cv)
     : cfg_(cfg),
       control_socket_(context, ZMQ_PAIR),
       subscribe_socket_(context, ZMQ_SUB),
       manager_socket_(context, ZMQ_REQ),
       alive_(alive),
+      poller_mutex_(std::move(poller_mutex)),
       poller_cv_(std::move(poller_cv))
 {
     poll_items_.resize(NUMBER_SOCKETS);
@@ -518,7 +520,7 @@ void goby::zeromq::InterProcessPortalReadThread::send_control_msg(
     if (zmq_control_msg.data())
         GOBY_TSAN_RELEASE(zmq_control_msg.data());
     control_socket_.send(zmq_control_msg, zmq_send_flags_none);
-    poller_cv_->notify_all();
+    middleware::detail::notify_poller(*poller_mutex_, *poller_cv_);
 }
 
 //

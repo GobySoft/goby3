@@ -49,17 +49,19 @@
 #include "goby/middleware/marshalling/interface.h"              // for Seri...
 #include "goby/middleware/protobuf/serializer_transporter.pb.h" // for Seri...
 #include "goby/middleware/protobuf/transporter_config.pb.h"     // for Tran...
-#include "goby/middleware/transport/interface.h"                // for Poll...
-#include "goby/middleware/transport/interprocess.h"             // for Inte...
-#include "goby/middleware/transport/null.h"                     // for Null...
-#include "goby/middleware/transport/serialization_handlers.h"   // for Seri...
-#include "goby/middleware/transport/subscriber.h"               // for Subs...
-#include "goby/time/system_clock.h"                             // for Syst...
-#include "goby/util/debug_logger/flex_ostream.h"                // for Flex...
-#include "goby/zeromq/transport/detail/tags.h"                  // for InterProcessTag
-#include "goby/util/debug_logger/flex_ostreambuf.h"             // for lock
-#include "goby/zeromq/protobuf/interprocess_config.pb.h"        // for Inte...
-#include "goby/zeromq/protobuf/interprocess_zeromq.pb.h"        // for Inpr...
+#include "goby/middleware/transport/detail/implementation_traits.h"
+#include "goby/middleware/transport/detail/poller_notify.h"
+#include "goby/middleware/transport/interface.h"              // for Poll...
+#include "goby/middleware/transport/interprocess.h"           // for Inte...
+#include "goby/middleware/transport/null.h"                   // for Null...
+#include "goby/middleware/transport/serialization_handlers.h" // for Seri...
+#include "goby/middleware/transport/subscriber.h"             // for Subs...
+#include "goby/time/system_clock.h"                           // for Syst...
+#include "goby/util/debug_logger/flex_ostream.h"              // for Flex...
+#include "goby/util/debug_logger/flex_ostreambuf.h"           // for lock
+#include "goby/zeromq/protobuf/interprocess_config.pb.h"      // for Inte...
+#include "goby/zeromq/protobuf/interprocess_zeromq.pb.h"      // for Inpr...
+#include "goby/zeromq/transport/detail/tags.h"                // for InterProcessTag
 
 #if ZMQ_VERSION <= ZMQ_MAKE_VERSION(4, 3, 1)
 #define USE_OLD_ZMQ_CPP_API
@@ -155,6 +157,7 @@ class InterProcessPortalReadThread
   public:
     InterProcessPortalReadThread(const protobuf::InterProcessPortalConfig& cfg,
                                  zmq::context_t& context, std::atomic<bool>& alive,
+                                 std::shared_ptr<std::mutex> poller_mutex,
                                  std::shared_ptr<std::condition_variable> poller_cv);
     void run();
     ~InterProcessPortalReadThread()
@@ -184,6 +187,7 @@ class InterProcessPortalReadThread
     zmq::socket_t subscribe_socket_;
     zmq::socket_t manager_socket_;
     std::atomic<bool>& alive_;
+    std::shared_ptr<std::mutex> poller_mutex_;
     std::shared_ptr<std::condition_variable> poller_cv_;
     std::vector<zmq::pollitem_t> poll_items_;
     enum
@@ -225,7 +229,9 @@ class InterProcessPortalImplementation
         : cfg_(cfg),
           zmq_context_(cfg.zeromq_number_io_threads()),
           zmq_main_(zmq_context_),
-          zmq_read_thread_(cfg_, zmq_context_, zmq_alive_, middleware::PollerInterface::cv())
+          zmq_read_thread_(cfg_, zmq_context_, zmq_alive_,
+                           middleware::PollerInterface::poll_mutex(),
+                           middleware::PollerInterface::cv())
     {
         _init();
     }
@@ -236,7 +242,9 @@ class InterProcessPortalImplementation
           cfg_(cfg),
           zmq_context_(cfg.zeromq_number_io_threads()),
           zmq_main_(zmq_context_),
-          zmq_read_thread_(cfg_, zmq_context_, zmq_alive_, middleware::PollerInterface::cv())
+          zmq_read_thread_(cfg_, zmq_context_, zmq_alive_,
+                           middleware::PollerInterface::poll_mutex(),
+                           middleware::PollerInterface::cv())
     {
         _init();
     }
@@ -483,6 +491,23 @@ using InterProcessForwarder =
     middleware::InterProcessForwarder<InnerTransporter, detail::InterProcessTag>;
 
 } // namespace zeromq
+} // namespace goby
+
+namespace goby
+{
+namespace middleware
+{
+namespace detail
+{
+template <> struct implementation_traits<goby::zeromq::detail::InterProcessTag>
+{
+    template <typename InnerTransporter>
+    using Portal = goby::zeromq::InterProcessPortal<InnerTransporter>;
+    using PortalConfig = goby::zeromq::protobuf::InterProcessPortalConfig;
+    static constexpr const char* name = "zeromq";
+};
+} // namespace detail
+} // namespace middleware
 } // namespace goby
 
 #endif

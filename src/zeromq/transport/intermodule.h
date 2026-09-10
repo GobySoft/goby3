@@ -24,6 +24,7 @@
 #ifndef GOBY_ZEROMQ_TRANSPORT_INTERMODULE_H
 #define GOBY_ZEROMQ_TRANSPORT_INTERMODULE_H
 
+#include "goby/middleware/transport/detail/implementation_traits.h"
 #include "goby/middleware/transport/intermodule.h"
 
 #include "goby/zeromq/transport/detail/tags.h"
@@ -43,6 +44,23 @@ using InterModuleForwarder =
     middleware::InterModuleForwarder<InnerTransporter, detail::InterModuleTag>;
 
 } // namespace zeromq
+} // namespace goby
+
+namespace goby
+{
+namespace middleware
+{
+namespace detail
+{
+template <> struct implementation_traits<goby::zeromq::detail::InterModuleTag>
+{
+    template <typename InnerTransporter>
+    using Portal = goby::zeromq::InterModulePortal<InnerTransporter>;
+    using PortalConfig = goby::zeromq::protobuf::InterProcessPortalConfig;
+    static constexpr const char* name = "zeromq";
+};
+} // namespace detail
+} // namespace middleware
 } // namespace goby
 
 #endif

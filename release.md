@@ -23,6 +23,34 @@ Enable with `-Dbuild_python=ON` (requires `pybind11-dev`).
 
 - Factored the language-neutral parts of the Julia binding support (`PubSubLayer`, `Identifier`, the marshalling helpers) into `goby/middleware/languages/common/interface.h`, shared with the new Python bindings. The Julia names are unchanged.
 - Factored the simulation time setup shared by `goby::run` and the language bindings into `goby/middleware/application/detail/simulation_time.h`, removing a copy of it from the Julia binding.
+- Added `goby::middleware::detail::implementation_traits`, which maps an interprocess `ImplementationTag` to the portal that implements it, its configuration type and its short name, so that generic code can be written against a tag alone. Each implementation specializes it alongside its portal.
+- Added `SingleThreadApplicationFor` and `MultiThreadApplicationFor`, which select the interprocess implementation by tag as `SimpleThread` already did, rather than by portal template.
+- Factored the `goby <impl> publish` and `goby <impl> subscribe` applications into `goby::middleware::tool::PublishToolApplication` and `SubscribeToolApplication`, removing the near-identical copies carried by `goby_zeromq_tool` and `goby_udpm_tool`.
+- Factored the Poller wakeup handshake into `goby::middleware::detail::notify_poller()`, used by the interthread subscription store and by both interprocess portals. The two transports queue received data differently (a deque for UDPM, a ZeroMQ inproc socket pair for ZeroMQ); what they share is the requirement to take the poll mutex before signalling the condition variable.
+
+### Bugs
+
+- Fixed a lost wakeup in the ZeroMQ interprocess portal. Its read thread signalled the Poller's condition variable without first taking the poll mutex, so a signal raised between the poller's last unsuccessful poll and its `wait()` had no waiter and was dropped, leaving data sitting in the inproc socket until some later event polled it. Applications that poll without a loop frequency (`loop_freq_hertz` of 0, which never times out) were the most exposed. The interthread layer and the UDPM portal already took the mutex.
+
+### Zenoh Support
+
+Goby's interprocess and intermodule layers can now use [Zenoh](https://zenoh.io) as an alternative to ZeroMQ and UDP Multicast. Enable with `-Dbuild_zenoh=ON` (requires `libzenohc-dev` and `libzenohcpp-dev`; see `DEPENDENCIES -z`).
+
+- Like UDPM and unlike ZeroMQ, the Zenoh portal is peer-to-peer and needs no broker; unlike UDPM, subscriptions are filtered at the source rather than every process parsing every message, and Zenoh handles fragmentation and reliability itself.
+- A Goby identifier maps onto the key expression `<key_prefix>/<platform>/<layer>/<group>/<scheme>/<type>/<process>/<thread>`, with the payload carrying only the serialized bytes. Characters Zenoh cannot represent in a key expression chunk are percent-encoded.
+- The layer chunk means one Zenoh session carries both the interprocess and intermodule layers, where the other two implementations need a second port or socket.
+- The hold is implemented with Zenoh liveliness tokens, so it needs no broker: `interprocess { hold { required_client: ... } }` buffers publications until every named client has called `ready()`, and a client that dies drops its token on its own. Waiters subscribe to the token space with history enabled, so a client that was ready first is still seen.
+- `goby_zenoh_tool` provides `goby zenoh publish` and `goby zenoh subscribe`, as `goby_udpm_tool` and `goby_zeromq_tool` do for their transports.
+- Downstream projects reach the library with `find_package(GOBY 3.0 ... zenoh)`, as for `zeromq` and `moos`; `goby_zenoh` links Zenoh's imported targets, so the package configuration resolves those first.
+
+### Build
+
+- `DEPENDENCIES -z` installs the Zenoh dependencies, adding Eclipse's Debian repository (https://download.eclipse.org/zenoh/debian-repo/) rather than mirroring Zenoh into packages.gobysoft.org. Nothing is added to apt unless `-z` is given, or `-a`, which resolves the full Build-Depends list and so needs the repository too.
+
+### Documentation
+
+- Added `doc990_v4_cleanup.md`, a running list of cleanups that have to wait for Goby 4 because they break released API, ABI or the configuration command line.
+- Added `doc750_zenoh.md`, covering the Zenoh transport's configuration, key expression layout and hold.
 
 ## Version 3.5.1
 
