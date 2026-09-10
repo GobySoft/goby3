@@ -139,8 +139,9 @@ job-template-deb-amd64: &job-template-deb-amd64
     - run: *run-add-continuous-packages
     - run: &run-add-zenoh-packages
         name: Add the Eclipse Zenoh package repository
-        # Eclipse publishes Zenoh rather than the distributions or packages.gobysoft.org, and the
-        # Zenoh build dependency is [amd64]-qualified, so only the native builds resolve it.
+        # Eclipse publishes Zenoh rather than the distributions or packages.gobysoft.org. The
+        # cross builds resolve libzenohc-dev for their host architecture from here too, so this
+        # step belongs to the template both they and the native builds share.
         # Flat repository: one set of packages for every release, so no codename component.
         command: |
           apt-get update && apt-get -y install curl gnupg &&
