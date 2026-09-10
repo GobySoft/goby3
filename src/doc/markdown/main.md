@@ -49,6 +49,10 @@ The core `libgoby.so` is comprised of several conceptual components:
 
   * [zeromq](doc500_zeromq.md) - implementation of the Goby3 interprocess portal using the [ZeroMQ](https://zeromq.org/) transport library.
 
+### Zenoh support library
+
+  * [zenoh](doc750_zenoh.md) - implementation of the Goby3 interprocess and intermodule portals using the [Zenoh](https://zenoh.io/) transport protocol.
+
 ### MOOS support library
 
   * [moos](doc600_moos.md) - classes, applications (e.g. pAcommsHandler and iFrontSeat), and functions for interoperating between Goby and the [MOOS](https://github.com/themoos/core-moos) middleware.
