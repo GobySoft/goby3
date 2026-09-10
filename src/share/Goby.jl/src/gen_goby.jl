@@ -287,9 +287,9 @@ end
     goby_gen_julia(in_yaml, out_jl)
 
 Writes the Julia side of the interface: the groups an application publishes and subscribes to,
-by name rather than as repeated string literals, and one accessor per portal. Publishing to a
-group Goby has no binding for fails at runtime, so the constant is what stops a typo becoming a
-message that goes nowhere.
+by name rather than as repeated string literals, and one accessor per portal. A group the
+generated C++ has no case for already terminates the application through GOBY_JULIA_FAIL when
+the call is reached; the constant moves that to an UndefVarError naming the typo.
 """
 function goby_gen_julia(in_yaml::String, out_jl::String)
     println("Generating $(out_jl) from $(in_yaml)")

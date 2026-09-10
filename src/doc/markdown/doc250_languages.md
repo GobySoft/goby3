@@ -221,3 +221,12 @@ modules can live in different directories without shadowing each other.
 The Julia bindings predate the Python ones and use CxxWrap.jl. Julia has no classes, so its API is
 a set of functions taking the application object. See `share/goby/Goby.jl/README.md` for the
 Julia API and usage examples.
+
+Julia applications can be multi-threaded, on the same model as the Python threads above:
+`Goby.run()` takes a list of task modules and runs each on its own Julia thread, and a publication
+or subscription on the outer layers from any of them is handed to the task that owns the C++
+application. `cxx_channel_check_frequency` takes the place of `interthread_poll_frequency_hertz`,
+and unlike Python's threads these run in parallel.
+
+Julia fixes its thread count at startup, so the application has to be launched with one thread per
+task module plus three; `goby_add_julia_app()`'s `THREADS` gives that to the generated launcher.
