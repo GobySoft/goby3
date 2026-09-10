@@ -104,7 +104,7 @@ goby.run(PythonDemo, argv=["python_demo", "-v"])       # an explicit command lin
 An invalid configuration is reported the way a C++ application reports it, and `goby.run()`
 returns a non-zero value rather than raising or exiting.
 
-### Threads, signals and the GIL
+### Signals and the GIL
 
 The Goby event loop runs in C++ with the Python global interpreter lock (GIL) released, and each callback into Python reacquires
 it. While the loop is running, Goby installs its own `SIGINT`/`SIGTERM` handlers in place of the
@@ -113,7 +113,75 @@ interpreter's, so that Ctrl-C asks the application to quit cleanly rather than r
 (no loop frequency, nothing arriving) will not notice the request until something wakes it; a
 second Ctrl-C restores the default handler and terminates the process.
 
-Multi-threaded Python applications are not yet supported; use `SingleThreadApplication`.
+### Threads
+
+An application launches threads written in Python, mirroring how a C++ application launches
+`SimpleThread`s. `Thread` comes from the generated module, alongside the application class:
+
+```python
+from python_demo_goby import SingleThreadApplication, Thread, groups
+
+
+class Reporter(Thread):
+    def __init__(self):
+        super().__init__(loop_frequency_hertz=1)
+        self.interthread().subscribe(groups.status, self.on_status)
+
+    def on_status(self, status) -> None:
+        self.interprocess().publish(groups.report, to_report(status))
+
+
+class PythonDemo(SingleThreadApplication):
+    def __init__(self):
+        super().__init__(loop_frequency_hertz=10)
+        self.launch_thread(Reporter)
+
+        self.interthread().publish(groups.status, {"ready": True})
+```
+
+The class is constructed on its own thread, so what it subscribes to in its constructor is
+delivered there, and `initialize()`, `loop()` and `finalize()` run there too. `index=` launches
+several threads of one class, and `join_thread()` stops one; the rest are stopped when the
+application exits.
+
+The interthread layer is implemented in Python rather than through the C++
+`InterThreadTransporter`. Nothing crosses the language boundary, so an interthread message is any
+Python object rather than only a protobuf message, and an interthread group is any string,
+whether or not it is declared in `interface.yml`. The generated C++ has no case for the layer,
+which is why an application does not need `MultiThreadApplication` to use it. Every subscriber is
+handed the same object, so a message must not be modified after it is published — the rule that
+applies to the C++ `shared_ptr` publish.
+
+The outer layers still belong to the C++ application, which lives on the main thread. A
+publication or subscription from any other thread is handed to it through a mailbox, which is
+what a C++ thread's `InterProcessForwarder` does with its inner interthread transporter, and
+messages are delivered back to the thread that subscribed.
+
+```
+       main thread                                  launched thread
+  +---------------------+       interthread      +---------------------+
+  |     application     | <--------------------> |       Thread        |
+  +---------------------+   (Python objects)     +---------------------+
+            |                                              |
+            | interprocess, intermodule                    | mailbox
+            v                                              |
+  +---------------------+                                  |
+  |     C++ portal      | <--------------------------------+
+  +---------------------+
+```
+
+The application picks that work up in its `loop()`, so its loop rate bounds how long a thread's
+interprocess publication waits before it goes out. Launching a thread raises the C++ loop rate to
+`interthread_poll_frequency_hertz` (10 Hz by default) when the application asked for a slower one,
+without changing how often the application's own `loop()` is called:
+
+```python
+super().__init__(loop_frequency_hertz=1, interthread_poll_frequency_hertz=100)
+```
+
+Python threads are Python threads: the GIL interleaves them rather than running them in parallel,
+so they buy independent loop rates and separation of concerns, not throughput. A thread that
+raises prints its traceback and stops the application.
 
 ### Building
 
@@ -153,3 +221,12 @@ modules can live in different directories without shadowing each other.
 The Julia bindings predate the Python ones and use CxxWrap.jl. Julia has no classes, so its API is
 a set of functions taking the application object. See `share/goby/Goby.jl/README.md` for the
 Julia API and usage examples.
+
+Julia applications can be multi-threaded, on the same model as the Python threads above:
+`Goby.run()` takes a list of task modules and runs each on its own Julia thread, and a publication
+or subscription on the outer layers from any of them is handed to the task that owns the C++
+application. `cxx_channel_check_frequency` takes the place of `interthread_poll_frequency_hertz`,
+and unlike Python's threads these run in parallel.
+
+Julia fixes its thread count at startup, so the application has to be launched with one thread per
+task module plus three; `goby_add_julia_app()`'s `THREADS` gives that to the generated launcher.

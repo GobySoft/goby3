@@ -12,6 +12,7 @@ Pkg.activate(ARGS[1], io = devnull)
 
 using Goby
 using Test
+using ThreadPools
 
 const LIBRARY = joinpath(@__DIR__, "libgoby_test_julia_app.so")
 
@@ -72,5 +73,53 @@ const LIBRARY = joinpath(@__DIR__, "libgoby_test_julia_app.so")
 
         # one accessor per portal, named for the layer when no alias is given
         @test GobyJuliaTestAppGoby.interprocess() == Goby.INTERPROCESS
+    end
+
+    # Subscribing on a layer the C++ side owns is registered twice: once as a callback to run,
+    # and once as the task to deliver to. Both are keyed by task, so two tasks subscribing to the
+    # same thing get one each rather than the second replacing the first. Exercised directly
+    # because actually moving a message needs a portal.
+    @testset "per-task subscription registry" begin
+        layer = Int32(Goby.INTERPROCESS)
+        scheme = Int(Goby.PROTOBUF)
+        type_name = "NavigationReport"
+        group = GobyJuliaTestAppGoby.groups.rx
+
+        main_callback = msg -> nothing
+        task_callback = msg -> nothing
+
+        Goby.register_callback(layer, scheme, type_name, group, main_callback)
+        subscribing_task = ThreadPools.@tspawnat 2 Goby.register_callback(layer, scheme, type_name, group, task_callback)
+        wait(subscribing_task)
+
+        registered = Goby.callbacks_for(Int(layer), scheme, type_name, group)
+        @test length(registered) == 2
+        @test Set(owner for (owner, _) in registered) == Set([1, 2])
+
+        # the same task subscribing again replaces its own callback rather than adding one
+        replacement = msg -> nothing
+        Goby.register_callback(layer, scheme, type_name, group, replacement)
+        registered = Goby.callbacks_for(Int(layer), scheme, type_name, group)
+        @test length(registered) == 2
+        @test registered[findfirst(entry -> entry[1] == 1, registered)][2] === replacement
+
+        @test isempty(Goby.callbacks_for(Int(layer), scheme, type_name, "never::subscribed"))
+    end
+
+    @testset "delivery routing" begin
+        key = (Int32(Goby.INTERPROCESS), Int(Goby.PROTOBUF), "NavigationReport",
+               GobyJuliaTestAppGoby.groups.rx)
+        main_channel = Goby.MultiThread.task_interthread_channels[Goby.MultiThread.main_task_id]
+
+        # nothing has registered for this one, so it goes to Main as it did before tasks could
+        # subscribe for themselves
+        @test Goby.MultiThread.cxx_subscriber_channels(key) == [main_channel]
+
+        Goby.MultiThread.record_cxx_subscriber(key, Goby.MultiThread.main_task_id)
+        @test Goby.MultiThread.cxx_subscriber_channels(key) == [main_channel]
+
+        # recording the same task twice must not deliver the message to it twice
+        Goby.MultiThread.record_cxx_subscriber(key, Goby.MultiThread.main_task_id)
+        @test Goby.MultiThread.cxx_subscriber_channels(key) == [main_channel]
     end
 end

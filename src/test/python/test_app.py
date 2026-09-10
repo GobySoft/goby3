@@ -23,6 +23,12 @@ class GeneratedModuleTest(unittest.TestCase):
         self.assertEqual(app_module.groups.tx, "goby::test::python::groups::tx")
         self.assertEqual(app_module.groups.rx, "goby::test::python::groups::rx")
 
+    def test_interthread_groups_need_no_cxx_declaration(self):
+        # the layer never crosses into C++, so its groups are strings the application chooses
+        # rather than groups declared in a header
+        self.assertEqual(app_module.groups.thread_status, "thread_status")
+        self.assertEqual(app_module.groups.thread_request, "thread_request")
+
     def test_resolves_the_config_type(self):
         self.assertIs(app_module.CONFIG_TYPE, test_pb2.TestConfig)
 
@@ -33,8 +39,62 @@ class GeneratedModuleTest(unittest.TestCase):
     def test_base_class_mixes_in_the_python_api(self):
         base = app_module.SingleThreadApplication
         self.assertTrue(issubclass(base, goby.ApplicationMixin))
-        for method in ("loop", "initialize", "finalize", "quit", "app_name", "interprocess"):
+        for method in (
+            "loop",
+            "initialize",
+            "finalize",
+            "quit",
+            "app_name",
+            "interprocess",
+            "interthread",
+            "launch_thread",
+            "join_thread",
+        ):
             self.assertTrue(callable(getattr(base, method)), method)
+
+    def test_thread_base_class_has_the_same_accessors(self):
+        self.assertTrue(issubclass(app_module.Thread, goby.Thread))
+        for method in ("loop", "initialize", "finalize", "interprocess", "interthread"):
+            self.assertTrue(callable(getattr(app_module.Thread, method)), method)
+
+
+class InterthreadTest(unittest.TestCase):
+    """The interthread layer is pure Python, so it works with no portal and no application."""
+
+    def setUp(self):
+        from goby import _interthread
+
+        self.interthread = _interthread
+        self.original_bus = _interthread.bus
+        _interthread.bus = _interthread.Bus()
+
+    def tearDown(self):
+        self.interthread.bus = self.original_bus
+
+    def test_carries_a_protobuf_message_unmarshalled(self):
+        received = []
+        mailbox = self.interthread.Mailbox()
+        published = test_pb2.CommsTx(request_id=42)
+
+        self.interthread.bus.subscribe(
+            app_module.groups.thread_status, None, received.append, mailbox
+        )
+        self.interthread.bus.publish(app_module.groups.thread_status, published)
+        mailbox.service()
+
+        # the same object, not a copy parsed back from bytes
+        self.assertEqual(len(received), 1)
+        self.assertIs(received[0], published)
+
+    def test_carries_anything_else_too(self):
+        received = []
+        mailbox = self.interthread.Mailbox()
+
+        self.interthread.bus.subscribe("any_group", None, received.append, mailbox)
+        self.interthread.bus.publish("any_group", {"not": "a protobuf message"})
+        mailbox.service()
+
+        self.assertEqual(received, [{"not": "a protobuf message"}])
 
 
 class ConfigureTest(unittest.TestCase):

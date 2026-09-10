@@ -47,7 +47,48 @@ function publish(app, layer, group, msg)
     throw(AssertionError("publish not support for layer $layer with message type $msg_type"))
 end
 
-interprocess_callbacks=Dict{Int, Dict{Int, Dict{String, Dict{String, Function}}}}()
+# callbacks are keyed the way the C++ side matches (layer, scheme, type name, group) and then by
+# the task that asked for them, so that two tasks subscribing to the same thing each keep theirs
+const CallbackList = Vector{Tuple{Int64, Function}}
+interprocess_callbacks=Dict{Int, Dict{Int, Dict{String, Dict{String, CallbackList}}}}()
+interprocess_callbacks_lock = Threads.ReentrantLock()
+
+function register_callback(layer_int, scheme, type_name::String, group, callback::Function)
+    Threads.lock(interprocess_callbacks_lock) do
+        lvl1 = get!(interprocess_callbacks, Int(layer_int)) do
+            Dict{Int, Dict{String, Dict{String, CallbackList}}}()
+        end
+        lvl2 = get!(lvl1, Int(scheme)) do
+            Dict{String, Dict{String, CallbackList}}()
+        end
+        lvl3 = get!(lvl2, type_name) do
+            Dict{String, CallbackList}()
+        end
+        callbacks = get!(lvl3, string(group)) do
+            CallbackList()
+        end
+
+        task_id = Threads.threadid()
+        existing = findfirst(entry -> entry[1] == task_id, callbacks)
+        if existing === nothing
+            push!(callbacks, (task_id, callback))
+        else
+            callbacks[existing] = (task_id, callback)
+        end
+    end
+end
+
+function callbacks_for(layer, scheme, type_name, group)
+    Threads.lock(interprocess_callbacks_lock) do
+        lvl1 = get(interprocess_callbacks, Int(layer), nothing)
+        lvl1 === nothing && return CallbackList()
+        lvl2 = get(lvl1, Int(scheme), nothing)
+        lvl2 === nothing && return CallbackList()
+        lvl3 = get(lvl2, string(type_name), nothing)
+        lvl3 === nothing && return CallbackList()
+        return copy(get(lvl3, string(group), CallbackList()))
+    end
+end
 
 function pb_name_from_callback(callback::Function)
     return string(nameof(pb_type_from_callback(callback)))
@@ -92,20 +133,14 @@ function subscribe(app, layer, group, callback::Function; scheme = Goby.NULL_SCH
         throw(ArgumentError("Could not infer scheme from callback argument for \"$(callback)\". Ensure you have the correct argument type for your callback defined or explicitly pass the scheme and type_name to subscribe"))
     end   
 
-    # build up nested dictionary, adding subdictionaries as needed as we go
-    lvl1 = get!(interprocess_callbacks, layer_int) do
-        Dict{Int, Dict{String, Dict{String, Function}}}()
-    end
-    lvl2 = get!(lvl1, inferred_scheme) do
-        Dict{String, Dict{String, Function}}()
-    end    
-    lvl3 = get!(lvl2, inferred_type_name) do
-        Dict{String, Function}()
-    end    
-    lvl3[group] = callback
+    register_callback(layer_int, inferred_scheme, inferred_type_name, group, callback)
 
     println("Subscribing to $(inferred_type_name) (Scheme: $(inferred_scheme)) on group $(group)")
-    
+
+    if MultiThread.check_and_cxx_subscribe(app, layer_int, inferred_type_name, inferred_scheme, group)
+        return
+    end
+
     Goby.cxx_subscribe(app, layer_int, inferred_type_name, inferred_scheme, group, "receive", "Goby")
 end
 
@@ -129,11 +164,18 @@ end
 function receive_dereferenced(layer, type_name, scheme, group, bytes)
     println("Received message $(type_name) (Scheme: $(scheme)) on group $(group)")
     if scheme == Goby.PROTOBUF
-        callback = interprocess_callbacks[layer][scheme][type_name][group]
-        io = IOBuffer(bytes)
-        d::ProtoDecoder = ProtoDecoder(io)        
-        msg = decode(d, pb_type_from_callback(callback))
-        callback(msg)
+        task_id = Threads.threadid()
+        for (owner, callback) in callbacks_for(layer, scheme, type_name, group)
+            # in one task the message is for whoever subscribed; across tasks it is routed here
+            # by task, so only run what this task asked for
+            if Goby.is_multithreaded && owner != task_id
+                continue
+            end
+            io = IOBuffer(bytes)
+            d::ProtoDecoder = ProtoDecoder(io)
+            msg = decode(d, pb_type_from_callback(callback))
+            callback(msg)
+        end
     end
 end
 
