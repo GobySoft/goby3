@@ -23,12 +23,31 @@ goby::middleware::Application is the base class for all Goby applications. It pe
 * Sets up the goby::glog debug logger
 * Sets up the goby::time::SimulatorSettings simulation parameters (if in use)
 * Sets up a goby::util::UTMGeodesy if desired.
+* Loads any shared libraries given in the `app { load_shared_library: ... }` configuration or in the `GOBY_LOAD_SHARED_LIBRARY` environmental variable.
 
 Additionally, it provides several virtual methods:
 
 * goby::middleware::Application::initialize(): Called after construction but before run(). Optional, the default does nothing.
 * goby::middleware::Application::finalize(): Called just before destruction after run() completes. Optional, the default does nothing.
 * goby::middleware::Application::run(): Must be implemented - it is called repeatedly until goby::middleware::Application::quit() is called.
+
+### Loading shared libraries (DCCL plugins)
+
+DCCL supports external field codecs ("plugins") that are distributed as shared libraries, such as `libdccl_arithmetic.so` (arithmetic coding) and `libdccl_native_protobuf.so` (native Protobuf encoding). Any Goby application (including `gobyd`) can load these, along with shared libraries containing compiled Protobuf/DCCL messages, using either
+
+* the `load_shared_library` field of the base `app` configuration (may be repeated), e.g.
+
+```
+app { load_shared_library: "libdccl_arithmetic.so" }
+```
+
+* or the `GOBY_LOAD_SHARED_LIBRARY` environmental variable, e.g.
+
+```
+export GOBY_LOAD_SHARED_LIBRARY=libdccl_arithmetic.so:libdccl_native_protobuf.so
+```
+
+Multiple libraries may be given in a single entry separated by `:`, `;` or `,`. The libraries are opened before the application uses any DCCL messages, so the codecs they provide are available to all DCCL encoding and decoding performed by the Goby middleware (e.g. for the intervehicle layer).
 
 ## Configurators
 

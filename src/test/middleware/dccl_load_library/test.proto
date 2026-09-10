@@ -1,0 +1,16 @@
+syntax = "proto2";
+import "dccl/option_extensions.proto";
+
+package goby.test.middleware.protobuf;
+
+// uses the "dccl.native_protobuf" field codec provided by the external
+// libdccl_native_protobuf shared library
+message NativeProtobufSample
+{
+    option (dccl.msg).id = 126;
+    option (dccl.msg).max_bytes = 32;
+    option (dccl.msg).codec_version = 3;
+
+    optional int32 a = 1 [(dccl.field).codec = "dccl.native_protobuf"];
+    optional double b = 2 [(dccl.field).codec = "dccl.native_protobuf"];
+}
