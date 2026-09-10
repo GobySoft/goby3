@@ -130,12 +130,20 @@ than generating code that silently does the wrong thing.
 | Construct | Julia | Python |
 |-----------|-------|--------|
 | `interthread`, `interprocess`, `intermodule` | yes | yes |
+| `interthread` declarations are required | yes | no |
 | `scheme: PROTOBUF` | yes | yes |
 | multiple portals per layer (`alias`) | yes | yes |
 | generated module of group constants and accessors | yes | yes |
 
 Reserved for future use, and rejected by both generators today: the `intervehicle` layer, and the
 `DCCL`, `JSON`, `CSTR` and `MAVLINK` schemes.
+
+Both generators implement the `interthread` layer in their own language rather than through the
+C++ `InterThreadTransporter`, so neither generates C++ for it. The Python generator goes one step
+further and does not require the layer to be declared at all: a Python interthread group is any
+string and a Python interthread message is any Python object, so `scheme` and `type` have nothing
+to constrain. Declaring the layer is still useful — the groups become named constants in the
+generated module — and a file that declares it stays valid for both generators.
 
 An `alias` names the accessor the application calls, but only the layer crosses into C++, so it
 cannot distinguish two portals on the same layer that declare the same scheme, type and group.
