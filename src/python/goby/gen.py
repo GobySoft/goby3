@@ -96,6 +96,14 @@ class Interface:
         return self.publishes + self.subscribes
 
     @property
+    def cpp_publishes(self) -> List[Entry]:
+        return [entry for entry in self.publishes if entry.layer != "interthread"]
+
+    @property
+    def cpp_subscribes(self) -> List[Entry]:
+        return [entry for entry in self.subscribes if entry.layer != "interthread"]
+
+    @property
     def groups(self) -> Dict[str, str]:
         """Unambiguous trailing group name -> full group expression.
 
@@ -276,7 +284,10 @@ def load(path: str) -> Interface:
 
 
 def generate_cpp(interface: Interface, includes: Sequence[str], module: str, source: str) -> str:
-    """Returns the C++ glue code implementing the declared interface."""
+    """Returns the C++ glue code implementing the declared interface.
+
+    The interthread layer is left out: it is implemented in Python and never crosses into C++.
+    """
     lines = [
         "// ########################",
         "// #   Goby <--> Python   #",
@@ -303,7 +314,7 @@ def generate_cpp(interface: Interface, includes: Sequence[str], module: str, sou
         "    void publish(goby::middleware::python::Identifier id, const std::string& data)",
         "    {",
     ]
-    for entry in interface.publishes:
+    for entry in interface.cpp_publishes:
         lines.append(
             '        GOBY_PYTHON_IF_PUBLICATION({}, {}, {}, {}, "{}", {})'.format(
                 entry.scheme,
@@ -322,7 +333,7 @@ def generate_cpp(interface: Interface, includes: Sequence[str], module: str, sou
         "    void subscribe(goby::middleware::python::Identifier id, pybind11::object callback)",
         "    {",
     ]
-    for entry in interface.subscribes:
+    for entry in interface.cpp_subscribes:
         lines.append(
             '        GOBY_PYTHON_IF_SUBSCRIPTION({}, {}, {}, {}, "{}", {})'.format(
                 entry.scheme,
@@ -424,17 +435,15 @@ def generate_python(
         "    _goby_config_type = CONFIG_TYPE",
         "",
     ]
+    lines += _accessor_lines(interface)
 
-    if interface.accessors:
-        for accessor, layer in interface.accessors.items():
-            lines += [
-                f"    def {accessor}(self):",
-                f'        """The {layer} transporter."""',
-                f'        return self._goby_transporter("{accessor}", goby.{layer.upper()})',
-                "",
-            ]
-    else:
-        lines += ["    pass", ""]
+    lines += [
+        "",
+        "class Thread(goby.Thread):",
+        f'    """Base class for a thread of the {interface.name} Goby application."""',
+        "",
+    ]
+    lines += _accessor_lines(interface)
 
     lines += [
         "",
@@ -442,6 +451,22 @@ def generate_python(
         "",
     ]
     return "\n".join(lines)
+
+
+def _accessor_lines(interface: Interface) -> List[str]:
+    """One accessor per declared portal, named for the layer unless an alias was declared."""
+    if not interface.accessors:
+        return ["    pass", ""]
+
+    lines = []
+    for accessor, layer in interface.accessors.items():
+        lines += [
+            f"    def {accessor}(self):",
+            f'        """The {layer} transporter."""',
+            f'        return self._goby_transporter("{accessor}", goby.{layer.upper()})',
+            "",
+        ]
+    return lines
 
 
 def main(argv: Optional[Sequence[str]] = None) -> int:
