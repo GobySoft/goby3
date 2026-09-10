@@ -1,0 +1,95 @@
+syntax = "proto2";
+import "goby/protobuf/option_extensions.proto";
+
+package goby.zenoh.protobuf;
+
+message InterProcessPortalConfig
+{
+    optional string platform = 1 [
+        default = "default_goby_platform",
+        (goby.field) = {
+            description: "Name for this platform (vehicle name, mooring name, topside name, etc.)"
+        }
+    ];
+
+    optional string key_prefix = 2 [
+        default = "goby",
+        (goby.field).description =
+            "First chunk of every key expression, isolating Goby traffic from anything else "
+            "sharing the Zenoh network",
+        (goby.field).cfg = { action: ADVANCED }
+    ];
+
+    enum Mode
+    {
+        PEER = 1;
+        CLIENT = 2;
+        ROUTER = 3;
+    }
+    optional Mode mode = 3 [
+        default = PEER,
+        (goby.field).description =
+            "PEER discovers and connects to other peers directly, CLIENT connects only to a "
+            "router (which must be given in connect_endpoint)"
+    ];
+
+    repeated string connect_endpoint = 4
+        [(goby.field).description =
+             "Endpoint to actively connect to, e.g. \"tcp/192.168.1.10:7447\""];
+
+    repeated string listen_endpoint = 5
+        [(goby.field).description =
+             "Endpoint to listen on, e.g. \"tcp/0.0.0.0:7447\""];
+
+    optional bool multicast_scouting = 6 [
+        default = true,
+        (goby.field).description =
+            "Discover peers on the local network using multicast scouting"
+    ];
+
+    optional string scouting_interface = 7 [
+        (goby.field).description =
+            "Network interface to use for multicast scouting (e.g. \"eth0\")",
+        (goby.field).cfg = { action: ADVANCED }
+    ];
+
+    enum CongestionControl
+    {
+        BLOCK = 1;
+        DROP = 2;
+    }
+    optional CongestionControl congestion_control = 10 [
+        default = BLOCK,
+        (goby.field).description =
+            "BLOCK waits when the network is congested, DROP discards the message",
+        (goby.field).cfg = { action: ADVANCED }
+    ];
+
+    optional bool express = 11 [
+        default = false,
+        (goby.field).description =
+            "Send immediately rather than batching with other messages to save bandwidth",
+        (goby.field).cfg = { action: ADVANCED }
+    ];
+
+    message ConfigOverride
+    {
+        required string key = 1 [
+            (goby.field).description =
+                "Zenoh configuration key, e.g. \"transport/link/tx/queue/size\""
+        ];
+        required string value = 2 [(goby.field).description = "Value as JSON5"];
+    }
+    repeated ConfigOverride json5_override = 30 [
+        (goby.field).description =
+            "Arbitrary Zenoh configuration, applied after all the settings above. Zenoh's "
+            "configuration surface is larger and changes faster than this message tracks.",
+        (goby.field).cfg = { action: ADVANCED }
+    ];
+
+    optional string client_name = 20 [
+        (goby.field).description =
+            "Unique name for InterProcessPortal. Defaults to app.name",
+        (goby.field).cfg = { action: ADVANCED }
+    ];
+}

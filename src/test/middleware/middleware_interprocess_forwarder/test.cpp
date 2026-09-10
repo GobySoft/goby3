@@ -37,6 +37,9 @@ using goby::zeromq::InterProcessForwarder;
 #elif defined(test_for_udpm)
 #include "goby/udpm/transport/interprocess.h"
 using goby::udpm::InterProcessForwarder;
+#elif defined(test_for_zenoh)
+#include "goby/zenoh/transport/interprocess.h"
+using goby::zenoh::InterProcessForwarder;
 #else
 #error "No test_for_<impl> defined"
 #endif
@@ -74,7 +77,7 @@ std::atomic<bool> hold(true);
 std::atomic<bool> forward(true);
 std::atomic<bool> subscriber_ready(false);
 
-#if defined(test_for_udpm)
+#if defined(test_for_udpm) || defined(test_for_zenoh)
 // 100 KB payload to test UDPM packetization
 constexpr int large_msg_payload_bytes = 100 * 1024;
 std::atomic<bool> large_msg_received(false);
@@ -86,7 +89,7 @@ using namespace goby::util::logger;
 constexpr goby::middleware::Group sample1{"Sample1"};
 constexpr goby::middleware::Group sample2{"Sample2"};
 constexpr goby::middleware::Group widget{"Widget"};
-#if defined(test_for_udpm)
+#if defined(test_for_udpm) || defined(test_for_zenoh)
 constexpr goby::middleware::Group large_msg{"LargeMessage"};
 #endif
 
@@ -105,7 +108,7 @@ void publisher()
 
     while (hold) usleep(1e4);
 
-#if defined(test_for_udpm)
+#if defined(test_for_udpm) || defined(test_for_zenoh)
     sleep(2);
 
     // publish a large message (~100 KB) to test UDPM packetization
@@ -196,7 +199,7 @@ void subscriber()
     ipc_child().subscribe<sample2, Sample>(&handle_sample2);
     ipc_child().subscribe<widget, Widget>(&handle_widget);
 
-#if defined(test_for_udpm)
+#if defined(test_for_udpm) || defined(test_for_zenoh)
     ipc_child().subscribe<large_msg, LargeMessage>(
         [](const LargeMessage& lm)
         {
@@ -216,7 +219,7 @@ void subscriber()
     std::chrono::system_clock::time_point timeout = start + std::chrono::seconds(30);
     // -10 since we unsubscribe for 10 counts for sample1
     while (ipc_receive_count < 3 * max_publish - 10
-#if defined(test_for_udpm)
+#if defined(test_for_udpm) || defined(test_for_zenoh)
            || !large_msg_received
 #endif
     )
@@ -300,6 +303,8 @@ void interprocess_forward(
     const goby::zeromq::protobuf::InterProcessPortalConfig& cfg
 #elif defined(test_for_udpm)
     const goby::udpm::protobuf::InterProcessPortalConfig& cfg
+#elif defined(test_for_zenoh)
+    const goby::zenoh::protobuf::InterProcessPortalConfig& cfg
 #endif
 )
 {
@@ -309,6 +314,9 @@ void interprocess_forward(
         inproc3, cfg);
 #elif defined(test_for_udpm)
     goby::udpm::InterProcessPortal<goby::middleware::InterThreadTransporter> interprocess_portal(
+        inproc3, cfg);
+#elif defined(test_for_zenoh)
+    goby::zenoh::InterProcessPortal<goby::middleware::InterThreadTransporter> interprocess_portal(
         inproc3, cfg);
 #endif
 
@@ -327,7 +335,7 @@ void interprocess_forward(
     interprocess_portal.subscribe<widget, Widget>(
         [&](const std::shared_ptr<const Widget>& w)
         { glog.is(DEBUG1) && glog << "Portal Received3: " << w->DebugString() << std::endl; });
-#if defined(test_for_udpm)
+#if defined(test_for_udpm) || defined(test_for_zenoh)
     interprocess_portal.subscribe<large_msg, LargeMessage>(
         [&](const LargeMessage& lm)
         {
@@ -350,7 +358,7 @@ void interprocess_forward(
         if (!interprocess_portal.hold_state())
             hold = false;
 
-#elif defined(test_for_udpm)
+#elif defined(test_for_udpm) || defined(test_for_zenoh)
         hold = false;
 #endif
     }
@@ -367,6 +375,12 @@ int main(int /*argc*/, char* argv[])
     cfg.set_manager_timeout_seconds(5);
 #elif defined(test_for_udpm)
     goby::udpm::protobuf::InterProcessPortalConfig cfg;
+#elif defined(test_for_zenoh)
+    goby::zenoh::protobuf::InterProcessPortalConfig cfg;
+    cfg.set_platform("test3");
+    // Zenoh's default listen endpoint is tcp/[::]:0, which fails where IPv6 is unavailable;
+    // loopback also keeps the test off the host network
+    cfg.add_listen_endpoint("tcp/127.0.0.1:0");
 #endif
 
     pid_t child_pid = fork();

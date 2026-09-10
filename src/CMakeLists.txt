@@ -326,6 +326,29 @@ if(build_zeromq)
   export(TARGETS ${GOBY_ZEROMQ_LIBRARY_LIST} FILE ${CMAKE_BINARY_DIR}/goby_zeromq-config.cmake)
 endif()
 
+## zenoh
+find_package(zenohc QUIET CONFIG)
+find_package(zenohcxx QUIET CONFIG)
+set(ZENOH_DOC_STRING "Enable Zenoh Transport Layer components (requires libzenohc-dev and libzenohcpp-dev: https://zenoh.io/)")
+if(zenohc_FOUND AND zenohcxx_FOUND)
+  option(build_zenoh ${ZENOH_DOC_STRING} ON)
+else()
+  option(build_zenoh ${ZENOH_DOC_STRING} OFF)
+  message(">> setting build_zenoh to OFF ... if you need this functionality: 1) install libzenohc-dev and libzenohcpp-dev from https://download.eclipse.org/zenoh/debian-repo/ (or run './DEPENDENCIES -z'); 2) run cmake -Dbuild_zenoh=ON")
+endif()
+
+if(build_zenoh)
+  goby_find_required_package(zenohc CONFIG)
+  goby_find_required_package(zenohcxx CONFIG)
+
+  add_subdirectory(zenoh)
+
+  #export config for goby_zenoh libraries
+  install(EXPORT goby_zenoh-config DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/goby)
+  #configuration export - local build version
+  export(TARGETS ${GOBY_ZENOH_LIBRARY_LIST} FILE ${CMAKE_BINARY_DIR}/goby_zenoh-config.cmake)
+endif()
+
 ## MOOS 
 #first try to find v10 MOOS
 find_package(MOOS 10 QUIET NO_MODULE)

@@ -34,6 +34,10 @@ using goby::zeromq::SimpleThread;
 #include "goby/test/middleware/multi_thread_app1/udpm.pb.h"
 #include "goby/udpm/application/multi_thread.h"
 using goby::udpm::SimpleThread;
+#elif defined(test_for_zenoh)
+#include "goby/test/middleware/multi_thread_app1/zenoh.pb.h"
+#include "goby/zenoh/application/multi_thread.h"
+using goby::zenoh::SimpleThread;
 #else
 #error "No test_for_<impl> defined"
 #endif
@@ -64,6 +68,9 @@ using TestConfig = TestZeroMQConfig;
 #elif defined(test_for_udpm)
 using AppBase = goby::udpm::MultiThreadApplication<TestUDPMConfig>;
 using TestConfig = TestUDPMConfig;
+#elif defined(test_for_zenoh)
+using AppBase = goby::zenoh::MultiThreadApplication<TestZenohConfig>;
+using TestConfig = TestZenohConfig;
 #endif
 
 namespace goby
@@ -83,6 +90,11 @@ class TestRxConfigurator : public goby::middleware::ProtobufConfigurator<TestCon
         TestConfig& cfg = mutable_cfg();
         cfg.mutable_app()->set_name("TestAppRx");
         cfg.mutable_interprocess()->set_platform(platform_name);
+#if defined(test_for_zenoh)
+        // Zenoh's default listen endpoint is tcp/[::]:0, which fails where IPv6 is unavailable;
+        // loopback also keeps the test off the host network
+        cfg.mutable_interprocess()->add_listen_endpoint("tcp/127.0.0.1:0");
+#endif
     }
 };
 
@@ -98,6 +110,10 @@ class TestTxConfigurator : public goby::middleware::ProtobufConfigurator<TestCon
 
 #if defined(test_for_udpm)
         cfg.mutable_interprocess()->set_max_send_rate_bytes_per_second(1000);
+#elif defined(test_for_zenoh)
+        // Zenoh's default listen endpoint is tcp/[::]:0, which fails where IPv6 is unavailable;
+        // loopback also keeps the test off the host network
+        cfg.mutable_interprocess()->add_listen_endpoint("tcp/127.0.0.1:0");
 #endif
     }
 };
@@ -285,7 +301,7 @@ int main(int argc, char* argv[])
         }
         else
         {
-#if defined(test_for_udpm)
+#if defined(test_for_udpm) || defined(test_for_zenoh)
             // no hold feature implemented, so we have to wait for the Rx App to start first
             sleep(1);
 #endif

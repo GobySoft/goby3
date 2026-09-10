@@ -32,6 +32,15 @@ Enable with `-Dbuild_python=ON` (requires `pybind11-dev`).
 
 - Fixed a lost wakeup in the ZeroMQ interprocess portal. Its read thread signalled the Poller's condition variable without first taking the poll mutex, so a signal raised between the poller's last unsuccessful poll and its `wait()` had no waiter and was dropped, leaving data sitting in the inproc socket until some later event polled it. Applications that poll without a loop frequency (`loop_freq_hertz` of 0, which never times out) were the most exposed. The interthread layer and the UDPM portal already took the mutex.
 
+### Zenoh Support
+
+Goby's interprocess and intermodule layers can now use [Zenoh](https://zenoh.io) as an alternative to ZeroMQ and UDP Multicast. Enable with `-Dbuild_zenoh=ON` (requires `libzenohc-dev` and `libzenohcpp-dev`; see `DEPENDENCIES -z`).
+
+- Like UDPM and unlike ZeroMQ, the Zenoh portal is peer-to-peer and needs no broker; unlike UDPM, subscriptions are filtered at the source rather than every process parsing every message, and Zenoh handles fragmentation and reliability itself.
+- A Goby identifier maps onto the key expression `<key_prefix>/<platform>/<layer>/<group>/<scheme>/<type>/<process>/<thread>`, with the payload carrying only the serialized bytes. Characters Zenoh cannot represent in a key expression chunk are percent-encoded.
+- The layer chunk means one Zenoh session carries both the interprocess and intermodule layers, where the other two implementations need a second port or socket.
+- No hold state is implemented, as for UDPM: `ready()` is a no-op and `hold_state()` is always false.
+
 ### Build
 
 - `DEPENDENCIES -z` installs the Zenoh dependencies, adding Eclipse's Debian repository (https://download.eclipse.org/zenoh/debian-repo/) rather than mirroring Zenoh into packages.gobysoft.org. Nothing is added to apt unless `-z` is given, or `-a`, which resolves the full Build-Depends list and so needs the repository too.

@@ -1,0 +1,3 @@
+add_executable(goby_test_zenoh_key_expression test.cpp)
+target_link_libraries(goby_test_zenoh_key_expression goby)
+add_test(goby_test_zenoh_key_expression ${goby_BIN_DIR}/goby_test_zenoh_key_expression)
