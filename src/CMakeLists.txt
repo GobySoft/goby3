@@ -338,6 +338,12 @@ else()
 endif()
 
 if(build_zenoh)
+  # zenohcxx is header only and packaged Architecture: all, but its CMake configuration declares
+  # the pointer size of the machine it was built on, so CMake rejects it on a 32-bit build
+  if(NOT zenohcxx_FOUND AND CMAKE_SIZEOF_VOID_P AND NOT CMAKE_SIZEOF_VOID_P EQUAL 8)
+    message(FATAL_ERROR "build_zenoh requires a 64-bit target: the packaged zenohcxx CMake configuration is marked 64-bit only, so it cannot be used for this ${CMAKE_SIZEOF_VOID_P}-byte-pointer build")
+  endif()
+
   goby_find_required_package(zenohc CONFIG)
   goby_find_required_package(zenohcxx CONFIG)
 
