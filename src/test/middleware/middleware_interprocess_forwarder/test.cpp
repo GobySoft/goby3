@@ -347,18 +347,18 @@ void interprocess_forward(
 
     while (!subscriber_ready || ready < max_subs) usleep(1e4);
 
-#if defined(test_for_zeromq)
+#if defined(test_for_zeromq) || defined(test_for_zenoh)
     interprocess_portal.ready();
 #endif
 
     while (forward)
     {
         interprocess_portal.poll(std::chrono::milliseconds(100));
-#if defined(test_for_zeromq)
+#if defined(test_for_zeromq) || defined(test_for_zenoh)
         if (!interprocess_portal.hold_state())
             hold = false;
 
-#elif defined(test_for_udpm) || defined(test_for_zenoh)
+#elif defined(test_for_udpm)
         hold = false;
 #endif
     }
@@ -381,6 +381,8 @@ int main(int /*argc*/, char* argv[])
     // Zenoh's default listen endpoint is tcp/[::]:0, which fails where IPv6 is unavailable;
     // loopback also keeps the test off the host network
     cfg.add_listen_endpoint("tcp/127.0.0.1:0");
+    cfg.mutable_hold()->add_required_client("subscriber");
+    cfg.mutable_hold()->add_required_client("publisher");
 #endif
 
     pid_t child_pid = fork();

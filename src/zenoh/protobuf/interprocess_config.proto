@@ -87,6 +87,20 @@ message InterProcessPortalConfig
         (goby.field).cfg = { action: ADVANCED }
     ];
 
+    message Hold
+    {
+        repeated string required_client = 1 [
+            (goby.field).description =
+                "Do not publish until every client named here has declared itself ready"
+        ];
+    }
+    optional Hold hold = 40 [
+        (goby.field).description =
+            "Hold publication until the named clients are up, so that messages published at startup "
+            "are not lost before their subscribers exist. Each client announces itself with a Zenoh "
+            "liveliness token, so no broker is involved."
+    ];
+
     optional string client_name = 20 [
         (goby.field).description =
             "Unique name for InterProcessPortal. Defaults to app.name",

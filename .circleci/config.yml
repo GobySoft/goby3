@@ -627,7 +627,7 @@ jobs:
           name: Check that the Zenoh tests are registered
           command: |
             cd build
-            for _test in goby_test_zenoh_key_expression goby_test_middleware_single_thread_app1_zenoh goby_test_middleware_multi_thread_app1_zenoh goby_test_middleware_interprocess_forwarder_zenoh; do
+            for _test in goby_test_zenoh_key_expression goby_test_zenoh_hold goby_test_middleware_single_thread_app1_zenoh goby_test_middleware_multi_thread_app1_zenoh goby_test_middleware_interprocess_forwarder_zenoh; do
               if ! ctest -N -R "^${_test}$" | grep -q "${_test}"; then
                 echo "${_test} is not registered: it would be silently skipped"
                 exit 1

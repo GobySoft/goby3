@@ -48,6 +48,13 @@ std::string goby::zenoh::make_key_root(const protobuf::InterProcessPortalConfig&
            "/" + layer;
 }
 
+std::string goby::zenoh::make_hold_root(const protobuf::InterProcessPortalConfig& cfg,
+                                        const std::string& layer)
+{
+    return detail::escape_chunk(cfg.key_prefix()) + "/" + detail::escape_chunk(cfg.platform()) +
+           "/hold/" + layer;
+}
+
 zenoh::Session goby::zenoh::open_session(const protobuf::InterProcessPortalConfig& cfg)
 {
     auto config = ::zenoh::Config::create_default();

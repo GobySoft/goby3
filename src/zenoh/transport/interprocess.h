@@ -59,6 +59,12 @@ namespace zenoh
 /// \brief The key expression chunks shared by every message on one layer: "<prefix>/<platform>/<layer>"
 std::string make_key_root(const protobuf::InterProcessPortalConfig& cfg, const std::string& layer);
 
+/// \brief Where clients announce readiness: "<prefix>/<platform>/hold/<layer>"
+///
+/// Sits beside the data root rather than under it, so that a wildcard data subscription does not
+/// match the liveliness tokens.
+std::string make_hold_root(const protobuf::InterProcessPortalConfig& cfg, const std::string& layer);
+
 template <typename InnerTransporter,
           template <typename Derived, typename InnerTransporterType, typename ImplementationTag_>
           class PortalBase,
@@ -90,12 +96,32 @@ class InterProcessPortalImplementation
         // undeclare every subscriber before the state its callback touches goes away
         subscribers_.clear();
         wildcard_subscriber_.reset();
+        liveliness_subscriber_.reset();
+        ready_token_.reset();
         session_.reset();
     }
 
-    // no hold implemented: Zenoh peers discover each other without a broker to mediate a hold
-    void ready() {}
-    bool hold_state() { return false; }
+    /// \brief When using hold functionality, call when the process is ready to receive publications (typically done after most or all subscribe calls)
+    ///
+    /// Announced with a Zenoh liveliness token, which disappears on its own if this process dies,
+    /// so the announcement needs nothing to retract it.
+    void ready()
+    {
+        if (cfg_.client_name().empty())
+        {
+            goby::glog.is_warn() && goby::glog << "Zenoh: no client_name, so this process cannot "
+                                                  "announce readiness to any peer holding for it"
+                                               << std::endl;
+            return;
+        }
+
+        ready_token_ =
+            std::make_unique<::zenoh::LivelinessToken>(session_->liveliness_declare_token(
+                ::zenoh::KeyExpr(hold_root_ + "/" + detail::escape_chunk(cfg_.client_name()))));
+    }
+
+    /// \brief When using hold functionality, returns whether the system is holding (true) and thus waiting for all processes to connect and be ready, or running (false).
+    bool hold_state() { return hold_; }
 
     friend Base;
     friend typename Base::Base;
@@ -110,9 +136,82 @@ class InterProcessPortalImplementation
 
         goby::glog.is_debug1() && goby::glog << "Zenoh: session open, key root: " << key_root_
                                              << std::endl;
+
+        hold_root_ = make_hold_root(cfg_, ImplementationTag::layer);
+        hold_ = cfg_.hold().required_client_size() > 0;
+        if (hold_)
+        {
+            ::zenoh::Session::LivelinessSubscriberOptions options;
+            // deliver the tokens of clients that were ready before this subscription existed
+            options.history = true;
+
+            liveliness_subscriber_ =
+                std::make_unique<::zenoh::Subscriber<void>>(session_->liveliness_declare_subscriber(
+                    ::zenoh::KeyExpr(hold_root_ + "/**"), [this](const ::zenoh::Sample& sample)
+                    { _on_liveliness(sample); }, ::zenoh::closures::none, std::move(options)));
+        }
+    }
+
+    // runs on a Zenoh thread
+    void _on_liveliness(const ::zenoh::Sample& sample)
+    {
+        const std::string key(sample.get_keyexpr().as_string_view());
+        const auto last = key.find_last_of('/');
+        if (last == std::string::npos)
+            return;
+        const std::string client = detail::unescape_chunk(key.substr(last + 1));
+
+        {
+            std::lock_guard<std::mutex> lock(rx_mutex_);
+            if (sample.get_kind() == ::zenoh::SampleKind::Z_SAMPLE_KIND_PUT)
+                ready_clients_.insert(client);
+            else
+                ready_clients_.erase(client);
+        }
+        middleware::detail::notify_poller(*this->poll_mutex(), *this->cv());
+    }
+
+    // once released the hold is not reapplied: a client that later dies must not silently stop
+    // the publications its peers are making
+    void _update_hold(std::unique_ptr<std::unique_lock<std::mutex>>& poll_lock)
+    {
+        std::set<std::string> ready;
+        {
+            std::lock_guard<std::mutex> lock(rx_mutex_);
+            ready = ready_clients_;
+        }
+
+        for (const auto& client : cfg_.hold().required_client())
+            if (!ready.count(client))
+                return;
+
+        goby::glog.is_debug1() && goby::glog << "Zenoh: hold released" << std::endl;
+        hold_ = false;
+
+        // Zenoh delivers a sample to a subscriber in the publishing session on this thread, and
+        // that callback takes the poll mutex; the Poller requires it back before this poll returns
+        const bool relock = static_cast<bool>(poll_lock);
+        if (relock)
+            poll_lock->unlock();
+
+        for (auto& queued : publish_queue_) _put(queued.first, queued.second);
+        publish_queue_.clear();
+
+        if (relock)
+            poll_lock->lock();
     }
 
     void _do_publish(const std::string& identifier, const std::vector<char>& bytes)
+    {
+        if (hold_)
+        {
+            publish_queue_.emplace_back(identifier, bytes);
+            return;
+        }
+        _put(identifier, bytes);
+    }
+
+    void _put(const std::string& identifier, const std::vector<char>& bytes)
     {
         const std::string key = detail::identifier_to_key(key_root_, identifier, false);
 
@@ -200,6 +299,9 @@ class InterProcessPortalImplementation
 
     int _poll(std::unique_ptr<std::unique_lock<std::mutex>>& lock)
     {
+        if (hold_)
+            _update_hold(lock);
+
         std::deque<std::string> received;
         {
             std::lock_guard<std::mutex> rx_lock(rx_mutex_);
@@ -225,9 +327,16 @@ class InterProcessPortalImplementation
     std::unordered_map<std::string, ::zenoh::Subscriber<void>> subscribers_;
     std::unique_ptr<::zenoh::Subscriber<void>> wildcard_subscriber_;
 
+    std::string hold_root_;
+    bool hold_{false};
+    std::unique_ptr<::zenoh::LivelinessToken> ready_token_;
+    std::unique_ptr<::zenoh::Subscriber<void>> liveliness_subscriber_;
+    std::deque<std::pair<std::string, std::vector<char>>> publish_queue_;
+
     // written by Zenoh threads, drained by the main thread in _poll()
     std::mutex rx_mutex_;
     std::deque<std::string> rx_;
+    std::set<std::string> ready_clients_;
 };
 
 template <typename InnerTransporter = middleware::NullTransporter>

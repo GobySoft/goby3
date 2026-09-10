@@ -39,7 +39,7 @@ Goby's interprocess and intermodule layers can now use [Zenoh](https://zenoh.io)
 - Like UDPM and unlike ZeroMQ, the Zenoh portal is peer-to-peer and needs no broker; unlike UDPM, subscriptions are filtered at the source rather than every process parsing every message, and Zenoh handles fragmentation and reliability itself.
 - A Goby identifier maps onto the key expression `<key_prefix>/<platform>/<layer>/<group>/<scheme>/<type>/<process>/<thread>`, with the payload carrying only the serialized bytes. Characters Zenoh cannot represent in a key expression chunk are percent-encoded.
 - The layer chunk means one Zenoh session carries both the interprocess and intermodule layers, where the other two implementations need a second port or socket.
-- No hold state is implemented, as for UDPM: `ready()` is a no-op and `hold_state()` is always false.
+- The hold is implemented with Zenoh liveliness tokens, so it needs no broker: `interprocess { hold { required_client: ... } }` buffers publications until every named client has called `ready()`, and a client that dies drops its token on its own. Waiters subscribe to the token space with history enabled, so a client that was ready first is still seen.
 - `goby_zenoh_tool` provides `goby zenoh publish` and `goby zenoh subscribe`, as `goby_udpm_tool` and `goby_zeromq_tool` do for their transports.
 - Downstream projects reach the library with `find_package(GOBY 3.0 ... zenoh)`, as for `zeromq` and `moos`; `goby_zenoh` links Zenoh's imported targets, so the package configuration resolves those first.
 
@@ -50,6 +50,7 @@ Goby's interprocess and intermodule layers can now use [Zenoh](https://zenoh.io)
 ### Documentation
 
 - Added `doc990_v4_cleanup.md`, a running list of cleanups that have to wait for Goby 4 because they break released API, ABI or the configuration command line.
+- Added `doc750_zenoh.md`, covering the Zenoh transport's configuration, key expression layout and hold.
 
 ## Version 3.5.1
 
