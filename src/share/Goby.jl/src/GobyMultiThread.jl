@@ -40,8 +40,9 @@ group_interthread_channels_lock = Threads.ReentrantLock()
 # Return true if we did, false if this isn't our publication
 function check_and_publish(app, layer, group, msg)
     layer_int::Int32 = Int32(layer)
+    # named up front so that the branches reporting it have it too
+    task_id = MultiThread.TaskID(Threads.threadid())
     if layer_int == Int32(Goby.INTERTHREAD)
-        task_id = MultiThread.TaskID(Threads.threadid())
         publish_interthread(task_id, group, msg)
         return true
     elseif Threads.threadid() == MultiThread.cxx_task_id.id
@@ -165,7 +166,15 @@ function run(goby_app, main_module, task_modules)
         end
     end
     
-    push!(tasks, ThreadPools.@tspawnat MultiThread.cxx_task_id.id Goby.cxx_run(goby_app))
+    cxx_runner = (app) -> begin
+        try
+            Goby.cxx_run(app)
+        catch e
+            report_task_failure("the C++ application", e, catch_backtrace())
+            rethrow()
+        end
+    end
+    push!(tasks, ThreadPools.@tspawnat MultiThread.cxx_task_id.id cxx_runner(goby_app))
     println("Spawning main run() as task ID $MultiThread.cxx_task_id")
    
     if isdefined(main_module, :goby_cfg) && haskey(main_module.goby_cfg, :loop_function)
@@ -184,19 +193,32 @@ function run(goby_app, main_module, task_modules)
 end
 
 
+# A task that throws takes its exception with it: run() is parked on Main's channel and would
+# wait there for a message the dead task will never send, so the application goes quiet with
+# nothing said. Hand the exception to Main through that same channel, which both wakes it and
+# gives it something to report.
+function report_task_failure(what::String, e, backtrace)
+    put!(task_interthread_channels[MultiThread.main_task_id], (:task_failed, what, e, backtrace))
+end
+
 function task_spawn(task_module::Module)
     task_id = task_module_to_id[task_module]
     println("Spawning $run as task ID $task_id")
 
     runner = (id, mod::Module) -> begin
-        if isdefined(mod, :start)
-            mod.start()
-        end
-        while true
-            task_channel_check(id)
+        try
+            if isdefined(mod, :start)
+                mod.start()
+            end
+            while true
+                task_channel_check(id)
+            end
+        catch e
+            report_task_failure("task module $(mod)", e, catch_backtrace())
+            rethrow()
         end
     end
-    
+
     t = ThreadPools.@tspawnat task_id.id runner(task_id, task_module)
     println("Task: $t")
     return t
@@ -215,9 +237,14 @@ function loop_timer(task_module::Module)
     task_id = task_module_to_id[task_module]
 
     timer = (id, mod::Module) -> begin
-        while true
-            put!(task_interthread_channels[id], (:loop, mod.goby_cfg[:loop_function]))
-            sleep(1/mod.goby_cfg[:loop_frequency])
+        try
+            while true
+                put!(task_interthread_channels[id], (:loop, mod.goby_cfg[:loop_function]))
+                sleep(1/mod.goby_cfg[:loop_frequency])
+            end
+        catch e
+            report_task_failure("loop timer for $(mod)", e, catch_backtrace())
+            rethrow()
         end
     end
 
@@ -255,7 +282,15 @@ function task_channel_check(task_id::TaskID)
         group = packet[5]
         bytes = packet[6]
         Goby.receive_dereferenced(layer, type_name, scheme, group, bytes)
-    end    
+    elseif type == :task_failed
+        what = packet[2]
+        e = packet[3]
+        backtrace = packet[4]
+        println(stderr, "Goby: $(what) stopped and the application cannot continue:")
+        Base.showerror(stderr, e, backtrace)
+        println(stderr)
+        throw(e)
+    end
 end
 
 

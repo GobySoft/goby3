@@ -1,0 +1,6 @@
+# Missing the required 'application' key
+interprocess:
+  publishes:
+    - group: project::groups::modem_tx
+      scheme: PROTOBUF
+      type: project.protobuf.CommsTx

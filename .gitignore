@@ -6,3 +6,8 @@
 /share
 /build
 .vscode
+
+# Python package build artifacts (src/python)
+__pycache__/
+*.py[cod]
+*.egg-info/

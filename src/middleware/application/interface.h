@@ -37,6 +37,7 @@
 
 #include "goby/exception.h"
 #include "goby/middleware/application/configurator.h"
+#include "goby/middleware/application/detail/simulation_time.h"
 #include "goby/middleware/marshalling/detail/dccl_serializer_parser.h"
 #include "goby/middleware/protobuf/app_config.pb.h"
 #include "goby/time.h"
@@ -71,6 +72,11 @@ namespace middleware
 {
 
 namespace julia
+{
+template <typename App> class ApplicationWrapper;
+}
+
+namespace python
 {
 template <typename App> class ApplicationWrapper;
 }
@@ -155,6 +161,7 @@ template <typename Config> class Application
         const goby::middleware::ConfiguratorInterface<typename App::ConfigType>&);
 
     template <typename App> friend class goby::middleware::julia::ApplicationWrapper;
+    template <typename App> friend class goby::middleware::python::ApplicationWrapper;
 
     // main loop that exits on quit(); returns the desired return value
     int __run();
@@ -404,16 +411,7 @@ int goby::run(const goby::middleware::ConfiguratorInterface<typename App::Config
             new goby::middleware::protobuf::AppConfig(cfgtor.app_configuration()));
 
         // set up simulation time
-        if (App::app3_base_configuration_->simulation().time().use_sim_time())
-        {
-            goby::time::SimulatorSettings::using_sim_time = true;
-            goby::time::SimulatorSettings::warp_factor =
-                App::app3_base_configuration_->simulation().time().warp_factor();
-            if (App::app3_base_configuration_->simulation().time().has_reference_microtime())
-                goby::time::SimulatorSettings::reference_time =
-                    std::chrono::system_clock::time_point(std::chrono::microseconds(
-                        App::app3_base_configuration_->simulation().time().reference_microtime()));
-        }
+        middleware::detail::configure_simulation_time(*App::app3_base_configuration_);
 
         // instantiate the application (with the configuration already set)
         App app;

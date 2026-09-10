@@ -1,0 +1,6 @@
+# application is missing the required 'cpp_type' key
+application:
+  name: BadDemo
+  config:
+    scheme: PROTOBUF
+    type: project.config.protobuf.BadDemoConfig

@@ -256,9 +256,6 @@ target_link_libraries(goby
   dccl
   dccl_arithmetic
   ${Boost_LIBRARIES}
-  boost_filesystem
-  boost_program_options
-  boost_date_time
   protobuf::libprotobuf
   ${PROJ_LIBRARY}
   )

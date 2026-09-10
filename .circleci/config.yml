@@ -23,6 +23,13 @@ environment-template-armhf: &environment-template-armhf
   TARGET_ARCH: "armhf"
   DEB_BUILD_OPTIONS: "parallel=3 nocheck"
 
+environment-template-ccache: &environment-template-ccache
+  CCACHE_DIR: "/root/.ccache"
+  # one full build is ~370M, so this holds roughly two generations of objects
+  CCACHE_MAXSIZE: "1G"
+  # apt dist-upgrade rewrites compiler mtimes without necessarily changing the binary
+  CCACHE_COMPILERCHECK: "content"
+
 environment-template-bookworm: &environment-template-bookworm
   DISTRO_RELEASE_CODENAME: "bookworm"
   DISTRO_RELEASE_VERSION: "debian12"
@@ -103,9 +110,25 @@ job-template-amd64: &job-template-amd64
           apt-get update
           apt-get dist-upgrade -y
           apt-get install libdccl5-dev:${TARGET_ARCH} libdccl5:${TARGET_ARCH} dccl5-compiler -y || true
+    - run: &run-install-ccache
+        name: Install ccache
+        command: apt-get install -y ccache
+    - restore_cache: &restore-ccache
+        keys:
+          - ccache-v1-{{ .Environment.CIRCLE_JOB }}-{{ .Branch }}-{{ .Revision }}
+          - ccache-v1-{{ .Environment.CIRCLE_JOB }}-{{ .Branch }}-
+          - ccache-v1-{{ .Environment.CIRCLE_JOB }}-
     - run: &run-build
         name: Build
-        command: mkdir -p build && cd build && cmake -Denable_testing=ON -Dbuild_doc=ON -Dbuild_doc_pdf=OFF -DCMAKE_BUILD_TYPE=Debug .. && cmake --build . -- -j4
+        command: mkdir -p build && cd build && cmake -Denable_testing=ON -Dbuild_doc=ON -Dbuild_doc_pdf=OFF -DCMAKE_BUILD_TYPE=Debug -DCMAKE_C_COMPILER_LAUNCHER=ccache -DCMAKE_CXX_COMPILER_LAUNCHER=ccache .. && cmake --build . -- -j4
+    - run: &run-ccache-stats
+        name: Show ccache statistics
+        # zero afterwards so each build reports only its own hit rate
+        command: ccache --show-stats && ccache --zero-stats
+    - save_cache: &save-ccache
+        key: ccache-v1-{{ .Environment.CIRCLE_JOB }}-{{ .Branch }}-{{ .Revision }}
+        paths:
+          - /root/.ccache
     - run: &run-tests
         name: Run tests
         command: cd build && ctest --output-on-failure
@@ -118,7 +141,7 @@ job-template-deb-amd64: &job-template-deb-amd64
     - run: &run-import-gpg
         name: Import GPG key
         command: echo -e "$GPG_KEY" | gpg --import
-    - attach-workspace: &attach-src-workspace
+    - attach_workspace: &attach-src-workspace
         at: /root/src
     - run: &run-extract-src
         name: Extract the original source tarball
@@ -139,6 +162,18 @@ job-template-deb-amd64: &job-template-deb-amd64
           mv /root/debian ${CIRCLE_WORKING_DIRECTORY} &&
           cp /root/src/changelog ${CIRCLE_WORKING_DIRECTORY}/debian &&
           sed -i "s/DISTRORELEASEVERSION/${DISTRO_RELEASE_VERSION}/;s/DISTRORELEASECODENAME/${DISTRO_RELEASE_CODENAME}/" ${CIRCLE_WORKING_DIRECTORY}/debian/changelog
+    - run: &run-install-build-deps
+        name: Install build dependencies the image does not already have
+        # TODO: Remove once the Docker images are rebuilt and have the new (Python) dependencies.
+        command: |
+          mkdir -p /root/build-deps && cd /root/build-deps &&
+          apt-get update &&
+          case "${TARGET_ARCH}" in
+            amd64) \
+              mk-build-deps -t "apt-get -y --no-install-recommends -o Debug::pkgProblemResolver=yes" -i "${CIRCLE_WORKING_DIRECTORY}/debian/control" ;;
+            *) \
+              mk-build-deps --build-dep -a "${TARGET_ARCH}" --host-arch "${TARGET_ARCH}" --build-arch amd64 -t "apt-get -y --no-install-recommends -o Debug::pkgProblemResolver=yes" -i "${CIRCLE_WORKING_DIRECTORY}/debian/control" ;;
+          esac
     - run: &run-patch-version
         name: Patch the version patch number automatically in CMakeLists.txt
         command: |
@@ -210,24 +245,21 @@ filter-template-master-only: &filter-template-master-only
     branches:
       only:
         - "3.0"
-        - "packages"
 
 filter-template-non-master: &filter-template-non-master
   filters:
     branches:
       ignore:
         - "3.0"
-        - "packages"
         
 ## Begin actual config
-version: 2
+version: 2.1
 workflows:
-  version: 2
   commit:
     jobs:
 
 
-      - amd64+tsan-build:
+      - amd64-tsan-build:
           <<: *filter-template-non-master
       - amd64-bookworm-build:        
           <<: *filter-template-non-master
@@ -241,7 +273,9 @@ workflows:
           <<: *filter-template-non-master
       - amd64-resolute-minimal-build:
           <<: *filter-template-non-master
-      
+      - amd64-resolute-julia-build:
+          <<: *filter-template-non-master
+
       - get-orig-source:
           <<: *filter-template-master-only
 
@@ -351,13 +385,13 @@ workflows:
             - arm64-resolute-deb-build
             - armhf-resolute-deb-build
             
-      - amd64+scan-build:
-          <<: *filter-template-non-master
-      - amd64+asan-build:
+      - amd64-scan-build:
+          <<: *filter-template-master-only
+      - amd64-asan-build:
           <<: *filter-template-master-only
 
 
-#      - amd64+ubsan-build:
+#      - amd64-ubsan-build:
 #          <<: *filter-template-master-only          
           
 jobs:
@@ -401,21 +435,24 @@ jobs:
     docker: *docker-base-bookworm
     environment:
       <<: *environment-template-common
+      <<: *environment-template-ccache
       <<: *environment-template-bookworm
-      
+
   amd64-trixie-build:
     <<: *job-template-amd64
     docker: *docker-base-trixie
     environment:
       <<: *environment-template-common
+      <<: *environment-template-ccache
       <<: *environment-template-trixie
-      
+
 
   amd64-jammy-build:
     <<: *job-template-amd64
     docker: *docker-base-jammy
     environment:
       <<: *environment-template-common
+      <<: *environment-template-ccache
       <<: *environment-template-jammy
 
   amd64-noble-build:
@@ -423,13 +460,15 @@ jobs:
     docker: *docker-base-noble
     environment:
       <<: *environment-template-common
-      <<: *environment-template-noble    
-            
+      <<: *environment-template-ccache
+      <<: *environment-template-noble
+
   amd64-resolute-build:
     <<: *job-template-amd64
     docker: *docker-base-resolute
     environment:
       <<: *environment-template-common
+      <<: *environment-template-ccache
       <<: *environment-template-resolute
 
   amd64-resolute-minimal-build:
@@ -438,6 +477,7 @@ jobs:
     resource_class: large
     working_directory: /root/goby3
     environment:
+      <<: *environment-template-ccache
       DEBIAN_FRONTEND: "noninteractive"
       DEBIAN_PRIORITY: "critical"
     steps:
@@ -454,11 +494,77 @@ jobs:
           name: Install apt packages
           command: |
             apt-get update &&
-            apt-get -y install git build-essential cmake libboost-dev libboost-system-dev libboost-date-time-dev libboost-program-options-dev libboost-filesystem-dev libboost-process-dev libprotobuf-dev libprotoc-dev protobuf-compiler libproj-dev libdccl4-dev dccl4-compiler
+            apt-get -y install ccache git build-essential cmake libboost-dev libboost-system-dev libboost-date-time-dev libboost-program-options-dev libboost-filesystem-dev libboost-process-dev libprotobuf-dev libprotoc-dev protobuf-compiler libproj-dev libdccl4-dev dccl4-compiler
+      - checkout
+      - restore_cache: *restore-ccache
+      - run:
+          name: Build
+          command: mkdir -p build && cd build && cmake -Denable_testing=ON -DCMAKE_C_COMPILER_LAUNCHER=ccache -DCMAKE_CXX_COMPILER_LAUNCHER=ccache .. && cmake --build . -- -j4
+      - run: *run-ccache-stats
+      - save_cache: *save-ccache
+      - run: *run-tests
+
+  # The only job with Julia. Everything the Julia bindings need is here rather than in the
+  # images, so the other jobs keep building without it exactly as before. Nothing but this
+  # compiles the generated C++ bridge, so a break in it reaches released packages otherwise.
+  amd64-resolute-julia-build:
+    docker:
+      - image: ubuntu:resolute
+    resource_class: large
+    working_directory: /root/goby3
+    environment:
+      DEBIAN_FRONTEND: "noninteractive"
+      DEBIAN_PRIORITY: "critical"
+      # Julia is installed from the official generic Linux tarball rather than a distribution
+      # package, which is how upstream expects it to be deployed. Goby.jl requires 1.12.
+      JULIA_VERSION: "1.12.2"
+    steps:
+      - run:
+          name: Install packages server
+          command: |
+            apt-get update && apt-get -y install dirmngr gpg
+            export COMPONENT=release
+            export GOBYSOFT_SIGNING_KEY=19478082E2F8D3FE
+            install -d -m 0755 /etc/apt/keyrings
+            gpg --keyserver keyserver.ubuntu.com --recv-keys ${GOBYSOFT_SIGNING_KEY} && gpg --export ${GOBYSOFT_SIGNING_KEY} >/etc/apt/keyrings/gobysoft.gpg
+            echo "deb [signed-by=/etc/apt/keyrings/gobysoft.gpg] http://packages.gobysoft.org/$(. /etc/os-release; echo "$ID")/${COMPONENT}/ $(. /etc/os-release; echo "$VERSION_CODENAME")/" >/etc/apt/sources.list.d/gobysoft_${COMPONENT}.list
+      - run:
+          name: Install apt packages
+          # the minimal build's dependencies, plus zeromq for the application the test builds and
+          # python3-yaml for the generator the conformance test runs against Julia's.
+          # cppzmq-dev, not libzmq3-dev, is what carries the zmq.hpp that FindZeroMQ looks for
+          command: |
+            apt-get update &&
+            apt-get -y install git wget ca-certificates build-essential cmake libboost-dev libboost-system-dev libboost-date-time-dev libboost-program-options-dev libboost-filesystem-dev libboost-process-dev libprotobuf-dev libprotoc-dev protobuf-compiler libproj-dev libdccl4-dev dccl4-compiler cppzmq-dev libzmq3-dev python3 python3-yaml
+      - run:
+          name: Install Julia and CxxWrap
+          # JlCxx, whose headers the generated bridge links against, comes with CxxWrap.jl
+          command: |
+            wget -qO /tmp/julia.tar.gz \
+              "https://julialang-s3.julialang.org/bin/linux/x64/${JULIA_VERSION%.*}/julia-${JULIA_VERSION}-linux-x86_64.tar.gz"
+            mkdir -p /opt/julia
+            tar xzf /tmp/julia.tar.gz -C /opt/julia --strip-components=1
+            ln -sf /opt/julia/bin/julia /usr/local/bin/julia
+            julia --version
+            julia -e 'import Pkg; Pkg.add("CxxWrap")'
       - checkout
       - run:
           name: Build
-          command: mkdir -p build && cd build && cmake -Denable_testing=ON .. && cmake --build . -- -j4
+          # build_julia and the conformance test are requested explicitly rather than left to
+          # autodetection or their default, so that a missing piece fails the job instead of
+          # quietly dropping the tests from it. This is the only job that runs the conformance
+          # test, which is why it is off by default everywhere else.
+          command: mkdir -p build && cd build && cmake -Denable_testing=ON -Dbuild_julia=ON -Dbuild_zeromq=ON -Dbuild_python=OFF -Denable_interface_conformance_test=ON .. && cmake --build . -- -j4
+      - run:
+          name: Check that the Julia tests are registered
+          command: |
+            cd build
+            for _test in goby_test_julia_app goby_test_interface_conformance; do
+              if ! ctest -N -R "^${_test}$" | grep -q "${_test}"; then
+                echo "${_test} is not registered: it would be silently skipped"
+                exit 1
+              fi
+            done
       - run: *run-tests
 
   amd64-bookworm-deb-build:
@@ -567,7 +673,7 @@ jobs:
       <<: *environment-template-resolute
       <<: *environment-template-armhf
       
-  amd64+scan-build:
+  amd64-scan-build:
     <<: *job-template-sanitizers
     steps:
       - checkout
@@ -586,7 +692,7 @@ jobs:
       - store_artifacts:
           path: /tmp/scan-build.tar.gz
           when: on_fail
-  amd64+asan-build:
+  amd64-asan-build:
     <<: *job-template-sanitizers
     steps:
       - checkout
@@ -598,7 +704,7 @@ jobs:
       - run: &run-tests-sanitizers
           name: Run tests
           command: cd build && ctest --output-on-failure
-  amd64+tsan-build:
+  amd64-tsan-build:
     # Use machine executor (not Docker) so we can set sysctl for ThreadSanitizer
     machine:
       image: ubuntu-2404:current
@@ -616,12 +722,22 @@ jobs:
           # on Linux kernels >= 6.x. See https://stackoverflow.com/questions/77850769
           name: Set mmap_rnd_bits for ThreadSanitizer compatibility
           command: sudo sysctl vm.mmap_rnd_bits=28
+      - restore_cache:
+          keys:
+            - ccache-v1-{{ .Environment.CIRCLE_JOB }}-{{ .Branch }}-{{ .Revision }}
+            - ccache-v1-{{ .Environment.CIRCLE_JOB }}-{{ .Branch }}-
+            - ccache-v1-{{ .Environment.CIRCLE_JOB }}-
       - run:
           name: Start build container
           command: |
+            mkdir -p /home/circleci/ccache
             docker run -d --name tsan-build \
               -v /home/circleci/goby3:/root/goby3 \
+              -v /home/circleci/ccache:/root/.ccache \
               -e TSAN_OPTIONS="suppressions=/root/goby3/src/test/suppressions.tsan.txt history_size=6" \
+              -e CCACHE_DIR="/root/.ccache" \
+              -e CCACHE_MAXSIZE="1G" \
+              -e CCACHE_COMPILERCHECK="content" \
               gobysoft/goby3-ubuntu-build-base:26.04.1 \
               sleep infinity
             # Fix git "dubious ownership" (host checkout owned by circleci, container runs as root)
@@ -634,14 +750,24 @@ jobs:
             true
       - run:
           name: Update apt packages in container
-          command: docker exec tsan-build bash -c "apt-get update && apt-get dist-upgrade -y"
+          command: docker exec tsan-build bash -c "apt-get update && apt-get dist-upgrade -y && apt-get install -y ccache"
       - run:
           name: Build with ThreadSanitizer
-          command: docker exec tsan-build bash -c "mkdir -p /root/goby3/build && cd /root/goby3/build && cmake -DSANITIZE_THREAD=ON -Denable_testing=ON -Denable_llvm=OFF .. && cmake --build . -- -j${SANITIZER_NUM_JOBS}"
+          command: docker exec tsan-build bash -c "mkdir -p /root/goby3/build && cd /root/goby3/build && cmake -DSANITIZE_THREAD=ON -Denable_testing=ON -Denable_llvm=OFF -DCMAKE_C_COMPILER_LAUNCHER=ccache -DCMAKE_CXX_COMPILER_LAUNCHER=ccache .. && cmake --build . -- -j${SANITIZER_NUM_JOBS}"
+      - run:
+          name: Show ccache statistics
+          command: |
+            docker exec tsan-build bash -c "ccache --show-stats && ccache --zero-stats"
+            # the container writes the cache as root; save_cache runs as circleci
+            sudo chown -R circleci:circleci /home/circleci/ccache
+      - save_cache:
+          key: ccache-v1-{{ .Environment.CIRCLE_JOB }}-{{ .Branch }}-{{ .Revision }}
+          paths:
+            - /home/circleci/ccache
       - run:
           name: Run tests
           command: docker exec tsan-build bash -c "cd /root/goby3/build && ctest --output-on-failure"
-  amd64+ubsan-build:
+  amd64-ubsan-build:
     <<: *job-template-sanitizers
     steps:
       - checkout
@@ -664,9 +790,9 @@ jobs:
           fingerprints:
             - "cd:15:c9:43:48:20:c9:56:58:9e:91:01:74:0d:fe:d2"
       - run: *run-import-gpg
-      - attach-workspace:
+      - attach_workspace:
           at: /root/deb
-      - attach-workspace: *attach-src-workspace
+      - attach_workspace: *attach-src-workspace
       - run:
           name: Move original source into output directory
           command: mv /root/src/* /root/deb

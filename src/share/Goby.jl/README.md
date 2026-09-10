@@ -9,7 +9,7 @@ This package provides the ability to run Goby applications from the Julia langua
 | File | Purpose |
 |------|---------|
 | `src/Goby.jl` | **Main Julia module.** Wraps the CxxWrap'd C++ Goby application class and exposes `publish`, `subscribe`, `run`, `cfg`, and `read_cli_cfg` to Julia user code. |
-| `src/gen_goby.jl` | **Code generator.** Reads an `interface.yml` file and emits a C++ source file containing the `publish`/`subscribe` glue code for all declared transport layers. Invoked at build time by CMake. |
+| `src/gen_goby.jl` | **Code generator.** Reads an `interface.yml` file and emits two files: a C++ source file containing the `publish`/`subscribe` glue code for all declared transport layers, and a Julia module holding the declared groups and one accessor per portal. Invoked at build time by CMake. |
 | `src/GobyMultiThread.jl` | `MultiThread` sub-module. Not directly included from user code. Implements interthread communication using Julia `Channel`s and `ThreadPools`, enabling multi-threaded Julia Goby apps where each task runs on a dedicated Julia thread. |
 | `src/pkg.jl` | Minimal helper script used by CMake to install/instantiate the Julia package dependencies (`Pkg.instantiate()`). |
 | `Project.toml` | Julia package manifest; declares dependencies (`CxxWrap`, `ProtoBuf`, `YAML`, `ThreadPools`) and package metadata. |
@@ -119,11 +119,42 @@ For the `interprocess` block above the generator emits:
 
 ```cpp
 // publish() method body
-GOBY_JULIA_IF_PUBLICATION(PROTOBUF, INTERPROCESS, interprocess, project::groups::modem_tx, project::protobuf::CommsTx)
+GOBY_JULIA_IF_PUBLICATION(PROTOBUF, INTERPROCESS, interprocess, project::groups::modem_tx, "project::groups::modem_tx", project::protobuf::CommsTx)
 
 // subscribe() method body
-GOBY_JULIA_IF_SUBSCRIPTION(PROTOBUF, INTERPROCESS, interprocess, project::groups::modem_rx, project::protobuf::CommsRx)
+GOBY_JULIA_IF_SUBSCRIPTION(PROTOBUF, INTERPROCESS, interprocess, project::groups::modem_rx, "project::groups::modem_rx", project::protobuf::CommsRx)
 ```
+
+The group appears twice: as the C++ expression for the Goby call, and as a string for matching
+what Julia asked for. The two are not interchangeable — a group's runtime name is not necessarily
+its C++ variable name, and Julia only knows the latter.
+
+### Generated Julia output
+
+Alongside it the generator writes `<target>_goby.jl`, defining a module named after the
+application:
+
+```julia
+module JuliaDemoGoby
+
+using Goby
+
+const APPLICATION_NAME = "JuliaDemo"
+
+module groups
+const modem_rx = "project::groups::modem_rx"
+const modem_tx = "project::groups::modem_tx"
+end
+
+interprocess() = Goby.INTERPROCESS
+
+end # module JuliaDemoGoby
+```
+
+Groups are named by their last `::` component; a short name claimed by two different expressions
+is left out rather than guessed at, and the expression still works as a string. The accessors are
+functions because the layer constants arrive with the application library, which is loaded after
+this file is included.
 
 ---
 
@@ -151,12 +182,13 @@ Julia user script (JuliaDemo.jl)
 
 2. **Proto generation** – Use the Julia Protobuf.jl compiler to produce `*_pb.jl` files alongside the C++ `.pb.h`/`.pb.cc` files.
 
-3. **C++ glue generation** – Use gen_goby.jl:
+3. **Glue generation** – Use gen_goby.jl:
    ```
    julia --project=<Goby.jl> -L gen_goby.jl \
-         -e 'goby_gen_cpp("interface.yml", "JuliaDemo.cpp", ["proto_header.pb.h"])'
+         -e 'goby_gen_cpp("interface.yml", "JuliaDemo.cpp", ["proto_header.pb.h"])' \
+         -e 'goby_gen_julia("interface.yml", "julia_demo_goby.jl")'
    ```
-   This produces `JuliaDemo.cpp`, which:
+   `goby_gen_julia` produces the module shown above. `goby_gen_cpp` produces `JuliaDemo.cpp`, which:
    - `#include`s `<goby/middleware/languages/julia/application.h>` and any additional headers passed as the third argument.
    - Defines `CONFIG_TYPE`, `APPLICATION_TYPE`, and `APPLICATION_NAME` macros.
    - Declares a class `JuliaDemo` extending `goby::middleware::julia::Application<APPLICATION_TYPE>` with `publish()` and `subscribe()` bodies built from `GOBY_JULIA_IF_PUBLICATION` / `GOBY_JULIA_IF_SUBSCRIPTION` macros.
@@ -177,12 +209,14 @@ using Goby
 # Load the generated CxxWrap module and application-specific protobuf types
 # (exact using/import statements depend on your project layout)
 
+# the module gen_goby.jl wrote from interface.yml, beside the application library
+include(joinpath(@__DIR__, "julia_demo_goby.jl"))
 
 # ---------- Callbacks ----------
 
 function publish_outgoing_msg()
     msg = project.protobuf.CommsTx(request_id = 42)
-    Goby.publish(goby_app, Goby.INTERPROCESS, "project::groups::modem_tx", msg)
+    Goby.publish(goby_app, JuliaDemoGoby.interprocess(), JuliaDemoGoby.groups.modem_tx, msg)
     println("PUBLISHED: $msg")
 end
 
@@ -215,8 +249,8 @@ goby_cfg = Dict(
 # ---------- Subscriptions ----------
 
 function start()
-    Goby.subscribe(goby_app, Goby.INTERPROCESS,
-                   "project::groups::comms_rx",
+    Goby.subscribe(goby_app, JuliaDemoGoby.interprocess(),
+                   JuliaDemoGoby.groups.modem_rx,
                    receive_incoming_msg)
 end
 

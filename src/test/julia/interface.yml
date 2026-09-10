@@ -1,0 +1,18 @@
+# Interface for the Julia bindings compile test. Deliberately exercises both a publication and
+# a subscription, so that both generated macros are compiled.
+application:
+  name: GobyJuliaTestApp
+  cpp_type: goby::zeromq::SingleThreadApplication
+  config:
+    scheme: PROTOBUF
+    type: goby.test.julia.protobuf.TestConfig
+
+interprocess:
+  publishes:
+    - group: goby::test::julia::groups::tx
+      scheme: PROTOBUF
+      type: goby.test.julia.protobuf.CommsTx
+  subscribes:
+    - group: goby::test::julia::groups::rx
+      scheme: PROTOBUF
+      type: goby.test.julia.protobuf.CommsRx

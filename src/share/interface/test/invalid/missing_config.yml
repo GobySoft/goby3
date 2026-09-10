@@ -1,0 +1,4 @@
+# application is missing the required 'config' key
+application:
+  name: BadDemo
+  cpp_type: goby::zeromq::SingleThreadApplication

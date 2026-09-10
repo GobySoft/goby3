@@ -62,6 +62,7 @@ class SingleThreadApplication
     friend class coroner::Application<SingleThreadApplication<Config, InterProcessPortal>>;
     friend class terminate::Application<SingleThreadApplication<Config, InterProcessPortal>>;
     template <typename App> friend class goby::middleware::julia::ApplicationWrapper;
+    template <typename App> friend class goby::middleware::python::ApplicationWrapper;
 
   public:
     /// \brief Construct the application calling loop() at the given frequency (double overload)

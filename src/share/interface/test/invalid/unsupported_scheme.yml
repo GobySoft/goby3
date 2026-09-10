@@ -1,0 +1,13 @@
+# DCCL is a valid Goby marshalling scheme but is not yet supported by the bindings
+application:
+  name: BadDemo
+  cpp_type: goby::zeromq::SingleThreadApplication
+  config:
+    scheme: PROTOBUF
+    type: project.config.protobuf.BadDemoConfig
+
+interprocess:
+  publishes:
+    - group: project::groups::modem_tx
+      scheme: DCCL
+      type: project.protobuf.CommsTx
