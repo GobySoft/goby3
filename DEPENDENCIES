@@ -141,11 +141,7 @@ case $OS_ID in
              apt-get update -qq)
         fi
 
-        [[ "${INSTALL_ZENOH_DEPENDS}" == "true" ]] && (
-            depends "libgoby3-zenoh-dev"
-            # libgoby3-zenoh-dev is not in every series, so fall back to the Zenoh packages it names
-            [[ -z "${DEPENDS_RETVAL// }" ]] && DEPENDS_RETVAL="libzenohc-dev libzenohcpp-dev"
-            set -x; apt-get -y install $DEPENDS_RETVAL)
+        [[ "${INSTALL_ZENOH_DEPENDS}" == "true" ]] && (depends "libgoby3-zenoh-dev"; set -x; apt-get -y install $DEPENDS_RETVAL)
         [[ "${INSTALL_MOOS_DEPENDS}" == "true" ]] && (depends "libgoby3-moos-dev"; set -x; apt-get -y install $DEPENDS_RETVAL)
         [[ "${INSTALL_GUI_DEPENDS}" == "true" ]] && (depends "libgoby3-gui-dev"; set -x; apt-get -y install $DEPENDS_RETVAL)
         [[ "${INSTALL_DOC_DEPENDS}" == "true" ]] && (set -x; apt-get -y build-dep goby3 --indep-only)
