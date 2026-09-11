@@ -61,9 +61,10 @@ function(GOBY_PYTHON_FIND_TARGET_DEVELOPMENT)
     return()
   endif()
 
-  # Host and target are normally the same distribution release, so the host's Python version is
-  # the best guess at the target's when several sets of headers are installed. GOBY_PYTHON_TARGET_VERSION
-  # pins it when they differ.
+  # Which version to build against is decided by what the target actually has, not by what the
+  # host runs: the two are often the same distribution release but need not be, and picking the
+  # host's version when the target has another only produces a confusing miss. The host's version
+  # is tried first all the same, to disambiguate a target carrying several.
   set(_versions 3.15 3.14 3.13 3.12 3.11 3.10 3.9 3.8)
   if(GOBY_PYTHON_TARGET_VERSION)
     set(_versions "${GOBY_PYTHON_TARGET_VERSION}")
@@ -80,53 +81,50 @@ function(GOBY_PYTHON_FIND_TARGET_DEVELOPMENT)
     endif()
   endif()
 
-  set(_header_suffixes)
+  # pyconfig.h is the architecture-dependent half, which multiarch keeps under the target triplet.
+  # Deliberately never falling back to the shared python3.X/pyconfig.h when the triplet is known:
+  # that one belongs to the host, and building against it would produce a module for the wrong
+  # ABI rather than an error. A version counts only when both halves are present.
+  set(_tried)
   foreach(_version ${_versions})
-    list(APPEND _header_suffixes "python${_version}")
+    if(CMAKE_LIBRARY_ARCHITECTURE)
+      set(_config_suffix "${CMAKE_LIBRARY_ARCHITECTURE}/python${_version}")
+    else()
+      set(_config_suffix "python${_version}")
+    endif()
+    list(APPEND _tried "${_config_suffix}")
+
+    find_path(_goby_python_h NAMES Python.h PATH_SUFFIXES "python${_version}")
+    find_path(_goby_pyconfig_h NAMES pyconfig.h PATH_SUFFIXES "${_config_suffix}")
+
+    if(_goby_python_h AND _goby_pyconfig_h)
+      set(_found_version "${_version}")
+      set(GOBY_PYTHON_TARGET_PYTHON_H_DIR "${_goby_python_h}"
+        CACHE PATH "Directory holding the target's Python.h")
+      set(GOBY_PYTHON_TARGET_PYCONFIG_H_DIR "${_goby_pyconfig_h}"
+        CACHE PATH "Directory holding the target's pyconfig.h")
+    endif()
+
+    unset(_goby_python_h CACHE)
+    unset(_goby_pyconfig_h CACHE)
+
+    if(_found_version)
+      break()
+    endif()
   endforeach()
 
-  # the version-independent headers, shared by every architecture on a multiarch system
-  find_path(GOBY_PYTHON_TARGET_PYTHON_H_DIR
-    NAMES Python.h
-    PATH_SUFFIXES ${_header_suffixes}
-    DOC "Directory holding the target's Python.h")
-
-  if(NOT GOBY_PYTHON_TARGET_PYTHON_H_DIR)
+  if(NOT _found_version)
+    string(REPLACE ";" ", " _tried_text "${_tried}")
     set(GOBY_PYTHON_TARGET_NOT_FOUND_REASON
-      "the target's Python.h was not found; install python3-dev for the target architecture"
-      PARENT_SCOPE)
+      "no target Python headers found: looked for Python.h and a matching pyconfig.h under \
+${_tried_text}. Install python3-dev for the target architecture (e.g. python3-dev:arm64), or set \
+GOBY_PYTHON_TARGET_VERSION" PARENT_SCOPE)
     return()
   endif()
 
-  get_filename_component(_python_dir_name "${GOBY_PYTHON_TARGET_PYTHON_H_DIR}" NAME)
-  if(NOT _python_dir_name MATCHES "^python([0-9]+)\\.([0-9]+)")
-    set(GOBY_PYTHON_TARGET_NOT_FOUND_REASON
-      "could not read a Python version out of ${GOBY_PYTHON_TARGET_PYTHON_H_DIR}" PARENT_SCOPE)
-    return()
-  endif()
-  set(_major ${CMAKE_MATCH_1})
-  set(_minor ${CMAKE_MATCH_2})
-
-  # pyconfig.h is the architecture-dependent half, which multiarch keeps under the target triplet.
-  # Deliberately not falling back to the shared python3.X/pyconfig.h when the triplet is known:
-  # that one belongs to the host, and building the extension against it would produce a module
-  # for the wrong ABI rather than an error.
-  if(CMAKE_LIBRARY_ARCHITECTURE)
-    set(_config_suffixes "${CMAKE_LIBRARY_ARCHITECTURE}/python${_major}.${_minor}")
-  else()
-    set(_config_suffixes "python${_major}.${_minor}")
-  endif()
-  find_path(GOBY_PYTHON_TARGET_PYCONFIG_H_DIR
-    NAMES pyconfig.h
-    PATH_SUFFIXES ${_config_suffixes}
-    DOC "Directory holding the target's pyconfig.h")
-
-  if(NOT GOBY_PYTHON_TARGET_PYCONFIG_H_DIR)
-    set(GOBY_PYTHON_TARGET_NOT_FOUND_REASON
-      "the target's pyconfig.h was not found under ${_config_suffixes}; install python3-dev for \
-the target architecture (e.g. python3-dev:arm64)" PARENT_SCOPE)
-    return()
-  endif()
+  string(REPLACE "." ";" _version_parts "${_found_version}")
+  list(GET _version_parts 0 _major)
+  list(GET _version_parts 1 _minor)
 
   set(_include_dirs "${GOBY_PYTHON_TARGET_PYTHON_H_DIR}")
   if(NOT "${GOBY_PYTHON_TARGET_PYCONFIG_H_DIR}" STREQUAL "${GOBY_PYTHON_TARGET_PYTHON_H_DIR}")
