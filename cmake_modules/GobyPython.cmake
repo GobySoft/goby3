@@ -36,26 +36,156 @@
 #   <TARGET>_PYTHONPATH         all of the above, and Goby's own when it is not installed
 #
 # Requires pybind11 and the goby Python package (for goby_gen_cpp).
+#
+# Cross-compiling
+# ---------------
+# Two Pythons are involved and they are not the same one. The generators (goby_gen_cpp, protoc
+# --python_out) run at build time, so they need the *host's* interpreter; the extension module is
+# loaded by the *target's* interpreter, so it is compiled against the target's python3-dev and
+# named with the target's ABI suffix. Install python3-dev for the target architecture
+# (e.g. python3-dev:arm64) and this is detected from the toolchain; override it with:
+#
+#   GOBY_PYTHON_HOST_EXECUTABLE      host interpreter that runs the generators
+#   GOBY_PYTHON_TARGET_VERSION       target Python version, e.g. 3.12 (defaults to the host's)
+#   GOBY_PYTHON_TARGET_INCLUDE_DIRS  directories holding the target's Python.h and pyconfig.h
+#   GOBY_PYTHON_TARGET_SOABI         extension suffix, e.g. cpython-312-aarch64-linux-gnu
+#
+# An extension module does not link libpython on Unix, so headers and the suffix are all that is
+# needed; pybind11 is used headers-only so that it does not run its own Python search against the
+# wrong architecture.
 
-# FindPython makes searching for the interpreter a hard error when cross-compiling without
-# CMAKE_CROSSCOMPILING_EMULATOR (CMP0190), and a Python application is built natively anyway
-if(NOT CMAKE_CROSSCOMPILING OR CMAKE_CROSSCOMPILING_EMULATOR)
-  find_package(Python3 COMPONENTS Interpreter Development.Module QUIET)
+# Locates the target's Python headers and ABI suffix, which is all an extension module needs:
+# on Unix it does not link libpython, so there is no target library to find.
+function(GOBY_PYTHON_FIND_TARGET_DEVELOPMENT)
+  if(GOBY_PYTHON_TARGET_INCLUDE_DIRS AND GOBY_PYTHON_TARGET_SOABI)
+    return()
+  endif()
 
-  if(Python3_FOUND AND NOT pybind11_DIR)
-    # a pip-installed pybind11 is somewhere CMake has no reason to look; the module knows where
-    execute_process(COMMAND ${Python3_EXECUTABLE} -m pybind11 --cmakedir
-      OUTPUT_VARIABLE PYBIND11_PYTHON_CMAKE_DIR
-      RESULT_VARIABLE PYBIND11_PYTHON_CMAKE_DIR_RESULT
+  # Host and target are normally the same distribution release, so the host's Python version is
+  # the best guess at the target's when several sets of headers are installed. GOBY_PYTHON_TARGET_VERSION
+  # pins it when they differ.
+  set(_versions 3.15 3.14 3.13 3.12 3.11 3.10 3.9 3.8)
+  if(GOBY_PYTHON_TARGET_VERSION)
+    set(_versions "${GOBY_PYTHON_TARGET_VERSION}")
+  elseif(GOBY_PYTHON_HOST_EXECUTABLE)
+    execute_process(
+      COMMAND "${GOBY_PYTHON_HOST_EXECUTABLE}" -c
+              "import sys; print('%d.%d' % sys.version_info[:2])"
+      OUTPUT_VARIABLE _host_version
       OUTPUT_STRIP_TRAILING_WHITESPACE
+      RESULT_VARIABLE _host_version_result
       ERROR_QUIET)
-    if(PYBIND11_PYTHON_CMAKE_DIR_RESULT EQUAL 0 AND IS_DIRECTORY "${PYBIND11_PYTHON_CMAKE_DIR}")
-      set(pybind11_DIR "${PYBIND11_PYTHON_CMAKE_DIR}" CACHE PATH "The directory containing a CMake configuration file for pybind11.")
+    if(_host_version_result EQUAL 0 AND _host_version)
+      list(INSERT _versions 0 "${_host_version}")
     endif()
   endif()
 
-  find_package(pybind11 QUIET)
+  set(_header_suffixes)
+  foreach(_version ${_versions})
+    list(APPEND _header_suffixes "python${_version}")
+  endforeach()
+
+  # the version-independent headers, shared by every architecture on a multiarch system
+  find_path(GOBY_PYTHON_TARGET_PYTHON_H_DIR
+    NAMES Python.h
+    PATH_SUFFIXES ${_header_suffixes}
+    DOC "Directory holding the target's Python.h")
+
+  if(NOT GOBY_PYTHON_TARGET_PYTHON_H_DIR)
+    set(GOBY_PYTHON_TARGET_NOT_FOUND_REASON
+      "the target's Python.h was not found; install python3-dev for the target architecture"
+      PARENT_SCOPE)
+    return()
+  endif()
+
+  get_filename_component(_python_dir_name "${GOBY_PYTHON_TARGET_PYTHON_H_DIR}" NAME)
+  if(NOT _python_dir_name MATCHES "^python([0-9]+)\\.([0-9]+)")
+    set(GOBY_PYTHON_TARGET_NOT_FOUND_REASON
+      "could not read a Python version out of ${GOBY_PYTHON_TARGET_PYTHON_H_DIR}" PARENT_SCOPE)
+    return()
+  endif()
+  set(_major ${CMAKE_MATCH_1})
+  set(_minor ${CMAKE_MATCH_2})
+
+  # pyconfig.h is the architecture-dependent half, which multiarch keeps under the target triplet.
+  # Deliberately not falling back to the shared python3.X/pyconfig.h when the triplet is known:
+  # that one belongs to the host, and building the extension against it would produce a module
+  # for the wrong ABI rather than an error.
+  if(CMAKE_LIBRARY_ARCHITECTURE)
+    set(_config_suffixes "${CMAKE_LIBRARY_ARCHITECTURE}/python${_major}.${_minor}")
+  else()
+    set(_config_suffixes "python${_major}.${_minor}")
+  endif()
+  find_path(GOBY_PYTHON_TARGET_PYCONFIG_H_DIR
+    NAMES pyconfig.h
+    PATH_SUFFIXES ${_config_suffixes}
+    DOC "Directory holding the target's pyconfig.h")
+
+  if(NOT GOBY_PYTHON_TARGET_PYCONFIG_H_DIR)
+    set(GOBY_PYTHON_TARGET_NOT_FOUND_REASON
+      "the target's pyconfig.h was not found under ${_config_suffixes}; install python3-dev for \
+the target architecture (e.g. python3-dev:arm64)" PARENT_SCOPE)
+    return()
+  endif()
+
+  set(_include_dirs "${GOBY_PYTHON_TARGET_PYTHON_H_DIR}")
+  if(NOT "${GOBY_PYTHON_TARGET_PYCONFIG_H_DIR}" STREQUAL "${GOBY_PYTHON_TARGET_PYTHON_H_DIR}")
+    list(APPEND _include_dirs "${GOBY_PYTHON_TARGET_PYCONFIG_H_DIR}")
+  endif()
+
+  if(NOT GOBY_PYTHON_TARGET_SOABI)
+    if(NOT CMAKE_LIBRARY_ARCHITECTURE)
+      set(GOBY_PYTHON_TARGET_NOT_FOUND_REASON
+        "CMAKE_LIBRARY_ARCHITECTURE is not set, so the extension module suffix cannot be \
+derived; set GOBY_PYTHON_TARGET_SOABI (e.g. cpython-${_major}${_minor}-aarch64-linux-gnu)"
+        PARENT_SCOPE)
+      return()
+    endif()
+    set(GOBY_PYTHON_TARGET_SOABI "cpython-${_major}${_minor}-${CMAKE_LIBRARY_ARCHITECTURE}"
+      CACHE STRING "ABI suffix of the target's extension modules")
+  endif()
+
+  set(GOBY_PYTHON_TARGET_INCLUDE_DIRS "${_include_dirs}"
+    CACHE STRING "Include directories for the target's Python headers")
+  set(GOBY_PYTHON_TARGET_NOT_FOUND_REASON "" PARENT_SCOPE)
+endfunction()
+
+set(GOBY_PYTHON_CROSSCOMPILING FALSE)
+if(CMAKE_CROSSCOMPILING AND NOT CMAKE_CROSSCOMPILING_EMULATOR)
+  set(GOBY_PYTHON_CROSSCOMPILING TRUE)
 endif()
+
+if(NOT GOBY_PYTHON_CROSSCOMPILING)
+  find_package(Python3 COMPONENTS Interpreter Development.Module QUIET)
+  set(GOBY_PYTHON_HOST_EXECUTABLE "${Python3_EXECUTABLE}")
+else()
+  # FindPython would search the target for both, and makes the interpreter a hard error when
+  # cross-compiling without an emulator (CMP0190), so each half is found on its own
+  if(NOT GOBY_PYTHON_HOST_EXECUTABLE)
+    find_program(GOBY_PYTHON_HOST_EXECUTABLE NAMES python3 python
+      NO_CMAKE_FIND_ROOT_PATH
+      DOC "Host Python interpreter that runs the Goby generators when cross-compiling")
+  endif()
+  goby_python_find_target_development()
+endif()
+
+if(GOBY_PYTHON_HOST_EXECUTABLE AND NOT pybind11_DIR)
+  # a pip-installed pybind11 is somewhere CMake has no reason to look; the module knows where
+  execute_process(COMMAND ${GOBY_PYTHON_HOST_EXECUTABLE} -m pybind11 --cmakedir
+    OUTPUT_VARIABLE PYBIND11_PYTHON_CMAKE_DIR
+    RESULT_VARIABLE PYBIND11_PYTHON_CMAKE_DIR_RESULT
+    OUTPUT_STRIP_TRAILING_WHITESPACE
+    ERROR_QUIET)
+  if(PYBIND11_PYTHON_CMAKE_DIR_RESULT EQUAL 0 AND IS_DIRECTORY "${PYBIND11_PYTHON_CMAKE_DIR}")
+    set(pybind11_DIR "${PYBIND11_PYTHON_CMAKE_DIR}" CACHE PATH "The directory containing a CMake configuration file for pybind11.")
+  endif()
+endif()
+
+if(GOBY_PYTHON_CROSSCOMPILING)
+  # tells pybind11Config to provide pybind11::headers without searching for Python itself
+  set(PYBIND11_NOPYTHON ON)
+endif()
+find_package(pybind11 QUIET)
 
 # The generator ships with the goby Python package. Prefer the console script; fall back to
 # running the module out of the build or source tree, which is what an uninstalled build needs.
@@ -63,9 +193,9 @@ if(NOT GOBY_GEN_CPP_COMMAND)
   find_program(GOBY_GEN_CPP_EXECUTABLE goby_gen_cpp)
   if(GOBY_GEN_CPP_EXECUTABLE)
     set(GOBY_GEN_CPP_COMMAND ${GOBY_GEN_CPP_EXECUTABLE} CACHE STRING "Command that runs the Goby Python generator")
-  elseif(Python3_EXECUTABLE AND EXISTS "${GOBY_PYTHON_SOURCE_DIR}/goby/gen.py")
+  elseif(GOBY_PYTHON_HOST_EXECUTABLE AND EXISTS "${GOBY_PYTHON_SOURCE_DIR}/goby/gen.py")
     set(GOBY_GEN_CPP_COMMAND ${CMAKE_COMMAND} -E env PYTHONPATH=${GOBY_PYTHON_SOURCE_DIR}
-        ${Python3_EXECUTABLE} -m goby.gen
+        ${GOBY_PYTHON_HOST_EXECUTABLE} -m goby.gen
         CACHE STRING "Command that runs the Goby Python generator")
   endif()
 endif()
@@ -107,6 +237,10 @@ function(GOBY_ADD_PYTHON_APP)
   endif()
   if(NOT pybind11_FOUND)
     message(FATAL_ERROR "goby_add_python_app(${GAPA_TARGET}) requires pybind11 (pybind11-dev)")
+  endif()
+  if(GOBY_PYTHON_CROSSCOMPILING AND NOT GOBY_PYTHON_TARGET_INCLUDE_DIRS)
+    message(FATAL_ERROR "goby_add_python_app(${GAPA_TARGET}) is cross-compiling but "
+      "${GOBY_PYTHON_TARGET_NOT_FOUND_REASON}")
   endif()
   if(NOT GOBY_GEN_CPP_COMMAND)
     message(FATAL_ERROR
@@ -164,7 +298,20 @@ function(GOBY_ADD_PYTHON_APP)
     COMMENT "Generating Goby Python bindings for ${GAPA_TARGET} from ${GAPA_INTERFACE_YML}"
     VERBATIM)
 
-  pybind11_add_module(${GAPA_TARGET} "${_cpp_out}" ${GAPA_SOURCES})
+  if(GOBY_PYTHON_CROSSCOMPILING)
+    # pybind11_add_module needs the Python that pybind11Config was told not to look for, so the
+    # module is assembled here from pybind11::headers and the target's own headers and suffix
+    add_library(${GAPA_TARGET} MODULE "${_cpp_out}" ${GAPA_SOURCES})
+    target_link_libraries(${GAPA_TARGET} PRIVATE pybind11::headers)
+    target_include_directories(${GAPA_TARGET} SYSTEM PRIVATE ${GOBY_PYTHON_TARGET_INCLUDE_DIRS})
+    set_target_properties(${GAPA_TARGET} PROPERTIES
+      PREFIX ""
+      SUFFIX ".${GOBY_PYTHON_TARGET_SOABI}.so"
+      CXX_VISIBILITY_PRESET hidden
+      VISIBILITY_INLINES_HIDDEN ON)
+  else()
+    pybind11_add_module(${GAPA_TARGET} "${_cpp_out}" ${GAPA_SOURCES})
+  endif()
 
   set_target_properties(${GAPA_TARGET} PROPERTIES
     OUTPUT_NAME "${_module_name}"
@@ -262,12 +409,20 @@ function(GOBY_ADD_PYTHON_APP)
     endif()
 
     get_filename_component(_main "${GAPA_MAIN}" ABSOLUTE)
+
+    # the launcher runs on the target, so a cross build must not bake in the host's interpreter
+    if(GOBY_PYTHON_CROSSCOMPILING)
+      set(_launcher_python "python3")
+    else()
+      set(_launcher_python "${Python3_EXECUTABLE}")
+    endif()
+
     file(GENERATE
       OUTPUT "${_launcher_dir}/${GAPA_TARGET}"
       CONTENT "#!/bin/sh
 PYTHONPATH=\"${_pythonpath}\${PYTHONPATH:+:\$PYTHONPATH}\"
 export PYTHONPATH
-exec \"${Python3_EXECUTABLE}\" \"${_main}\" \"$@\"
+exec \"${_launcher_python}\" \"${_main}\" \"$@\"
 "
       FILE_PERMISSIONS OWNER_READ OWNER_WRITE OWNER_EXECUTE GROUP_READ GROUP_EXECUTE WORLD_READ WORLD_EXECUTE)
   endif()

@@ -204,6 +204,31 @@ which the generated module imports so that message types can be resolved by name
 
 Goby must be built with `-Dbuild_python=ON`, which requires `pybind11-dev`.
 
+#### Cross-compiling
+
+Two Pythons are involved and they are not the same one: the generators run at build time against
+the *host's* interpreter, while the extension module is loaded by the *target's*, so it is
+compiled against the target's headers and named with the target's ABI suffix. Install
+`python3-dev` for the target architecture (`python3-dev:arm64`, say) and
+`goby_add_python_app()` works under a cross toolchain with nothing else set; it takes the Python
+version from the host and the multiarch triplet from `CMAKE_LIBRARY_ARCHITECTURE`.
+
+Where that guess is wrong, each piece can be set explicitly:
+
+| Variable | |
+|---|---|
+| `GOBY_PYTHON_HOST_EXECUTABLE` | host interpreter that runs the generators |
+| `GOBY_PYTHON_TARGET_VERSION` | target Python version, e.g. `3.12` |
+| `GOBY_PYTHON_TARGET_INCLUDE_DIRS` | the target's `Python.h` and `pyconfig.h` directories |
+| `GOBY_PYTHON_TARGET_SOABI` | extension suffix, e.g. `cpython-312-aarch64-linux-gnu` |
+
+An extension module does not link `libpython` on Unix, so headers and the suffix are all that is
+needed. When the target's architecture-dependent `pyconfig.h` is missing the build stops and says
+so rather than falling back to the host's, which would produce a module for the wrong ABI.
+
+Note that the extension is architecture-dependent even though the application is Python, so it
+belongs in an `Architecture: any` package rather than an `Architecture: all` one.
+
 ### Installation notes
 
 The `goby` Python package is pure Python; all the compiled code lives in the extension module
