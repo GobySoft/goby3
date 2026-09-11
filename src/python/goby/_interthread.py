@@ -38,9 +38,9 @@ import functools
 import queue
 import sys
 import threading
-import time
 import traceback
 
+from . import time as goby_time
 from ._schemes import INTERTHREAD
 
 _SHUTDOWN = object()
@@ -203,7 +203,29 @@ class Thread:
 
     @property
     def loop_frequency_hertz(self):
+        """The rate loop() is called at, in simulated time."""
         return self._goby_loop_frequency_hertz
+
+    def set_loop_frequency(self, hertz):
+        """Changes the rate loop() is called at, while the thread is running.
+
+        Takes effect on the next loop; zero stops loop() being called without stopping the thread
+        receiving messages.
+        """
+        hertz = float(hertz)
+        if hertz < 0:
+            raise ValueError(f"loop frequency must not be negative, got {hertz}")
+        self._goby_loop_frequency_hertz = hertz
+
+    def health(self, health):
+        """Override to report this thread's health, as the C++ ``Thread::health()`` does.
+
+        ``health`` arrives with this thread's name and ``HEALTH__OK``. It is reported as a child
+        of the application's health, so goby_coroner sees the thread by name.
+
+        Called on the application's thread rather than this one, so read only what is safe to
+        read from another thread.
+        """
 
     def app_name(self):
         return self._goby_app.app_name()
@@ -266,6 +288,9 @@ class ThreadRunner(threading.Thread):
         self._index = index
         self._args = args
         self._kwargs = kwargs
+        # read by the application's thread to report health, so it is published only once the
+        # thread is fully constructed
+        self._thread = None
 
     def run(self):
         thread = None
@@ -276,6 +301,7 @@ class ThreadRunner(threading.Thread):
             finally:
                 _construction.context = None
 
+            self._thread = thread
             thread.initialize()
             self._service(thread)
         except _Shutdown:
@@ -288,26 +314,55 @@ class ThreadRunner(threading.Thread):
                 self._finalize(thread)
 
     def _service(self, thread):
-        period = (
-            1.0 / thread.loop_frequency_hertz if thread.loop_frequency_hertz > 0 else None
-        )
-        if period is None:
-            while True:
-                self.mailbox.service(timeout=None)
+        # simulated time throughout: the loop frequency is a simulated rate, as it is in C++, so
+        # the waits that implement it are converted to wall-clock only where they meet the queue
+        warp = goby_time.warp_factor()
+        next_loop = None
 
-        next_loop = time.monotonic() + period
         while True:
-            self.mailbox.service(timeout=max(0.0, next_loop - time.monotonic()))
-            now = time.monotonic()
+            period = _loop_period(thread)
+            if period is None:
+                # set_loop_frequency(0) leaves the thread receiving messages, so wait for one
+                self.mailbox.service(timeout=None)
+                next_loop = None
+                continue
+
+            if next_loop is None:
+                next_loop = goby_time.monotonic() + period
+
+            wait = max(0.0, next_loop - goby_time.monotonic())
+            self.mailbox.service(timeout=wait / warp)
+
+            now = goby_time.monotonic()
             if now >= next_loop:
                 next_loop = max(now, next_loop + period)
                 thread.loop()
+
+    def fill_health(self, health):
+        """Fills in this thread's ThreadHealth, for the application's health report."""
+        from goby.middleware.protobuf import coroner_pb2
+
+        health.name = self.name
+        health.state = coroner_pb2.HEALTH__OK
+
+        thread = self._thread
+        if thread is not None:
+            thread.health(health)
 
     def _finalize(self, thread):
         try:
             thread.finalize()
         except BaseException:
             self._app._goby_thread_failed(self.name, traceback.format_exc())
+
+
+def _loop_period(thread):
+    """The thread's loop period in simulated seconds, or None when loop() is switched off.
+
+    Read each time round the service loop, so set_loop_frequency() takes effect on the next one.
+    """
+    hertz = thread.loop_frequency_hertz
+    return 1.0 / hertz if hertz > 0 else None
 
 
 def thread_name(thread_class, index):
