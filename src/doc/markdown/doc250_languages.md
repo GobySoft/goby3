@@ -183,6 +183,84 @@ Python threads are Python threads: the GIL interleaves them rather than running 
 so they buy independent loop rates and separation of concerns, not throughput. A thread that
 raises prints its traceback and stops the application.
 
+`set_loop_frequency()` changes the rate while the application is running, which is what a
+commanded sample-rate change needs:
+
+```python
+def on_command(self, command: sensor_pb2.Command) -> None:
+    self.set_loop_frequency(command.sample_rate_hertz)
+```
+
+Threads have the same method. Zero stops `loop()` being called without stopping the application
+or thread receiving messages, and an application whose threads are polled faster than it loops
+keeps polling them at `interthread_poll_frequency_hertz`.
+
+### Time and simulation
+
+Under `app { simulation { time { use_sim_time: true warp_factor: 10 } } }` Goby's clocks run ten
+times faster than the wall clock, and every rate Goby schedules -- `loop_frequency_hertz`
+included -- is in that simulated time. `goby.time` is the Python face of `goby::time`, so an
+application that does its own waiting or timestamping stays on the same clock as the rest of the
+system:
+
+```python
+goby.time.sleep(0.5)      # half a simulated second: 50 ms of wall clock at warp 10
+stamp = goby.time.now()   # seconds since the epoch, as SystemClock::now() reports them
+```
+
+`goby.time.monotonic()`, `warp_factor()` and `using_sim_time()` are also available. Outside
+simulation each is the standard library function, so code written against them needs no branch.
+Reading `time.monotonic()` or calling `time.sleep()` directly is the thing to avoid: at warp 10
+it runs ten times slower than everything around it, which looks like a sensor fault rather than a
+timing bug.
+
+### Logging
+
+`goby.glog` writes to `goby::glog`, so a Python application's output lands in the same place as
+every C++ application's, at the verbosity its `app { glog_config { ... } }` asked for:
+
+```python
+goby.glog.verbose("connected to the device")
+goby.glog.warn(f"no reply in {timeout}s")
+```
+
+An application that already uses the standard `logging` module needs no edits beyond installing
+the handler:
+
+```python
+goby.glog.install()
+logging.getLogger(__name__).info("connected to the device")
+```
+
+`WARNING` and above map to Goby's `WARN`, `INFO` to `VERBOSE`, and `DEBUG` and below to
+`DEBUG1`-`DEBUG3`. Nothing maps to `DIE`, which terminates the application rather than describing
+a record; `goby.glog.die()` is there for when that is meant. The logger is configured while the
+application is constructed, so writes from before then -- at module import, say -- are dropped.
+
+### Health
+
+Override `health()` to answer `goby_coroner`, mirroring the C++ `health(ThreadHealth&)`:
+
+```python
+from goby.middleware.protobuf import coroner_pb2
+
+class Driver(SingleThreadApplication):
+    def health(self, health) -> None:
+        if not self.device.responding:
+            health.state = coroner_pb2.HEALTH__FAILED
+            health.error_message = "the I2C device is not answering"
+```
+
+`health` arrives with what Goby filled in -- the application name, thread id and
+`HEALTH__OK` -- and is reported as given back. It crosses the language boundary as serialized
+Protobuf, so an extension this process has no descriptor for survives the round trip and a
+project's own `ThreadHealth` extensions can be set from Python.
+
+Threads override the same method. Their reports are collected as children of the application's,
+as a C++ `MultiThreadApplication` collects its threads', so a thread appears in the coroner's
+report by name. A thread's `health()` runs on the application's thread, so it should read only
+what is safe to read from another thread.
+
 ### Building
 
 `find_package(goby)` provides `goby_add_python_app()`:

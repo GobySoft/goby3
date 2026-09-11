@@ -31,10 +31,10 @@ architecture-independent.
 import functools
 import inspect
 import sys
-import time
 import typing
 
-from . import _interthread
+from . import _interthread, _runtime
+from . import time as goby_time
 from ._schemes import INTERTHREAD, PROTOBUF
 
 
@@ -102,6 +102,23 @@ def _callback_message_type(callback, required=True):
             f"subscribe(group, MessageType, callback)"
         )
     return annotation
+
+
+def _thread_health_type():
+    """The ThreadHealth message type, imported on first use.
+
+    Goby's own .proto files are compiled to Python and installed beside the package, but an
+    application that never answers a health request should not pay for importing them.
+    """
+    global _THREAD_HEALTH
+    if _THREAD_HEALTH is None:
+        from goby.middleware.protobuf import coroner_pb2
+
+        _THREAD_HEALTH = coroner_pb2.ThreadHealth
+    return _THREAD_HEALTH
+
+
+_THREAD_HEALTH = None
 
 
 def _check_message_type(message_type_):
@@ -284,6 +301,53 @@ class ApplicationMixin:
         self._goby_cfg_cached = config
         return config
 
+    @property
+    def loop_frequency_hertz(self):
+        """The rate loop() is called at, in simulated time."""
+        return self._goby_loop_frequency_hertz
+
+    def set_loop_frequency(self, hertz):
+        """Changes the rate loop() is called at, while the application is running.
+
+        For the common case of a commanded sample-rate change::
+
+            def on_command(self, command: sensor_pb2.Command) -> None:
+                self.set_loop_frequency(command.sample_rate_hertz)
+
+        Zero stops loop() being called. The rate is in simulated time, so it means the same thing
+        under warp as it does outside simulation, and an application with threads keeps polling
+        them at ``interthread_poll_frequency_hertz`` however slowly it loops.
+        """
+        hertz = float(hertz)
+        if hertz < 0:
+            raise ValueError(f"loop frequency must not be negative, got {hertz}")
+
+        self._goby_loop_frequency_hertz = hertz
+        self._goby_apply_loop_frequency()
+
+    def health(self, health):
+        """Override to answer goby_coroner's health request.
+
+        Mirrors the C++ ``health(ThreadHealth&)``: fill in ``health``, which arrives with the
+        state Goby set (``HEALTH__OK``) and this application's name and thread id::
+
+            from goby.middleware.protobuf import coroner_pb2
+
+            def health(self, health) -> None:
+                if not self.device.responding:
+                    health.state = coroner_pb2.HEALTH__FAILED
+                    health.error = coroner_pb2.ERROR__DRIVER_FAILED
+
+        Extensions survive the round trip whether or not this process has them compiled in, so an
+        application is free to set the ones its project declares.
+
+        The default reports the health of each running ``goby.Thread`` as a child, which is what a
+        C++ ``MultiThreadApplication`` does.
+        """
+        for runner in self._goby_threads.values():
+            if runner.is_alive():
+                runner.fill_health(health.child.add())
+
     def interthread(self):
         """The interthread transporter."""
         return self._goby_transporter("interthread", INTERTHREAD)
@@ -358,29 +422,54 @@ class ApplicationMixin:
         if period == 0:
             return False
 
-        now = time.monotonic()
+        # the simulated clock, because the period is a simulated one and so is the C++ loop this
+        # rides on: on the wall clock a warped application would loop warp times too slowly
+        now = goby_time.monotonic()
         if now < self._goby_loop_next:
             return False
         self._goby_loop_next = max(now, self._goby_loop_next + period)
         return True
+
+    def _goby_apply_loop_frequency(self):
+        """Sets the C++ loop rate, and gates loop() here when the two differ.
+
+        The C++ loop has to run at least as often as the threads are polled, so when that is
+        faster than the application asked for, the application's own loop() is called on the
+        schedule it asked for rather than on every C++ loop.
+        """
+        wanted = self._goby_loop_frequency_hertz
+        poll = self._goby_interthread_poll_frequency_hertz if self._goby_serviced else 0.0
+
+        self._set_loop_frequency_hertz(max(wanted, poll))
+
+        if poll <= wanted:
+            self._goby_loop_period = None
+            return
+
+        self._goby_loop_period = 1.0 / wanted if wanted > 0 else 0.0
+        self._goby_loop_next = goby_time.monotonic() + self._goby_loop_period
 
     def _goby_service_required(self):
         """Raises the C++ loop rate so the application picks up its threads' work often enough."""
         if self._goby_serviced:
             return
         self._goby_serviced = True
+        self._goby_apply_loop_frequency()
 
-        poll = self._goby_interthread_poll_frequency_hertz
-        if poll <= self._goby_loop_frequency_hertz:
-            return
+    def _goby_health(self, serialized):
+        """Runs health() against the ThreadHealth Goby filled in; called from C++.
 
-        self._set_loop_frequency_hertz(poll)
-        self._goby_loop_period = (
-            1.0 / self._goby_loop_frequency_hertz
-            if self._goby_loop_frequency_hertz > 0
-            else 0.0
-        )
-        self._goby_loop_next = time.monotonic() + self._goby_loop_period
+        Returns the serialized result, or empty to leave Goby's report alone -- which is what an
+        application with no threads and no health() override does, so the common case costs one
+        call and no protobuf work.
+        """
+        if type(self).health is ApplicationMixin.health and not self._goby_threads:
+            return b""
+
+        message = _thread_health_type()()
+        message.ParseFromString(serialized)
+        self.health(message)
+        return message.SerializeToString()
 
     def _goby_thread_failed(self, name, formatted_traceback):
         """Called from a thread that stopped; the application is quit from its own thread."""
@@ -431,6 +520,10 @@ def run(application_class, argv=None, config=None, config_text=None):
             f"class from the module generated from your interface.yml."
         )
 
+    # normally done as the generated module is imported; repeated here so that goby.time and
+    # goby.glog work for an application whose module was written by hand
+    _runtime.bind(extension)
+
     if config is not None and config_text is not None:
         raise TypeError("pass at most one of config= or config_text=")
     if (config is not None or config_text is not None) and argv is not None:
@@ -448,6 +541,10 @@ def run(application_class, argv=None, config=None, config_text=None):
     except ConfigError:
         # Goby has already reported the problem in the same form a C++ application would
         return 1
+
+    # the warp factor is read out of the configuration, so anything goby.time cached from before
+    # that -- from an import, or a previous run in the same process -- is stale
+    goby_time._reset_cache()
 
     application = application_class()
     try:
