@@ -17,6 +17,12 @@ message TransporterConfig
     optional goby.acomms.protobuf.DynamicBufferConfig buffer = 10;
 
     optional bool broadcast = 20 [default = false];
+
+    // metadata can be large, so limit how often it is resent until the portal has the type
+    optional double metadata_interval = 30 [
+        default = 5,
+        (dccl.field) = {omit: true units {base_dimensions: "T" system: "si"}}
+    ];
     
     // message LinkConfig
     // {
