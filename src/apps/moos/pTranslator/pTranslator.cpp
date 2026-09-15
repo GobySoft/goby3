@@ -5,7 +5,6 @@
 // File authors:
 //   Toby Schneider <toby@gobysoft.org>
 //   Henrik Schmidt <henrik@mit.edu>
-//   Copilot <198982749+Copilot@users.noreply.github.com>
 //
 //
 // This file is part of the Goby Underwater Autonomy Project Binaries
