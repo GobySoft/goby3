@@ -1,0 +1,18 @@
+syntax = "proto2";
+
+// dccl/option_extensions.proto also imports descriptor.proto, so the metadata for Sample has a
+// dependency reachable by two paths
+import "dccl/option_extensions.proto";
+import "google/protobuf/descriptor.proto";
+
+package goby.test.middleware.intervehicle_metadata.protobuf;
+
+message Sample
+{
+    option (dccl.msg).id = 125;
+    option (dccl.msg).max_bytes = 32;
+    option (dccl.msg).codec_version = 4;
+
+    optional int32 a = 1 [(dccl.field) = {min: 0 max: 100}];
+    optional google.protobuf.FileOptions unused = 2 [(dccl.field).omit = true];
+}

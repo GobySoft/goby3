@@ -1,4 +1,5 @@
 add_subdirectory(middleware_interthread)
+add_subdirectory(middleware_intervehicle_metadata)
 
 add_subdirectory(log)
 

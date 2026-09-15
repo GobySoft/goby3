@@ -26,6 +26,8 @@
 
 #include <atomic>
 #include <functional>
+#include <map>
+#include <set>
 #include <sys/types.h>
 #include <thread>
 #include <unistd.h>
@@ -39,6 +41,8 @@
 #include "goby/middleware/transport/intervehicle/driver_thread.h"
 #include "goby/middleware/transport/intervehicle/groups.h"
 #include "goby/middleware/transport/serialization_handlers.h"
+#include "goby/time/convert.h"
+#include "goby/time/steady_clock.h"
 
 namespace goby
 {
@@ -100,7 +104,9 @@ class InterVehicleTransporterBase
                     switch (request.request())
                     {
                         case protobuf::SerializerMetadataRequest::METADATA_INCLUDE:
-                            omit_publish_metadata_.erase(request.key().type());
+                            // resend right away if we had stopped (e.g. the portal restarted)
+                            if (omit_publish_metadata_.erase(request.key().type()))
+                                last_publish_metadata_time_.erase(request.key().type());
                             break;
                         case protobuf::SerializerMetadataRequest::METADATA_EXCLUDE:
                             omit_publish_metadata_.insert(request.key().type());
@@ -288,8 +294,19 @@ class InterVehicleTransporterBase
                                       data, ack_handler, expire_handler);
         }
 
-        if (!omit_publish_metadata_.count(data->key().type()))
-            _set_protobuf_metadata<Data>(data->mutable_key()->mutable_metadata(), d);
+        const auto& type = data->key().type();
+        if (!omit_publish_metadata_.count(type))
+        {
+            auto now = goby::time::SteadyClock::now();
+            auto interval = goby::time::convert_duration<goby::time::SteadyClock::duration>(
+                publisher.cfg().intervehicle().metadata_interval_with_units());
+            auto last_it = last_publish_metadata_time_.find(type);
+            if (last_it == last_publish_metadata_time_.end() || now >= last_it->second + interval)
+            {
+                _set_protobuf_metadata<Data>(data->mutable_key()->mutable_metadata(), d);
+                last_publish_metadata_time_[type] = now;
+            }
+        }
 
         goby::glog.is_debug3() &&
             goby::glog << "Set up publishing for: " << data->ShortDebugString() << std::endl;
@@ -513,8 +530,19 @@ class InterVehicleTransporterBase
     void _insert_file_desc_with_dependencies(const google::protobuf::FileDescriptor* file_desc,
                                              protobuf::SerializerProtobufMetadata* meta)
     {
+        std::set<std::string> inserted;
+        _insert_file_desc_with_dependencies(file_desc, meta, inserted);
+    }
+
+    void _insert_file_desc_with_dependencies(const google::protobuf::FileDescriptor* file_desc,
+                                             protobuf::SerializerProtobufMetadata* meta,
+                                             std::set<std::string>& inserted)
+    {
+        if (!inserted.insert(std::string(file_desc->name())).second)
+            return;
+
         for (int i = 0, n = file_desc->dependency_count(); i < n; ++i)
-            _insert_file_desc_with_dependencies(file_desc->dependency(i), meta);
+            _insert_file_desc_with_dependencies(file_desc->dependency(i), meta, inserted);
 
         google::protobuf::FileDescriptorProto* file_desc_proto = meta->add_file_descriptor();
         file_desc->CopyTo(file_desc_proto);
@@ -566,6 +594,7 @@ class InterVehicleTransporterBase
 
     // map of Protobuf names where we can omit metadata on publication
     std::set<std::string> omit_publish_metadata_;
+    std::map<std::string, goby::time::SteadyClock::time_point> last_publish_metadata_time_;
 };
 
 /// \brief Implements the forwarder concept for the intervehicle layer
