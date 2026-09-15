@@ -51,8 +51,8 @@ if ("${CMAKE_CXX_COMPILER_ID}" MATCHES "Clang")
 endif()
 
 set(GOBY_VERSION_MAJOR "3")
-set(GOBY_VERSION_MINOR "5")
-set(GOBY_VERSION_PATCH "1")
+set(GOBY_VERSION_MINOR "6")
+set(GOBY_VERSION_PATCH "0")
 
 if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/.git")
    message(STATUS "Compiling in Git source tree.")
@@ -93,7 +93,7 @@ if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/.git")
    
 else()
    message(STATUS "Compiling from release tarball (${GOBY_VERSION_MAJOR}.${GOBY_VERSION_MINOR}.${GOBY_VERSION_PATCH}).")
-   set(GOBY_VERSION_DATE "2026.06.04")
+   set(GOBY_VERSION_DATE "2026.09.15")
 endif()
 
 set(GOBY_VERSION "${GOBY_VERSION_MAJOR}.${GOBY_VERSION_MINOR}.${GOBY_VERSION_PATCH}")

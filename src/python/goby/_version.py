@@ -28,4 +28,4 @@ goby_python_version CTest, so that the package can be built with pip or pybuild 
 having to template this file.
 """
 
-__version__ = "3.5.1"
+__version__ = "3.6.0"
