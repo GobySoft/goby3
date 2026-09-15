@@ -1,5 +1,11 @@
 # Goby Release Notes (Major version 3)
 
+## Version 3.6.1
+
+### Middleware
+
+- Send less DCCL metadata on intervehicle publications to avoid excessive memory use on startup, particularly on embedded systems at higher warp settings.
+
 ## Version 3.6.0
 
 The release focuses on non-C++ language bindings: Python (new) and updates to Julia.
