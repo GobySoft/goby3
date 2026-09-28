@@ -24,10 +24,18 @@
 #include <list> // for oper...
 #include <map>  // for map
 
-#include <dccl/logger.h>                   // for Logger
-#include <google/protobuf/descriptor.pb.h> // for File...
-#include <google/protobuf/message.h>       // for Message
+#include <algorithm> // for find
+#include <vector>    // for vector
 
+#include <dlfcn.h> // for dlopen
+
+#include <boost/algorithm/string/classification.hpp> // for is_any_of
+#include <boost/algorithm/string/split.hpp>          // for split
+#include <dccl/logger.h>                             // for Logger
+#include <google/protobuf/descriptor.pb.h>           // for File...
+#include <google/protobuf/message.h>                 // for Message
+
+#include "goby/exception.h"                                     // for Exception
 #include "goby/middleware/protobuf/intervehicle.pb.h"           // for DCCL...
 #include "goby/middleware/protobuf/serializer_transporter.pb.h" // for Seri...
 #include "goby/util/debug_logger/flex_ostreambuf.h"             // for DEBUG3
@@ -55,6 +63,54 @@ std::unordered_map<
     goby::middleware::detail::DCCLSerializerParserHelperBase::loader_map_;
 std::mutex goby::middleware::detail::DCCLSerializerParserHelperBase::dccl_mutex_;
 std::set<std::string> goby::middleware::detail::DCCLSerializerParserHelperBase::loaded_proto_files_;
+std::vector<void*> goby::middleware::detail::DCCLSerializerParserHelperBase::loaded_libs_;
+
+void goby::middleware::detail::DCCLSerializerParserHelperBase::load_library(
+    const std::string& library)
+{
+    std::vector<std::string> libraries;
+    // allow a single entry to contain multiple libraries separated by a common delimiter
+    boost::split(libraries, library, boost::is_any_of(";:,"));
+
+    for (const auto& lib : libraries)
+    {
+        if (lib.empty())
+            continue;
+
+        glog.is(goby::util::logger::DEBUG1) && glog << "Loading DCCL shared library: " << lib
+                                                    << std::endl;
+
+        // RTLD_NODELETE: keep the library mapped for the life of the process (even if
+        // dlclose() is called) as the protobuf descriptor pools may reference memory
+        // (e.g. custom options extensions) owned by this library at static destruction
+        void* handle = dlopen(lib.c_str(), RTLD_LAZY | RTLD_NODELETE);
+        if (!handle)
+        {
+            const char* error = dlerror();
+            throw(goby::Exception("Failed to open shared library: " + lib +
+                                  ", error: " + std::string(error ? error : "unknown")));
+        }
+
+        load_library(handle);
+    }
+}
+
+void goby::middleware::detail::DCCLSerializerParserHelperBase::load_library(void* dl_handle)
+{
+    if (!dl_handle)
+        return;
+
+    std::lock_guard<std::mutex> lock(dccl_mutex_);
+
+    // ensure the codec exists first, as its creation loads all previously registered libraries
+    auto& dccl_codec = codec();
+
+    if (std::find(loaded_libs_.begin(), loaded_libs_.end(), dl_handle) != loaded_libs_.end())
+        return;
+
+    loaded_libs_.push_back(dl_handle);
+    dccl_codec.load_library(dl_handle);
+}
 
 void goby::middleware::detail::DCCLSerializerParserHelperBase::load_metadata(
     const goby::middleware::protobuf::SerializerProtobufMetadata& meta)

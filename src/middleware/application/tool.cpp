@@ -25,6 +25,8 @@
 
 #include <dccl/dynamic_protobuf_manager.h>
 
+#include "goby/middleware/marshalling/detail/dccl_serializer_parser.h"
+
 #include "tool.h"
 
 bool goby::middleware::ToolHelper::help(int* action_for_help)
@@ -148,6 +150,8 @@ void goby::middleware::ToolSharedLibraryLoader::load_lib(const std::string& lib)
         void* lib_handle = dlopen(l.c_str(), RTLD_LAZY | RTLD_NODELETE);
         if (!lib_handle)
             glog.is_die() && glog << "Failed to open library: " << lib << std::endl;
+        // load any DCCL field codec plugins (e.g. libdccl_arithmetic.so) contained in this library
+        detail::DCCLSerializerParserHelperBase::load_library(lib_handle);
         dl_handles_.push_back(lib_handle);
     }
 }
