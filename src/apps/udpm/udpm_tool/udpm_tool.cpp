@@ -26,8 +26,8 @@
 #include "goby/middleware/application/tool.h"
 #include "goby/middleware/protobuf/tool_config.pb.h"
 #include "goby/middleware/tool/publish_subscribe_tool.h"
-#include "goby/udpm/application/single_thread.h"
 #include "goby/udpm/protobuf/tool_config.pb.h"
+#include "goby/udpm/transport/interprocess.h"
 
 namespace goby
 {
@@ -62,29 +62,12 @@ class UDPMTool : public goby::middleware::Application<goby::udpm::protobuf::UDPM
   private:
 };
 
-class UDPMPublishTool
-    : public goby::udpm::SingleThreadApplication<goby::middleware::protobuf::PublishToolConfig>,
-      public goby::middleware::ToolSharedLibraryLoader
-{
-  public:
-    UDPMPublishTool();
-    ~UDPMPublishTool() override {}
-    void loop() override;
+using UDPMPublishTool =
+    goby::middleware::tool::PublishToolApplication<goby::udpm::detail::InterProcessTag,
+                                                   goby::middleware::protobuf::PublishToolConfig>;
 
-  private:
-};
-
-class UDPMSubscribeTool
-    : public goby::udpm::SingleThreadApplication<goby::middleware::protobuf::SubscribeToolConfig>,
-      public goby::middleware::ToolSharedLibraryLoader
-{
-  public:
-    UDPMSubscribeTool();
-    ~UDPMSubscribeTool() override {}
-
-  private:
-    std::map<int, std::unique_ptr<goby::middleware::log::LogPlugin>> plugins_;
-};
+using UDPMSubscribeTool = goby::middleware::tool::SubscribeToolApplication<
+    goby::udpm::detail::InterProcessTag, goby::middleware::protobuf::SubscribeToolConfig>;
 
 } // namespace udpm
 } // namespace apps
@@ -145,26 +128,4 @@ goby::apps::udpm::UDPMTool::UDPMTool()
     }
 
     quit(0);
-}
-
-goby::apps::udpm::UDPMPublishTool::UDPMPublishTool()
-    : goby::udpm::SingleThreadApplication<goby::middleware::protobuf::PublishToolConfig>(
-          1.0 * boost::units::si::hertz),
-      goby::middleware::ToolSharedLibraryLoader(app_cfg().load_shared_library())
-{
-    goby::middleware::tool::publish_tool_impl(interprocess(), cfg(), "goby udpm publish");
-}
-
-void goby::apps::udpm::UDPMPublishTool::loop()
-{
-    static int i = 0;
-    ++i;
-    if (i > 1) // exit on second call of loop, plenty of time for publish to go through
-        quit(0);
-}
-
-goby::apps::udpm::UDPMSubscribeTool::UDPMSubscribeTool()
-    : goby::middleware::ToolSharedLibraryLoader(app_cfg().load_shared_library())
-{
-    goby::middleware::tool::subscribe_tool_impl(interprocess(), cfg(), plugins_);
 }

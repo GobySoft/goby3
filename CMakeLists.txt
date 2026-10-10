@@ -215,6 +215,7 @@ install(
 unset(GOBY_CORE_LIBRARY_LIST CACHE)
 unset(GOBY_MOOS_LIBRARY_LIST CACHE)
 unset(GOBY_ZEROMQ_LIBRARY_LIST CACHE)
+unset(GOBY_ZENOH_LIBRARY_LIST CACHE)
 
 ## start adding subdirectories
 ## Python bindings
@@ -271,6 +272,7 @@ file(GLOB_RECURSE INCLUDE_FILES RELATIVE ${goby_SRC_DIR}
   src/protobuf/*.h
   src/zeromq/*.h
   src/udpm/*.h
+  src/zenoh/*.h
   )
 
 file(GLOB_RECURSE PROTOBUF_FILES RELATIVE ${goby_SRC_DIR}

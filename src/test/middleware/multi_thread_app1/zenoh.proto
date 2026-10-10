@@ -1,0 +1,11 @@
+syntax = "proto2";
+import "goby/middleware/protobuf/app_config.proto";
+import "goby/zenoh/protobuf/interprocess_config.proto";
+
+package goby.test.middleware.protobuf;
+
+message TestZenohConfig
+{
+    optional goby.middleware.protobuf.AppConfig app = 1;
+    optional goby.zenoh.protobuf.InterProcessPortalConfig interprocess = 2;
+}

@@ -41,6 +41,7 @@
 #include "goby/middleware/application/simple_thread.h"
 #include "goby/middleware/application/thread.h"
 
+#include "goby/middleware/transport/detail/implementation_traits.h"
 #include "goby/middleware/transport/interprocess.h"
 #include "goby/middleware/transport/interthread.h"
 #include "goby/middleware/transport/intervehicle.h"
@@ -435,6 +436,15 @@ template <typename Config> class StandaloneThread : public Thread<Config, InterT
   private:
     std::unique_ptr<InterThreadTransporter> interthread_;
 };
+
+/// \brief MultiThreadApplication for a given interprocess ImplementationTag (e.g. zeromq::detail::InterProcessTag), rather than a portal template.
+///
+/// \tparam Config Configuration type
+/// \tparam ImplementationTag Tag selecting the interprocess implementation
+template <class Config, typename ImplementationTag>
+using MultiThreadApplicationFor =
+    MultiThreadApplication<Config,
+                           detail::implementation_traits<ImplementationTag>::template Portal>;
 
 } // namespace middleware
 

@@ -838,6 +838,7 @@ void goby::middleware::intervehicle::ModemDriverThread<ImplementationTag>::
 }
 
 #include "goby/udpm/transport/detail/tags.h"
+#include "goby/zenoh/transport/detail/tags.h"
 #include "goby/zeromq/transport/detail/tags.h"
 
 // Explicit template instantiations for known implementation tags
@@ -845,4 +846,5 @@ namespace goby::middleware::intervehicle
 {
 template class ModemDriverThread<::goby::zeromq::detail::InterProcessTag>;
 template class ModemDriverThread<::goby::udpm::detail::InterProcessTag>;
+template class ModemDriverThread<::goby::zenoh::detail::InterProcessTag>;
 } // namespace goby::middleware::intervehicle
