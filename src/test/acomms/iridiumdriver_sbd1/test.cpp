@@ -32,6 +32,8 @@
 //  - +SBDLOE is queried at startup and after MO status 38 (traffic management), and
 //    no session (including a ring alert response) is started until the reported
 //    traffic management period has ended.
+//  - Acks for received MT messages go through the same +CSQ check, and a weak signal
+//    is re-checked after a delay rather than polled continuously.
 //
 // The back-off values are shortened from the defaults so that the test runs quickly.
 
@@ -50,6 +52,8 @@
 #include <boost/asio/write.hpp>
 
 #include "goby/acomms/modemdriver/iridium_driver.h"
+#include "goby/acomms/modemdriver/iridium_driver_common.h"
+#include "goby/acomms/modemdriver/iridium_sbd_packet.h"
 #include "goby/util/debug_logger.h"
 
 using goby::glog;
@@ -82,6 +86,15 @@ class MockISU
     std::atomic<int> csq{3};
     std::atomic<int> sbdix_mo_status{0};
     std::atomic<int> sbdloe_time{0};
+    // if >= 0, csq is set to this after the MT message is read with +SBDRB
+    std::atomic<int> csq_after_sbdrb{-1};
+
+    // delivered (MT status 1) on the next successful +SBDIX
+    void set_mt_message(const std::string& sbd_packet)
+    {
+        std::lock_guard<std::mutex> l(mt_mutex_);
+        mt_message_ = sbd_packet;
+    }
 
   private:
     void run()
@@ -158,7 +171,31 @@ class MockISU
         }
         else if (cmd == "+SBDIX" || cmd == "+SBDIXA")
         {
-            write(cmd + ": " + std::to_string(sbdix_mo_status) + ", 1, 0, 0, 0, 0\r\nOK\r\n");
+            std::lock_guard<std::mutex> l(mt_mutex_);
+            const bool mt = !mt_message_.empty() && sbdix_mo_status <= 4;
+            write(cmd + ": " + std::to_string(sbdix_mo_status) + ", 1, " + (mt ? "1" : "0") +
+                  ", 0, " + std::to_string(mt_message_.size()) + ", 0\r\nOK\r\n");
+            mt_pending_read_ = mt;
+        }
+        else if (cmd == "+SBDRB")
+        {
+            std::lock_guard<std::mutex> l(mt_mutex_);
+            if (mt_pending_read_)
+            {
+                unsigned csum = 0;
+                for (char c : mt_message_) csum += c & 0xFF;
+                std::string out;
+                out += static_cast<char>((mt_message_.size() >> 8) & 0xFF);
+                out += static_cast<char>(mt_message_.size() & 0xFF);
+                out += mt_message_;
+                out += static_cast<char>((csum >> 8) & 0xFF);
+                out += static_cast<char>(csum & 0xFF);
+                write(out + "\r\nOK\r\n");
+                mt_message_.clear();
+                mt_pending_read_ = false;
+                if (csq_after_sbdrb >= 0)
+                    csq = csq_after_sbdrb.exchange(-1);
+            }
         }
         else
         {
@@ -181,11 +218,15 @@ class MockISU
     std::mutex write_mutex_;
     std::mutex log_mutex_;
     std::vector<std::string> commands_;
+    std::mutex mt_mutex_;
+    std::string mt_message_;
+    bool mt_pending_read_{false};
 };
 
 std::unique_ptr<MockISU> isu;
 std::unique_ptr<goby::acomms::IridiumDriver> driver;
 int data_requests = 0;
+int receives = 0;
 
 void run_for(double seconds)
 {
@@ -235,6 +276,8 @@ int main(int argc, char* argv[])
             ++data_requests;
             msg->add_frame("hello");
         });
+    driver->signal_receive.connect([](const goby::acomms::protobuf::ModemTransmission& msg)
+                                   { ++receives; });
 
     goby::acomms::protobuf::DriverConfig cfg;
     cfg.set_modem_id(1);
@@ -377,6 +420,41 @@ int main(int argc, char* argv[])
         }
         assert(sessions == 7);
         std::cout << "5. +CSQ before every session: pass" << std::endl;
+    }
+
+    // 6. An ack for a received MT message waits for sufficient signal, re-checking
+    // +CSQ after a delay rather than continuously
+    {
+        goby::acomms::protobuf::ModemTransmission mt;
+        mt.set_src(2);
+        mt.set_dest(1);
+        mt.set_rate(goby::acomms::RATE_SBD);
+        mt.set_type(goby::acomms::protobuf::ModemTransmission::DATA);
+        mt.set_ack_requested(true);
+        mt.set_frame_start(0);
+        mt.add_frame("hi");
+        std::string iridium_packet, sbd_packet;
+        goby::acomms::serialize_iridium_modem_message(&iridium_packet, mt);
+        goby::acomms::serialize_sbd_packet(iridium_packet, &sbd_packet);
+        isu->set_mt_message(sbd_packet);
+        isu->csq_after_sbdrb = 1;
+
+        auto m = mark();
+        initiate();
+        run_for(5);
+        assert(count("+SBDRB", m) == 1);
+        assert(receives == 1);
+        // one session for the data, then a single low-signal check for the ack
+        assert(count("+CSQ", m) == 2);
+        assert(count("+SBDIX", m) == 1);
+
+        isu->csq = 3;
+        run_for(7); // 10 s re-check delay
+        assert(count("+CSQ", m) == 3);
+        assert(count("+SBDWB=", m) == 2);
+        assert(count("+SBDIX", m) == 2);
+        assert(data_requests == 7); // the ack is not pulled from the queue
+        std::cout << "6. ack waits for signal: pass" << std::endl;
     }
 
     driver->shutdown();

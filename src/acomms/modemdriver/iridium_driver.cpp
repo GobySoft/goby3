@@ -452,9 +452,12 @@ void goby::acomms::IridiumDriver::do_work()
             // not started (e.g. insufficient signal)
             sbd_session_requested_ = false;
             sbd_data_request_.reset();
+            sbd_followup_not_before_ = goby::time::SteadyClock::now() +
+                                       std::chrono::seconds(SBD_SIGNAL_RECHECK_SECONDS);
         }
     }
     else if (!sbd_acks_.empty() && !fsm_.sbd_session_blocked() &&
+             goby::time::SteadyClock::now() >= sbd_followup_not_before_ &&
              fsm_.state_cast<const iridium::fsm::SBDReady*>())
     {
         start_sbd_session();
