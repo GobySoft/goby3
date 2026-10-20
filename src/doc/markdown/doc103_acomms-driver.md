@@ -422,6 +422,7 @@ The driver follows the Iridium SBD best practices for starting SBD sessions (`+S
 - `+CSQ` is checked immediately before every session. If the signal is below `sbd_min_signal_strength` (default 2 bars), no session is started.
 - Data is only requested from the queue once the signal check has passed, so data is not lost when a session cannot be started.
 - After a failed session (or no `+SBDIX` response within 60 s) no new session is started for `sbd_retry_backoff_initial` seconds (default 60). This doubles on each consecutive failure up to `sbd_retry_backoff_max` (default 600) and is extended by a random fraction of up to `sbd_retry_jitter_fraction` (default 0.25). A successful session resets the back-off.
+- If clearing (`+SBDD2`) or writing (`+SBDWB`) the MO buffer fails, the session is abandoned without starting `+SBDIX`, and the message is dropped (use `ack_requested` for reliable delivery).
 - `+SBDLOE` is queried at startup and after MO status 38. No session is started (including in response to an `SBDRING` ring alert) until the reported traffic management period has ended.
 - Transmissions that would start a session while it is blocked are skipped and the data remains queued. Data that was sent in a failed session is not resent by the driver; use `ack_requested` for reliable delivery.
 
