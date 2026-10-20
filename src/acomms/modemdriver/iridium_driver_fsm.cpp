@@ -376,12 +376,7 @@ void goby::acomms::iridium::fsm::Command::in_state_react(const EvTxSerial&)
         static const std::string sbdi = "+SBDI";
         const bool is_sbd_session = at_out_.front().second.compare(0, sbdi.size(), sbdi) == 0;
         if (is_sbd_session)
-        {
-            const int modem_timeout =
-                context<IridiumDriverFSM>().iridium_driver_cfg().sbd_session_timeout();
-            timeout =
-                std::max<int>(SBDIX_TIMEOUT_SECONDS, modem_timeout + SBDIX_TIMEOUT_MARGIN_SECONDS);
-        }
+            timeout = sbd_session_timeout_seconds(context<IridiumDriverFSM>().iridium_driver_cfg());
         else if (at_out_.front().second == "+CSQ")
             timeout = CSQ_TIMEOUT_SECONDS;
         else if (at_out_.front().second == "+SBDLOE")

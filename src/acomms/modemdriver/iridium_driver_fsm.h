@@ -310,8 +310,8 @@ struct IridiumDriverFSM : boost::statechart::state_machine<IridiumDriverFSM, Act
     bool sbd_session_blocked() const { return goby::time::SteadyClock::now() < sbd_blocked_until_; }
     std::chrono::seconds sbd_block_remaining() const
     {
-        return std::chrono::duration_cast<std::chrono::seconds>(sbd_blocked_until_ -
-                                                                goby::time::SteadyClock::now());
+        return std::chrono::ceil<std::chrono::seconds>(sbd_blocked_until_ -
+                                                       goby::time::SteadyClock::now());
     }
     SBDBlockReason sbd_block_reason() const
     {
@@ -416,7 +416,14 @@ struct Command : boost::statechart::simple_state<Command, Active::orthogonal<0>,
     // commands where "ERROR" means unsupported by this modem, not a fault
     static bool is_optional_command(const std::string& cmd)
     {
-        return cmd == "+SBDLOE" || cmd == "*F" || cmd.compare(0, 7, "+SBDST=") == 0;
+        static const std::string sbdst = "+SBDST=";
+        return cmd == "+SBDLOE" || cmd == "*F" || cmd.compare(0, sbdst.size(), sbdst) == 0;
+    }
+
+    static int sbd_session_timeout_seconds(const protobuf::Config& cfg)
+    {
+        return std::max<int>(SBDIX_TIMEOUT_SECONDS,
+                             cfg.sbd_session_timeout() + SBDIX_TIMEOUT_MARGIN_SECONDS);
     }
 
     void handle_sbd_rx(const std::string& in);

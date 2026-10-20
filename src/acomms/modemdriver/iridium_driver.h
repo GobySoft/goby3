@@ -63,6 +63,7 @@ class IridiumDriver : public ModemDriverBase
     void report(goby::acomms::protobuf::ModemReport* report) override;
 
   private:
+    void shutdown(bool flush_eeprom);
     void process_transmission(protobuf::ModemTransmission msg, bool dial);
     void start_sbd_session();
     void complete_sbd_session_request();
@@ -108,8 +109,8 @@ class IridiumDriver : public ModemDriverBase
     enum
     {
         SBD_SIGNAL_RECHECK_SECONDS = 10,
-        // long enough for an SBD session in progress to finish
-        SHUTDOWN_WAIT_SECONDS = 70,
+        // on top of the +SBDIX timeout, for +CSQ and the other commands of a session
+        SHUTDOWN_WAIT_MARGIN_SECONDS = 30,
         FLUSH_EEPROM_WAIT_SECONDS = 15
     };
 
