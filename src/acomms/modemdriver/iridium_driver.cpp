@@ -139,6 +139,9 @@ void goby::acomms::IridiumDriver::startup(const protobuf::DriverConfig& cfg)
     // required for ModemReport
     mutable_iridium_driver_cfg->add_config("+CIER=1,1,1");
 
+    // traffic management persists across power cycles and driver restarts
+    mutable_iridium_driver_cfg->add_config("+SBDLOE");
+
     rudics_mac_msg_.set_src(driver_cfg_.modem_id());
     rudics_mac_msg_.set_type(goby::acomms::protobuf::ModemTransmission::DATA);
     rudics_mac_msg_.set_rate(RATE_RUDICS);
@@ -283,6 +286,34 @@ void goby::acomms::IridiumDriver::process_transmission(protobuf::ModemTransmissi
 
     msg.set_max_num_frames(1);
 
+    const bool on_call = fsm_.state_cast<const iridium::fsm::OnCall*>() != nullptr;
+    if (msg.rate() == RATE_SBD && !on_call)
+    {
+        if (fsm_.sbd_session_blocked())
+        {
+            glog.is(DEBUG1) &&
+                glog << group(glog_out_group()) << "Deferring SBD session for another "
+                     << fsm_.sbd_block_remaining().count() << " s ("
+                     << (fsm_.sbd_block_reason() ==
+                                 iridium::fsm::IridiumDriverFSM::SBDBlockReason::TRAFFIC_MANAGEMENT
+                             ? "traffic management"
+                             : "retry back-off")
+                     << ")" << std::endl;
+        }
+        else if (sbd_session_requested_ ||
+                 fsm_.state_cast<const iridium::fsm::SBDReady*>() == nullptr)
+        {
+            glog.is(DEBUG1) && glog << group(glog_out_group()) << "SBD session already in progress"
+                                    << std::endl;
+        }
+        else
+        {
+            sbd_data_request_.reset(new protobuf::ModemTransmission(msg));
+            start_sbd_session();
+        }
+        return;
+    }
+
     signal_data_request(&msg);
 
     next_frame_ += msg.frame_size();
@@ -293,10 +324,51 @@ void goby::acomms::IridiumDriver::process_transmission(protobuf::ModemTransmissi
             fsm_.process_event(iridium::fsm::EvDial());
         send(msg);
     }
-    else if (msg.rate() == RATE_SBD)
+}
+
+void goby::acomms::IridiumDriver::start_sbd_session()
+{
+    sbd_session_requested_ = true;
+    fsm_.process_event(iridium::fsm::EvSBDCheckSignal());
+}
+
+void goby::acomms::IridiumDriver::complete_sbd_session_request()
+{
+    sbd_session_requested_ = false;
+
+    auto begin_data = [this](const protobuf::ModemTransmission& msg)
     {
-        if (msg.GetExtension(iridium::protobuf::transmission).if_no_data_do_mailbox_check())
+        std::string iridium_packet;
+        serialize_iridium_modem_message(&iridium_packet, msg);
+
+        std::string sbd_packet;
+        serialize_sbd_packet(iridium_packet, &sbd_packet);
+        fsm_.process_event(iridium::fsm::EvSBDBeginData(sbd_packet));
+    };
+
+    if (!sbd_acks_.empty())
+    {
+        begin_data(sbd_acks_.front());
+        sbd_acks_.pop_front();
+    }
+    else if (sbd_data_request_)
+    {
+        protobuf::ModemTransmission msg = *sbd_data_request_;
+        sbd_data_request_.reset();
+
+        signal_data_request(&msg);
+        next_frame_ += msg.frame_size();
+
+        if (!(msg.frame_size() == 0 || msg.frame(0).empty()))
+            begin_data(msg);
+        else if (msg.GetExtension(iridium::protobuf::transmission).if_no_data_do_mailbox_check())
             fsm_.process_event(iridium::fsm::EvSBDBeginData()); // mailbox check
+        else
+            fsm_.process_event(iridium::fsm::EvSBDCancel());
+    }
+    else
+    {
+        fsm_.process_event(iridium::fsm::EvSBDCancel());
     }
 }
 
@@ -371,6 +443,26 @@ void goby::acomms::IridiumDriver::do_work()
         fsm_.received().pop_front();
     }
 
+    if (sbd_session_requested_)
+    {
+        if (fsm_.state_cast<const iridium::fsm::SBDSignalOK*>())
+            complete_sbd_session_request();
+        else if (fsm_.state_cast<const iridium::fsm::SBDReady*>())
+        {
+            // not started (e.g. insufficient signal)
+            sbd_session_requested_ = false;
+            sbd_data_request_.reset();
+            sbd_followup_not_before_ =
+                goby::time::SteadyClock::now() + std::chrono::seconds(SBD_SIGNAL_RECHECK_SECONDS);
+        }
+    }
+    else if (!sbd_acks_.empty() && !fsm_.sbd_session_blocked() &&
+             goby::time::SteadyClock::now() >= sbd_followup_not_before_ &&
+             fsm_.state_cast<const iridium::fsm::SBDReady*>())
+    {
+        start_sbd_session();
+    }
+
     if (debug_client_)
     {
         std::string line;
@@ -418,14 +510,7 @@ void goby::acomms::IridiumDriver::send(const protobuf::ModemTransmission& msg)
         if (on_call) // if we're on a call send it via the call
             fsm_.buffer_data_out(msg);
         else
-        {
-            std::string iridium_packet;
-            serialize_iridium_modem_message(&iridium_packet, msg);
-
-            std::string sbd_packet;
-            serialize_sbd_packet(iridium_packet, &sbd_packet);
-            fsm_.process_event(iridium::fsm::EvSBDBeginData(sbd_packet));
-        }
+            sbd_acks_.push_back(msg);
     }
 }
 
