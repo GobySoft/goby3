@@ -34,6 +34,8 @@
 //    traffic management period has ended.
 //  - Acks for received MT messages go through the same +CSQ check, and a weak signal
 //    is re-checked after a delay rather than polled continuously.
+//  - If clearing (+SBDD2) or writing (+SBDWB) the MO buffer fails, the session is
+//    abandoned without a +SBDIX.
 //  - When a session reports further MT messages queued at the gateway, they are
 //    retrieved straight away with mailbox checks.
 //  - Sessions started by the MAC are delayed by a random amount (sbd_session_jitter).
@@ -95,6 +97,8 @@ class MockISU
     std::atomic<int> sbdloe_time{0};
     // if >= 0, csq is set to this after the MT message is read with +SBDRB
     std::atomic<int> csq_after_sbdrb{-1};
+    std::atomic<int> sbdd2_result{0};
+    std::atomic<int> sbdwb_result{0};
 
     // delivered (MT status 1), one per successful +SBDIX, in order
     void add_mt_message(const std::string& sbd_packet)
@@ -145,7 +149,10 @@ class MockISU
                         break;
                     buffer.erase(0, binary_remaining);
                     binary_remaining = 0;
-                    write("0\r\nOK\r\n");
+                    // result 1 (timeout) is not followed by OK
+                    const int sbdwb_timeout = 1;
+                    write(std::to_string(sbdwb_result) +
+                          (sbdwb_result == sbdwb_timeout ? "\r\n" : "\r\nOK\r\n"));
                     continue;
                 }
 
@@ -180,7 +187,7 @@ class MockISU
         }
         else if (cmd == "+SBDD2")
         {
-            write("0\r\nOK\r\n");
+            write(std::to_string(sbdd2_result) + "\r\nOK\r\n");
         }
         else if (cmd.compare(0, sbdwb.size(), sbdwb) == 0)
         {
@@ -488,7 +495,38 @@ int main(int argc, char* argv[])
         std::cout << "6. ack waits for signal: pass" << std::endl;
     }
 
-    // 7. MT messages still queued at the gateway are retrieved straight away
+    // 7. A failure to clear or write the MO buffer abandons the session (no +SBDIX), and
+    // the next session proceeds normally
+    {
+        isu->sbdd2_result = 1;
+        auto m = mark();
+        initiate();
+        run_for(1);
+        assert(count("+SBDD2", m) == 1);
+        assert(count("+SBDWB=", m) == 0);
+        assert(count("+SBDIX", m) == 0);
+        isu->sbdd2_result = 0;
+
+        for (int result : {1, 2, 3})
+        {
+            isu->sbdwb_result = result;
+            m = mark();
+            initiate();
+            run_for(1);
+            assert(count("+SBDWB=", m) == 1);
+            assert(count("+SBDIX", m) == 0);
+        }
+        isu->sbdwb_result = 0;
+
+        m = mark();
+        initiate();
+        run_for(1);
+        assert(count("+SBDWB=", m) == 1);
+        assert(count("+SBDIX", m) == 1);
+        std::cout << "7. MO buffer errors: pass" << std::endl;
+    }
+
+    // 8. MT messages still queued at the gateway are retrieved straight away
     {
         isu->add_mt_message(mt_packet(false));
         isu->add_mt_message(mt_packet(false));
@@ -500,14 +538,14 @@ int main(int argc, char* argv[])
         assert(count("+SBDRB", m) == 2);
         assert(count("+SBDWB=", m) == 1); // the follow-up is a mailbox check
         assert(receives == 3);
-        assert(data_requests == 8);
+        assert(data_requests == 13);
 
         run_for(2);
         assert(count("+SBDIX", m) == 2); // nothing left queued
-        std::cout << "7. queued MT retrieved: pass" << std::endl;
+        std::cout << "8. queued MT retrieved: pass" << std::endl;
     }
 
-    // 8. MAC-initiated sessions are delayed by up to sbd_session_jitter
+    // 9. MAC-initiated sessions are delayed by up to sbd_session_jitter
     {
         const double jitter = 2;
         iridium_cfg->set_sbd_session_jitter(jitter);
@@ -534,7 +572,7 @@ int main(int argc, char* argv[])
         }
         // all five below 0.1 s has probability (0.1/2)^5, about 3e-7
         assert(max_delay > 0.1);
-        std::cout << "8. session jitter: pass" << std::endl;
+        std::cout << "9. session jitter: pass" << std::endl;
     }
 
     isu->stop_after_disconnect();

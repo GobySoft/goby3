@@ -183,11 +183,20 @@ struct EvSBDSendBufferCleared : boost::statechart::event<EvSBDSendBufferCleared>
 {
 };
 
+struct EvSBDSendBufferClearFailed : boost::statechart::event<EvSBDSendBufferClearFailed>
+{
+};
+
 struct EvSBDWriteReady : boost::statechart::event<EvSBDWriteReady>
 {
 };
 struct EvSBDWriteComplete : boost::statechart::event<EvSBDWriteComplete>
 {
+};
+struct EvSBDWriteFailed : boost::statechart::event<EvSBDWriteFailed>
+{
+    EvSBDWriteFailed(int result) : result_(result) {}
+    int result_;
 };
 struct EvSBDTransmitComplete : boost::statechart::event<EvSBDTransmitComplete>
 {
@@ -704,7 +713,8 @@ struct SBDSignalOK : boost::statechart::state<SBDSignalOK, SBD>, StateNotify
 struct SBDClearBuffers : boost::statechart::state<SBDClearBuffers, SBD>, StateNotify
 {
     using reactions =
-        boost::mpl::list<boost::statechart::transition<EvSBDSendBufferCleared, SBDWrite>>;
+        boost::mpl::list<boost::statechart::transition<EvSBDSendBufferCleared, SBDWrite>,
+                         boost::statechart::custom_reaction<EvSBDSendBufferClearFailed>>;
 
     SBDClearBuffers(my_context ctx) : my_base(std::move(ctx)), StateNotify("SBDClearBuffers")
     {
@@ -713,6 +723,15 @@ struct SBDClearBuffers : boost::statechart::state<SBDClearBuffers, SBD>, StateNo
     }
 
     ~SBDClearBuffers() override = default;
+
+    boost::statechart::result react(const EvSBDSendBufferClearFailed&)
+    {
+        glog.is(goby::util::logger::WARN) &&
+            glog << group("iridiumdriver")
+                 << "Error clearing SBD message buffers (+SBDD2); abandoning SBD session"
+                 << std::endl;
+        return transit<SBDReady>();
+    }
 };
 
 struct SBDWrite : boost::statechart::state<SBDWrite, SBD>, StateNotify
@@ -750,7 +769,24 @@ struct SBDWrite : boost::statechart::state<SBDWrite, SBD>, StateNotify
         boost::statechart::in_state_reaction<EvSBDWriteReady, SBDWrite, &SBDWrite::in_state_react>,
         boost::statechart::in_state_reaction<EvSBDCheckWriteTimeout, SBDWrite,
                                              &SBDWrite::in_state_react>,
-        boost::statechart::transition<EvSBDWriteComplete, SBDTransmit>>;
+        boost::statechart::transition<EvSBDWriteComplete, SBDTransmit>,
+        boost::statechart::custom_reaction<EvSBDWriteFailed>>;
+
+    boost::statechart::result react(const EvSBDWriteFailed& e)
+    {
+        std::string reason;
+        switch (e.result_)
+        {
+            case 1: reason = "write timeout"; break;
+            case 2: reason = "checksum mismatch"; break;
+            case 3: reason = "invalid message size"; break;
+            default: reason = "unknown error"; break;
+        }
+        glog.is(goby::util::logger::WARN) &&
+            glog << group("iridiumdriver") << "Error writing SBD message (+SBDWB result "
+                 << e.result_ << ": " << reason << "); abandoning SBD session" << std::endl;
+        return transit<SBDReady>();
+    }
 
   private:
     goby::time::SteadyClock::time_point entry_time_;

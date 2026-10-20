@@ -434,9 +434,25 @@ void goby::acomms::iridium::fsm::Command::in_state_react(const EvAck& e)
                     push_at_command("AT"); // this is so the "OK" will have something to clear
                 }
                 return; // all followed by "OK" which will clear the sentence
-            case '1': return;
-            case '2': return;
-            case '3': return;
+            case '1':
+            case '2':
+            case '3':
+            {
+                const int result = e.response_[0] - '0';
+                if (!at_out().empty() && at_out().front().second == "+SBDD2")
+                {
+                    post_event(EvSBDSendBufferClearFailed());
+                }
+                else if (at_out().empty() && state_downcast<const SBDWrite*>() != nullptr)
+                {
+                    post_event(EvSBDWriteFailed(result));
+                    // +SBDWB result 1 (timeout) is the only one not followed by "OK"
+                    const int sbdwb_timeout = 1;
+                    if (result != sbdwb_timeout)
+                        push_at_command("AT");
+                }
+                return;
+            }
             default: break;
         }
     }
