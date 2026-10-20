@@ -29,6 +29,7 @@
 #include <deque>   // for deque
 #include <iosfwd>  // for ostream
 #include <memory>  // for shared_ptr
+#include <random>  // for mt19937
 
 #include "goby/acomms/modemdriver/driver_base.h"    // for ModemDriverBase
 #include "goby/acomms/protobuf/driver_base.pb.h"    // for DriverConfig
@@ -99,7 +100,9 @@ class IridiumDriver : public ModemDriverBase
     std::unique_ptr<protobuf::ModemTransmission> sbd_data_request_;
     std::deque<protobuf::ModemTransmission> sbd_acks_;
     bool sbd_session_requested_{false};
-    // don't re-poll +CSQ continuously for queued acks while the signal is too weak
+    goby::time::SteadyClock::time_point sbd_data_request_start_;
+    std::mt19937 rng_{std::random_device()()};
+    // don't re-poll +CSQ continuously for queued acks or MT while the signal is too weak
     goby::time::SteadyClock::time_point sbd_followup_not_before_;
     enum
     {
