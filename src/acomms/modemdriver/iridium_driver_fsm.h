@@ -310,6 +310,10 @@ struct IridiumDriverFSM : boost::statechart::state_machine<IridiumDriverFSM, Act
     void sbd_session_failed();
     void sbd_traffic_management(std::chrono::seconds remaining);
 
+    // MT messages still queued at the GSS after the last session that received one
+    int sbd_mt_queued() const { return sbd_mt_queued_; }
+    void set_sbd_mt_queued(int n) { sbd_mt_queued_ = n; }
+
   private:
     enum
     {
@@ -339,6 +343,7 @@ struct IridiumDriverFSM : boost::statechart::state_machine<IridiumDriverFSM, Act
     goby::time::SteadyClock::time_point sbd_blocked_until_;
     SBDBlockReason sbd_block_reason_{SBDBlockReason::NONE};
     int sbd_consecutive_failures_{0};
+    int sbd_mt_queued_{0};
     std::mt19937 rng_;
 };
 
@@ -887,6 +892,12 @@ struct SBDTransmit : boost::statechart::state<SBDTransmit, SBD>, StateNotify
             }
 
             int mt_status = goby::util::as<int>(sbdi_fields[MT_STATUS]);
+            // only follow up when a message was received, so an MT that can't be
+            // delivered (e.g. too large) doesn't cause back-to-back sessions
+            context<IridiumDriverFSM>().set_sbd_mt_queued(
+                mt_status == MT_STATUS_RECEIVED_MESSAGE
+                    ? goby::util::as<int>(sbdi_fields[MT_QUEUED])
+                    : 0);
             if (mt_status == MT_STATUS_RECEIVED_MESSAGE)
                 return transit<SBDReceive>();
             else
