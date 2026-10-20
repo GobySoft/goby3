@@ -39,6 +39,12 @@
 //  - When a session reports further MT messages queued at the gateway, they are
 //    retrieved straight away with mailbox checks.
 //  - Sessions started by the MAC are delayed by a random amount (sbd_session_jitter).
+//  - +SBDST is set at startup, and an ERROR reply to it doesn't stop the driver.
+//  - Sessions started by the MAC respect sbd_min_session_interval.
+//  - The ModemReport carries the SBD block reason and remaining time.
+//  - An MT message with a bad +SBDRB checksum is discarded, and one whose reply is
+//    split over several reads (e.g. a 0x0D byte in the payload) is reassembled.
+//  - Shutdown waits for an SBD session in progress, and sends AT*F if configured.
 //
 // The back-off values are shortened from the defaults so that the test runs quickly.
 
@@ -99,6 +105,11 @@ class MockISU
     std::atomic<int> csq_after_sbdrb{-1};
     std::atomic<int> sbdd2_result{0};
     std::atomic<int> sbdwb_result{0};
+    std::atomic<bool> corrupt_mt_checksum{false};
+    // send the +SBDRB reply in two writes this far apart
+    std::atomic<int> split_sbdrb_ms{0};
+    std::atomic<bool> error_on_sbdst{false};
+    std::atomic<int> sbdix_delay_ms{0};
 
     // delivered (MT status 1), one per successful +SBDIX, in order
     void add_mt_message(const std::string& sbd_packet)
@@ -181,6 +192,10 @@ class MockISU
         {
             write("+CSQ:" + std::to_string(csq) + "\r\nOK\r\n");
         }
+        else if (cmd.compare(0, 7, "+SBDST=") == 0 && error_on_sbdst)
+        {
+            write("ERROR\r\n");
+        }
         else if (cmd == "+SBDLOE")
         {
             write("+SBDLOE:0," + std::to_string(sbdloe_time) + "\r\nOK\r\n");
@@ -197,6 +212,7 @@ class MockISU
         }
         else if (cmd == "+SBDIX" || cmd == "+SBDIXA")
         {
+            std::this_thread::sleep_for(std::chrono::milliseconds(sbdix_delay_ms));
             std::lock_guard<std::mutex> l(mt_mutex_);
             const bool mt = !mt_messages_.empty() && sbdix_mo_status <= 4;
             const auto mt_length = mt ? mt_messages_.front().size() : 0;
@@ -219,8 +235,18 @@ class MockISU
                 out += static_cast<char>(mt_message.size() & 0xFF);
                 out += mt_message;
                 out += static_cast<char>((csum >> 8) & 0xFF);
-                out += static_cast<char>(csum & 0xFF);
-                write(out + "\r\nOK\r\n");
+                out += static_cast<char>((csum + (corrupt_mt_checksum ? 1 : 0)) & 0xFF);
+                out += "\r\nOK\r\n";
+                if (split_sbdrb_ms > 0)
+                {
+                    write(out.substr(0, out.size() / 2));
+                    std::this_thread::sleep_for(std::chrono::milliseconds(split_sbdrb_ms));
+                    write(out.substr(out.size() / 2));
+                }
+                else
+                {
+                    write(out);
+                }
                 mt_messages_.pop_front();
                 mt_pending_read_ = false;
                 if (csq_after_sbdrb >= 0)
@@ -294,7 +320,7 @@ int count(const std::string& cmd, std::size_t since)
 std::size_t mark() { return isu->commands().size(); }
 
 // SBD packet for a message from the shore (modem 2) to the vehicle (modem 1)
-std::string mt_packet(bool ack_requested)
+std::string mt_packet(bool ack_requested, const std::string& frame = "hi")
 {
     goby::acomms::protobuf::ModemTransmission mt;
     mt.set_src(2);
@@ -303,7 +329,7 @@ std::string mt_packet(bool ack_requested)
     mt.set_type(goby::acomms::protobuf::ModemTransmission::DATA);
     mt.set_ack_requested(ack_requested);
     mt.set_frame_start(0);
-    mt.add_frame("hi");
+    mt.add_frame(frame);
     std::string iridium_packet, sbd_packet;
     goby::acomms::serialize_iridium_modem_message(&iridium_packet, mt);
     goby::acomms::serialize_sbd_packet(iridium_packet, &sbd_packet);
@@ -575,8 +601,131 @@ int main(int argc, char* argv[])
         std::cout << "9. session jitter: pass" << std::endl;
     }
 
-    isu->stop_after_disconnect();
-    driver->shutdown();
+    // 10. +SBDST is sent at startup, and an ERROR reply (unsupported) is not fatal
+    {
+        assert(count("+SBDST=50", 0) >= 1);
+
+        isu->error_on_sbdst = true;
+        iridium_cfg->set_sbd_session_jitter(0);
+        iridium_cfg->set_sbd_min_session_interval(3);
+        auto m = mark();
+        driver->startup(cfg);
+        assert(count("+SBDST=50", m) == 1);
+        isu->error_on_sbdst = false;
+
+        run_for(3); // minimum session interval since the last session in 9.
+        m = mark();
+        initiate();
+        run_for(1);
+        assert(count("+SBDIX", m) == 1);
+        std::cout << "10. +SBDST: pass" << std::endl;
+    }
+
+    // 11. MAC-initiated sessions are at least sbd_min_session_interval (3 s) apart
+    {
+        auto m = mark();
+        initiate();
+        run_for(1);
+        assert(count("+CSQ", m) == 0);
+
+        run_for(1.5);
+        m = mark();
+        initiate();
+        run_for(1);
+        assert(count("+SBDIX", m) == 1);
+        std::cout << "11. minimum session interval: pass" << std::endl;
+    }
+
+    // 12. The ModemReport carries the SBD block state
+    {
+        auto block_state = []()
+        {
+            goby::acomms::protobuf::ModemReport report;
+            driver->report(&report);
+            return report.GetExtension(goby::acomms::iridium::protobuf::report);
+        };
+        using Report = goby::acomms::iridium::protobuf::Report;
+
+        assert(block_state().sbd_block_reason() == Report::SBD_NOT_BLOCKED);
+
+        run_for(2.5); // minimum session interval
+        isu->sbdix_mo_status = 32;
+        auto m = mark();
+        initiate();
+        run_for(0.5);
+        assert(count("+SBDIX", m) == 1);
+        auto state = block_state();
+        assert(state.sbd_block_reason() == Report::SBD_BLOCKED_RETRY_BACKOFF);
+        assert(state.sbd_blocked_seconds() >= 1 && state.sbd_blocked_seconds() <= 2);
+        isu->sbdix_mo_status = 0;
+
+        run_for(2.5);
+        state = block_state();
+        assert(state.sbd_block_reason() == Report::SBD_NOT_BLOCKED);
+        assert(state.sbd_blocked_seconds() == 0);
+        std::cout << "12. block state in report: pass" << std::endl;
+    }
+
+    // 13. +SBDRB checksum is verified, and a reply split over several reads is reassembled
+    {
+        run_for(1); // minimum session interval since the failed session in 12.
+        isu->corrupt_mt_checksum = true;
+        isu->add_mt_message(mt_packet(false));
+        auto m = mark();
+        initiate();
+        run_for(1);
+        assert(count("+SBDRB", m) == 1);
+        assert(receives == 3); // discarded
+        isu->corrupt_mt_checksum = false;
+
+        run_for(2.5); // minimum session interval
+        isu->split_sbdrb_ms = 200;
+        isu->add_mt_message(mt_packet(false, std::string("a\rb\rc", 5)));
+        m = mark();
+        initiate();
+        run_for(1.5);
+        assert(count("+SBDRB", m) == 1);
+        assert(receives == 4);
+        isu->split_sbdrb_ms = 0;
+        std::cout << "13. +SBDRB checksum and reassembly: pass" << std::endl;
+    }
+
+    // 14. Shutdown lets an SBD session in progress (+SBDIX sent) finish
+    {
+        run_for(3); // minimum session interval
+        const int sbdix_delay_ms = 1500;
+        isu->sbdix_delay_ms = sbdix_delay_ms;
+        auto m = mark();
+        initiate();
+        auto start = Clock::now();
+        while (count("+SBDIX", m) == 0 && Clock::now() < start + std::chrono::seconds(2))
+        {
+            driver->do_work();
+            std::this_thread::sleep_for(std::chrono::milliseconds(10));
+        }
+        assert(count("+SBDIX", m) == 1);
+
+        auto shutdown_start = Clock::now();
+        driver->shutdown();
+        double shutdown_time = std::chrono::duration<double>(Clock::now() - shutdown_start).count();
+        std::cout << "shutdown took " << shutdown_time << " s" << std::endl;
+        assert(shutdown_time > 1.0);
+        isu->sbdix_delay_ms = 0;
+        std::cout << "14. shutdown waits for session: pass" << std::endl;
+    }
+
+    // 15. AT*F is sent on shutdown when flush_eeprom_on_shutdown is set
+    {
+        iridium_cfg->set_flush_eeprom_on_shutdown(true);
+        driver->startup(cfg);
+        assert(isu->commands().back() != "*F");
+
+        isu->stop_after_disconnect();
+        driver->shutdown();
+        assert(isu->commands().back() == "*F");
+        std::cout << "15. AT*F on shutdown: pass" << std::endl;
+    }
+
     driver.reset();
     isu.reset();
 

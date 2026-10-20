@@ -46,6 +46,15 @@ message Config
     // delay each SBD session started by the MAC by a random [0, value) so that
     // sessions don't land on the top of the second or minute
     optional double sbd_session_jitter = 19 [default = 5];  // seconds
+    // minimum time from one SBD session to the next session started by the MAC
+    // (0 = no minimum). Iridium recommends 60 s for frequent-reporting applications.
+    optional int32 sbd_min_session_interval = 20 [default = 0];  // seconds
+    // +SBDST session timeout set on the modem, so a stalled session ends with MO
+    // status 17 (0 = leave the modem default of no timeout)
+    optional int32 sbd_session_timeout = 21 [default = 50];  // seconds
+    // send AT*F on shutdown so that the modem can safely have its power removed
+    // afterwards. The modem stops responding to commands until it is power cycled.
+    optional bool flush_eeprom_on_shutdown = 22 [default = false];
 }
 
 extend goby.acomms.protobuf.DriverConfig
@@ -148,6 +157,16 @@ message Report
         RSSI_5_BARS = 5;
     };
     optional RSSI rssi = 1;
+
+    enum SBDBlockReason
+    {
+        SBD_NOT_BLOCKED = 0;
+        SBD_BLOCKED_RETRY_BACKOFF = 1;
+        SBD_BLOCKED_TRAFFIC_MANAGEMENT = 2;
+    }
+    optional SBDBlockReason sbd_block_reason = 2;
+    // seconds until SBD sessions may start again
+    optional int32 sbd_blocked_seconds = 3;
 }
 
 extend goby.acomms.protobuf.ModemReport

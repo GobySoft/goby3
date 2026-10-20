@@ -63,6 +63,7 @@ class IridiumDriver : public ModemDriverBase
     void report(goby::acomms::protobuf::ModemReport* report) override;
 
   private:
+    void shutdown(bool flush_eeprom);
     void process_transmission(protobuf::ModemTransmission msg, bool dial);
     void start_sbd_session();
     void complete_sbd_session_request();
@@ -104,9 +105,13 @@ class IridiumDriver : public ModemDriverBase
     std::mt19937 rng_{std::random_device()()};
     // don't re-poll +CSQ continuously for queued acks or MT while the signal is too weak
     goby::time::SteadyClock::time_point sbd_followup_not_before_;
+    bool shutting_down_{false};
     enum
     {
-        SBD_SIGNAL_RECHECK_SECONDS = 10
+        SBD_SIGNAL_RECHECK_SECONDS = 10,
+        // on top of the +SBDIX timeout, for +CSQ and the other commands of a session
+        SHUTDOWN_WAIT_MARGIN_SECONDS = 30,
+        FLUSH_EEPROM_WAIT_SECONDS = 15
     };
 
     std::uint32_t next_frame_{0};
