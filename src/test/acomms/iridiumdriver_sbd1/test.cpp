@@ -64,17 +64,9 @@ class MockISU
         thread_ = std::thread([this]() { run(); });
     }
 
-    ~MockISU()
-    {
-        {
-            std::lock_guard<std::mutex> l(write_mutex_);
-            boost::system::error_code ec;
-            socket_.shutdown(boost::asio::ip::tcp::socket::shutdown_both, ec);
-            socket_.close(ec);
-            acceptor_.close(ec);
-        }
-        thread_.join();
-    }
+    // the reader thread exits once the driver closes the connection, so the
+    // socket is never closed from this thread while it is being read
+    ~MockISU() { thread_.join(); }
 
     int port() const { return acceptor_.local_endpoint().port(); }
 
@@ -106,7 +98,11 @@ class MockISU
         {
             std::size_t n = socket_.read_some(boost::asio::buffer(data), ec);
             if (ec)
+            {
+                std::lock_guard<std::mutex> l(write_mutex_);
+                socket_.close(ec);
                 return;
+            }
             buffer.append(data, n);
 
             for (;;)
