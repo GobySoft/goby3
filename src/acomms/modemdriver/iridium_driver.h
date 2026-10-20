@@ -26,6 +26,7 @@
 #define GOBY_ACOMMS_MODEMDRIVER_IRIDIUM_DRIVER_H
 
 #include <cstdint> // for uint32_t
+#include <deque>   // for deque
 #include <iosfwd>  // for ostream
 #include <memory>  // for shared_ptr
 
@@ -61,6 +62,8 @@ class IridiumDriver : public ModemDriverBase
 
   private:
     void process_transmission(protobuf::ModemTransmission msg, bool dial);
+    void start_sbd_session();
+    void complete_sbd_session_request();
 
     void receive(const protobuf::ModemTransmission& msg);
     void send(const protobuf::ModemTransmission& msg);
@@ -90,6 +93,11 @@ class IridiumDriver : public ModemDriverBase
     };
 
     protobuf::ModemTransmission rudics_mac_msg_;
+
+    // SBD data is requested only once the session is cleared to start (signal check passed)
+    std::unique_ptr<protobuf::ModemTransmission> sbd_data_request_;
+    std::deque<protobuf::ModemTransmission> sbd_acks_;
+    bool sbd_session_requested_{false};
 
     std::uint32_t next_frame_{0};
 
