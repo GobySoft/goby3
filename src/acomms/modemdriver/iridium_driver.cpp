@@ -53,6 +53,7 @@
 #include <cstring>                                     // for strerror
 #include <dccl/common.h>                               // for operator<<
 #include <dccl/option_extensions.pb.h>                 // for DCCLField...
+#include <functional>                                  // for function
 #include <google/protobuf/descriptor.h>                // for Descriptor
 #include <google/protobuf/descriptor.pb.h>             // for FieldOptions
 #include <list>                                        // for operator!=
@@ -107,6 +108,7 @@ void goby::acomms::IridiumDriver::startup(const protobuf::DriverConfig& cfg)
     }
 
     driver_cfg_ = cfg;
+    shutting_down_ = false;
 
     glog.is(DEBUG1) && glog << group(glog_out_group())
                             << "Goby Iridium RUDICS/SBD driver starting up." << std::endl;
@@ -142,6 +144,10 @@ void goby::acomms::IridiumDriver::startup(const protobuf::DriverConfig& cfg)
 
     // traffic management persists across power cycles and driver restarts
     mutable_iridium_driver_cfg->add_config("+SBDLOE");
+
+    if (iridium_driver_cfg().sbd_session_timeout() > 0)
+        mutable_iridium_driver_cfg->add_config(
+            "+SBDST=" + std::to_string(iridium_driver_cfg().sbd_session_timeout()));
 
     rudics_mac_msg_.set_src(driver_cfg_.modem_id());
     rudics_mac_msg_.set_type(goby::acomms::protobuf::ModemTransmission::DATA);
@@ -233,13 +239,49 @@ void goby::acomms::IridiumDriver::shutdown()
         return;
     }
 
+    shutting_down_ = true;
+    sbd_data_request_.reset();
+    sbd_acks_.clear();
+
     hangup();
 
-    while (fsm_.state_cast<const iridium::fsm::OnCall*>() != 0 &&
-           fsm_.state_cast<const iridium::fsm::SBDReady*>() != 0)
+    auto busy = [this]()
     {
-        do_work();
-        usleep(10000);
+        const bool sbd_session_in_progress =
+            fsm_.state_cast<const iridium::fsm::SBD*>() != nullptr &&
+            fsm_.state_cast<const iridium::fsm::SBDReady*>() == nullptr;
+        return fsm_.state_cast<const iridium::fsm::Online*>() != nullptr ||
+               fsm_.state_cast<const iridium::fsm::HangingUp*>() != nullptr ||
+               fsm_.state_cast<const iridium::fsm::PostDisconnected*>() != nullptr ||
+               sbd_session_in_progress;
+    };
+
+    auto wait_while = [this](const std::function<bool()>& condition, int max_seconds)
+    {
+        const auto end = goby::time::SteadyClock::now() + std::chrono::seconds(max_seconds);
+        while (condition() && goby::time::SteadyClock::now() < end)
+        {
+            do_work();
+            usleep(10000);
+        }
+    };
+
+    wait_while(busy, SHUTDOWN_WAIT_SECONDS);
+
+    if (iridium_driver_cfg().flush_eeprom_on_shutdown())
+    {
+        if (fsm_.state_cast<const iridium::fsm::Ready*>())
+        {
+            fsm_.process_event(iridium::fsm::EvFlushEeprom());
+            wait_while([this]()
+                       { return fsm_.state_cast<const iridium::fsm::EepromFlushed*>() == nullptr; },
+                       FLUSH_EEPROM_WAIT_SECONDS);
+        }
+        else
+        {
+            glog.is(WARN) && glog << group(glog_out_group())
+                                  << "Modem is busy; not sending AT*F before shutdown" << std::endl;
+        }
     }
 
     if (iridium_driver_cfg().use_dtr())
@@ -290,6 +332,9 @@ void goby::acomms::IridiumDriver::process_transmission(protobuf::ModemTransmissi
     const bool on_call = fsm_.state_cast<const iridium::fsm::OnCall*>() != nullptr;
     if (msg.rate() == RATE_SBD && !on_call)
     {
+        const auto min_interval =
+            std::chrono::seconds(iridium_driver_cfg().sbd_min_session_interval());
+        const auto next_allowed = fsm_.last_sbd_session_start() + min_interval;
         if (fsm_.sbd_session_blocked())
         {
             glog.is(DEBUG1) &&
@@ -306,6 +351,15 @@ void goby::acomms::IridiumDriver::process_transmission(protobuf::ModemTransmissi
         {
             glog.is(DEBUG1) && glog << group(glog_out_group()) << "SBD session already in progress"
                                     << std::endl;
+        }
+        else if (min_interval.count() > 0 && goby::time::SteadyClock::now() < next_allowed)
+        {
+            glog.is(DEBUG1) && glog << group(glog_out_group())
+                                    << "Deferring SBD session for another "
+                                    << std::chrono::duration_cast<std::chrono::seconds>(
+                                           next_allowed - goby::time::SteadyClock::now())
+                                           .count()
+                                    << " s (sbd_min_session_interval)" << std::endl;
         }
         else
         {
@@ -471,7 +525,7 @@ void goby::acomms::IridiumDriver::do_work()
                 goby::time::SteadyClock::now() + std::chrono::seconds(SBD_SIGNAL_RECHECK_SECONDS);
         }
     }
-    else if (fsm_.state_cast<const iridium::fsm::SBDReady*>())
+    else if (!shutting_down_ && fsm_.state_cast<const iridium::fsm::SBDReady*>())
     {
         const auto now = goby::time::SteadyClock::now();
         if (fsm_.sbd_session_blocked())
@@ -627,4 +681,23 @@ void goby::acomms::IridiumDriver::report(goby::acomms::protobuf::ModemReport* re
     report->set_link_state(fsm_.ciev_data().service_available
                                ? goby::acomms::protobuf::ModemReport::LINK_AVAILABLE
                                : goby::acomms::protobuf::ModemReport::LINK_NOT_AVAILABLE);
+
+    using iridium::fsm::IridiumDriverFSM;
+    using iridium::protobuf::Report;
+    auto* iridium_report = report->MutableExtension(iridium::protobuf::report);
+    switch (fsm_.sbd_block_reason())
+    {
+        case IridiumDriverFSM::SBDBlockReason::NONE:
+            iridium_report->set_sbd_block_reason(Report::SBD_NOT_BLOCKED);
+            iridium_report->set_sbd_blocked_seconds(0);
+            break;
+        case IridiumDriverFSM::SBDBlockReason::RETRY_BACKOFF:
+            iridium_report->set_sbd_block_reason(Report::SBD_BLOCKED_RETRY_BACKOFF);
+            iridium_report->set_sbd_blocked_seconds(fsm_.sbd_block_remaining().count());
+            break;
+        case IridiumDriverFSM::SBDBlockReason::TRAFFIC_MANAGEMENT:
+            iridium_report->set_sbd_block_reason(Report::SBD_BLOCKED_TRAFFIC_MANAGEMENT);
+            iridium_report->set_sbd_blocked_seconds(fsm_.sbd_block_remaining().count());
+            break;
+    }
 }

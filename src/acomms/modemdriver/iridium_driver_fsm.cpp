@@ -250,13 +250,15 @@ void goby::acomms::iridium::fsm::Command::in_state_react(const EvRxSerial& e)
         post_event(EvAck(in));
         post_event(EvNoCarrier());
     }
-    else if (in == "ERROR" && !at_out().empty() && at_out().front().second == "+SBDLOE")
+    else if (in == "ERROR" && !at_out().empty() && is_optional_command(at_out().front().second))
     {
-        // older firmware may not support +SBDLOE
-        glog.is(WARN) && glog << group("iridiumdriver") << "+SBDLOE not supported by modem"
-                              << std::endl;
+        // not supported by all modems or firmware versions
+        glog.is(WARN) && glog << group("iridiumdriver") << "AT" << at_out().front().second
+                              << " not supported by modem" << std::endl;
+        const bool sbdloe = at_out().front().second == "+SBDLOE";
         post_event(EvAck(in));
-        post_event(EvSBDTrafficManagementStatus());
+        if (sbdloe)
+            post_event(EvSBDTrafficManagementStatus());
     }
     else if (in == "ERROR")
     {
@@ -317,23 +319,36 @@ void goby::acomms::iridium::fsm::Command::handle_sbd_rx(const std::string& in)
         glog.is(DEBUG1) && glog << group("iridiumdriver") << "SBD RX Size: " << sbd_rx_size
                                 << std::endl;
 
-        if (sbd_rx_buffer_.size() < (SBD_FIELD_SIZE_BYTES + sbd_rx_size))
+        if (sbd_rx_buffer_.size() < (SBD_FIELD_SIZE_BYTES + sbd_rx_size + SBD_CHECKSUM_BYTES))
         {
             return; // keep building up message
         }
         else
         {
             std::string sbd_rx_data = sbd_rx_buffer_.substr(SBD_FIELD_SIZE_BYTES, sbd_rx_size);
-            std::string bytes;
-            parse_sbd_packet(&bytes, sbd_rx_data);
-            goby::acomms::protobuf::ModemTransmission msg;
-            parse_iridium_modem_message(bytes, &msg);
-            context<IridiumDriverFSM>().received().push_back(msg);
+            const auto csum_pos = SBD_FIELD_SIZE_BYTES + sbd_rx_size;
+            unsigned rx_csum = ((sbd_rx_buffer_[csum_pos] & 0xff) << SBD_BITS_IN_BYTE) |
+                               (sbd_rx_buffer_[csum_pos + 1] & 0xff);
+
+            if (rx_csum != (sbd_csum(sbd_rx_data) & 0xFFFF))
+            {
+                glog.is(WARN) && glog << group("iridiumdriver")
+                                      << "Discarding SBD message with invalid +SBDRB checksum"
+                                      << std::endl;
+            }
+            else
+            {
+                std::string bytes;
+                parse_sbd_packet(&bytes, sbd_rx_data);
+                goby::acomms::protobuf::ModemTransmission msg;
+                parse_iridium_modem_message(bytes, &msg);
+                context<IridiumDriverFSM>().received().push_back(msg);
+            }
             at_out().pop_front();
 
             post_event(EvSBDReceiveComplete());
 
-            // clear out the checksum
+            // so the "OK" that follows has a command to clear
             push_at_command("");
         }
     }
@@ -361,14 +376,18 @@ void goby::acomms::iridium::fsm::Command::in_state_react(const EvTxSerial&)
         static const std::string sbdi = "+SBDI";
         const bool is_sbd_session = at_out_.front().second.compare(0, sbdi.size(), sbdi) == 0;
         if (is_sbd_session)
-            timeout = SBDIX_TIMEOUT_SECONDS;
+        {
+            const int modem_timeout =
+                context<IridiumDriverFSM>().iridium_driver_cfg().sbd_session_timeout();
+            timeout =
+                std::max<int>(SBDIX_TIMEOUT_SECONDS, modem_timeout + SBDIX_TIMEOUT_MARGIN_SECONDS);
+        }
         else if (at_out_.front().second == "+CSQ")
             timeout = CSQ_TIMEOUT_SECONDS;
         else if (at_out_.front().second == "+SBDLOE")
             timeout = SBDLOE_TIMEOUT_SECONDS;
-
-        if (at_out_.front().second == "+SBDRB")
-            clear_sbd_rx_buffer();
+        else if (at_out_.front().second == "*F")
+            timeout = FLUSH_EEPROM_TIMEOUT_SECONDS;
 
         if ((at_out_.front().first.last_send_time_ + timeout) < now)
         {
@@ -397,6 +416,10 @@ void goby::acomms::iridium::fsm::Command::in_state_react(const EvTxSerial&)
             }
             else
             {
+                // only on (re)send, as the reply may arrive over several do_work() calls
+                if (at_out_.front().second == "+SBDRB")
+                    clear_sbd_rx_buffer();
+
                 context<IridiumDriverFSM>().serial_tx_buffer().push_back(at_command);
                 at_out_.front().first.last_send_time_ = now;
             }

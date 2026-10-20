@@ -104,9 +104,13 @@ class IridiumDriver : public ModemDriverBase
     std::mt19937 rng_{std::random_device()()};
     // don't re-poll +CSQ continuously for queued acks or MT while the signal is too weak
     goby::time::SteadyClock::time_point sbd_followup_not_before_;
+    bool shutting_down_{false};
     enum
     {
-        SBD_SIGNAL_RECHECK_SECONDS = 10
+        SBD_SIGNAL_RECHECK_SECONDS = 10,
+        // long enough for an SBD session in progress to finish
+        SHUTDOWN_WAIT_SECONDS = 70,
+        FLUSH_EEPROM_WAIT_SECONDS = 15
     };
 
     std::uint32_t next_frame_{0};

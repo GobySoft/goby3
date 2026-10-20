@@ -219,11 +219,17 @@ struct EvSBDTrafficManagementStatus : boost::statechart::event<EvSBDTrafficManag
 {
 };
 
+struct EvFlushEeprom : boost::statechart::event<EvFlushEeprom>
+{
+};
+
 // pre-declare
 struct Active;
 struct Command;
 struct Configure;
 struct Ready;
+struct FlushEeprom;
+struct EepromFlushed;
 struct Answer;
 struct Dial;
 struct Online;
@@ -323,6 +329,15 @@ struct IridiumDriverFSM : boost::statechart::state_machine<IridiumDriverFSM, Act
     int sbd_mt_queued() const { return sbd_mt_queued_; }
     void set_sbd_mt_queued(int n) { sbd_mt_queued_ = n; }
 
+    goby::time::SteadyClock::time_point last_sbd_session_start() const
+    {
+        return last_sbd_session_start_;
+    }
+    void set_last_sbd_session_start(goby::time::SteadyClock::time_point t)
+    {
+        last_sbd_session_start_ = t;
+    }
+
   private:
     enum
     {
@@ -353,6 +368,7 @@ struct IridiumDriverFSM : boost::statechart::state_machine<IridiumDriverFSM, Act
     SBDBlockReason sbd_block_reason_{SBDBlockReason::NONE};
     int sbd_consecutive_failures_{0};
     int sbd_mt_queued_{0};
+    goby::time::SteadyClock::time_point last_sbd_session_start_;
     std::mt19937 rng_;
 };
 
@@ -397,6 +413,12 @@ struct Command : boost::statechart::simple_state<Command, Active::orthogonal<0>,
 
     void clear_sbd_rx_buffer() { sbd_rx_buffer_.clear(); }
 
+    // commands where "ERROR" means unsupported by this modem, not a fault
+    static bool is_optional_command(const std::string& cmd)
+    {
+        return cmd == "+SBDLOE" || cmd == "*F" || cmd.compare(0, 7, "+SBDST=") == 0;
+    }
+
     void handle_sbd_rx(const std::string& in);
 
   private:
@@ -410,6 +432,9 @@ struct Command : boost::statechart::simple_state<Command, Active::orthogonal<0>,
         COMMAND_TIMEOUT_SECONDS = 2,
         DIAL_TIMEOUT_SECONDS = 60,
         SBDIX_TIMEOUT_SECONDS = DIAL_TIMEOUT_SECONDS,
+        // margin over the modem's own +SBDST timeout so the modem normally reports it first
+        SBDIX_TIMEOUT_MARGIN_SECONDS = 10,
+        FLUSH_EEPROM_TIMEOUT_SECONDS = 10,
         TRIPLE_PLUS_TIMEOUT_SECONDS = 6,
         HANGUP_TIMEOUT_SECONDS = 10,
         ANSWER_TIMEOUT_SECONDS = 30,
@@ -472,9 +497,29 @@ struct Ready : boost::statechart::simple_state<Ready, Command::orthogonal<0>>, S
     }
 
     using reactions = boost::mpl::list<boost::statechart::transition<EvRing, Answer>,
+                                       boost::statechart::transition<EvFlushEeprom, FlushEeprom>,
                                        boost::statechart::custom_reaction<EvDial>>;
 
   private:
+};
+
+struct FlushEeprom : boost::statechart::state<FlushEeprom, Command::orthogonal<0>>, StateNotify
+{
+    using reactions = boost::mpl::list<boost::statechart::transition<EvAtEmpty, EepromFlushed>>;
+
+    FlushEeprom(my_context ctx) : my_base(std::move(ctx)), StateNotify("FlushEeprom")
+    {
+        context<Command>().push_at_command("*F");
+    }
+    ~FlushEeprom() override = default;
+};
+
+// the modem no longer responds to commands until it is power cycled
+struct EepromFlushed : boost::statechart::simple_state<EepromFlushed, Command::orthogonal<0>>,
+                       StateNotify
+{
+    EepromFlushed() : StateNotify("EepromFlushed") {}
+    ~EepromFlushed() override = default;
 };
 
 struct HangingUp : boost::statechart::state<HangingUp, Command::orthogonal<0>>, StateNotify
@@ -798,6 +843,7 @@ struct SBDTransmit : boost::statechart::state<SBDTransmit, SBD>, StateNotify
                                        boost::statechart::custom_reaction<EvSBDSessionTimeout>>;
     SBDTransmit(my_context ctx) : my_base(std::move(ctx)), StateNotify("SBDTransmit")
     {
+        context<IridiumDriverFSM>().set_last_sbd_session_start(goby::time::SteadyClock::now());
         if (context<SBD>().in_response_to_ring_alert())
             context<Command>().push_at_command("+SBDIXA");
         else
@@ -928,6 +974,11 @@ struct SBDTransmit : boost::statechart::state<SBDTransmit, SBD>, StateNotify
             }
 
             int mt_status = goby::util::as<int>(sbdi_fields[MT_STATUS]);
+            if (mt_status == MT_STATUS_ERROR)
+                glog.is(goby::util::logger::WARN) &&
+                    glog << group("iridiumdriver")
+                         << "Error during mailbox check or MT message receive (MT status 2)"
+                         << std::endl;
             // only follow up when a message was received, so an MT that can't be
             // delivered (e.g. too large) doesn't cause back-to-back sessions
             context<IridiumDriverFSM>().set_sbd_mt_queued(
