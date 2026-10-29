@@ -91,16 +91,16 @@ message TestFixture
 
     message Ready
     {
-        optional string output_regex = 1 [(goby.field).description =
-                                              "Ready once a line of output (stdout or stderr) "
-                                              "contains a match"];
+        repeated string output_regex = 1 [(goby.field).description =
+                                              "Ready once each of these has matched a line of "
+                                              "output (stdout or stderr), in any order"];
         optional double delay = 2 [
             default = 0,
             (goby.field).description = "Then wait this many more seconds"
         ];
         optional double timeout = 3 [
             default = 30,
-            (goby.field).description = "Seconds allowed for output_regex to match"
+            (goby.field).description = "Seconds allowed for every output_regex to match"
         ];
     }
     optional Ready ready = 5 [(goby.field).description =

@@ -348,15 +348,15 @@ void goby::apps::middleware::validate_test_file(const protobuf::TestFile& file, 
                 add_issue(issues, loc + ".env[" + std::to_string(j) + "]",
                           "'" + f.env(j) + "' is not of the form NAME=value");
 
-        if (f.ready().has_output_regex())
+        for (int j = 0, m = f.ready().output_regex_size(); j < m; ++j)
         {
             try
             {
-                std::regex r(f.ready().output_regex());
+                std::regex r(f.ready().output_regex(j));
             }
             catch (const std::regex_error& e)
             {
-                add_issue(issues, loc + ".ready.output_regex",
+                add_issue(issues, loc + ".ready.output_regex[" + std::to_string(j) + "]",
                           std::string("invalid regular expression: ") + e.what());
             }
         }

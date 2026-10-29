@@ -96,8 +96,9 @@ class Fixture
     mutable std::mutex mutex_;
     std::condition_variable cv_;
     std::deque<std::string> tail_;
-    bool matched_{false};
-    std::unique_ptr<std::regex> ready_regex_;
+    std::vector<std::regex> ready_regexes_;
+    std::vector<bool> matched_;
+    bool all_matched() const;
 };
 
 /// \brief Fixtures for one test run: started in order, stopped in reverse

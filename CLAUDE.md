@@ -24,4 +24,4 @@ Guidance for Claude when working in this repository.
 
 ## Branches
 
-- Name a feature branch after the release branch it targets, then a short description of the change: `3.0/add-goby-test-tool`, `3.1/fix-udpm-reassembly`.
+- Name a feature branch with a short description of the change followed by the release branch it targets: `add-goby-test-tool/3.0`, `fix-udpm-reassembly/3.1`.

@@ -67,8 +67,21 @@ if command -v dot > /dev/null; then
     check 0 dot -Tsvg "$work/plan.dot" -o "$work/plan.svg"
 fi
 
+# the dispatcher finds goby_test_tool beside itself, not through PATH
+check 0 env PATH=/usr/bin:/bin "$bin/goby" test validate "$dir/udpm_pass.pb.cfg"
+
 # fixtures: never ready, daemonized descendants cleaned up, interruption
 check 2 goby test run "$dir/fixture_not_ready.pb.cfg"
+
+# every readiness pattern must match; repeats of the first don't stand in for the second
+goby test run "$dir/fixture_two_ready.pb.cfg" --output_format JSON > "$work/two_ready.json"
+check 0 goby test run "$dir/fixture_two_ready.pb.cfg"
+ready_time=$(grep -o '"ready_time": [0-9.]*' "$work/two_ready.json" | grep -o '[0-9.]*$')
+awk -v t="$ready_time" 'BEGIN { exit !(t >= 0.9) }' ||
+    { echo "FAILED: fixture ready after ${ready_time} s, before its second pattern matched"; fail=1; }
+goby test run "$dir/fixture_one_of_two_ready.pb.cfg" > "$work/one_of_two.txt"
+check 2 goby test run "$dir/fixture_one_of_two_ready.pb.cfg"
+expect_output 'no output matched /\\\[node2' "$work/one_of_two.txt"
 check 0 goby test run "$dir/fixture_cleanup.pb.cfg" -D PIDFILE="$work/daemon.pid"
 if kill -0 "$(cat "$work/daemon.pid")" 2> /dev/null; then
     echo "FAILED: daemonized fixture descendant still running"
