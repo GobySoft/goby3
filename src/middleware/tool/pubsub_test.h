@@ -415,7 +415,7 @@ class PubSubTestRunner
             }
             else
             {
-                run_blocks(report);
+                run_all(report);
             }
         }
         catch (const std::exception& e)
@@ -449,8 +449,8 @@ class PubSubTestRunner
             ss << "\n";
         }
 
-        for (int i = 0; i < report.block_size(); ++i)
-            render_block(ss, report.block(i), std::to_string(i + 1));
+        for (int i = 0; i < report.run_size(); ++i)
+            render_run(ss, report.run(i), std::to_string(i + 1));
         return ss.str();
     }
 
@@ -493,15 +493,15 @@ class PubSubTestRunner
         unsigned remaining;
     };
 
-    /// A block, a step, or the synthetic root; leaves hold publishes and expectations
+    /// A run, a step, or the synthetic root; leaves hold publishes and expectations
     struct Node
     {
         std::string name;
-        protobuf::PubSubTestBlockMode mode;
+        protobuf::PubSubTestRunMode mode;
         const google::protobuf::RepeatedPtrField<protobuf::PubSubTestPublish>* publish_cfg;
         const google::protobuf::RepeatedPtrField<protobuf::PubSubTestExpect>* expect_cfg;
         double timeout;
-        bool is_block{false};
+        bool is_run{false};
         bool started{false};
         bool done{false};
         protobuf::PubSubTestResult result{protobuf::PASS};
@@ -517,15 +517,15 @@ class PubSubTestRunner
     void validate()
     {
         for (const auto& req : test_.require_app()) endpoint(req.endpoint());
-        for (const auto& block : test_.block())
+        for (const auto& run : test_.run())
         {
-            if (block.step_size() > 0 && (block.publish_size() > 0 || block.expect_size() > 0))
-                throw goby::Exception("block '" + block.name() +
-                                      "': a block has either steps or publish/expect entries, "
+            if (run.step_size() > 0 && (run.publish_size() > 0 || run.expect_size() > 0))
+                throw goby::Exception("run '" + run.name() +
+                                      "': a run has either steps or publish/expect entries, "
                                       "not both");
-            validate_leaf(block.name(), block.publish(), block.expect());
-            for (const auto& step : block.step())
-                validate_leaf(block.name() + "/" + step.name(), step.publish(), step.expect());
+            validate_leaf(run.name(), run.publish(), run.expect());
+            for (const auto& step : run.step())
+                validate_leaf(run.name() + "/" + step.name(), step.publish(), step.expect());
         }
     }
 
@@ -638,23 +638,23 @@ class PubSubTestRunner
         return ok;
     }
 
-    void run_blocks(protobuf::PubSubTestReport& report)
+    void run_all(protobuf::PubSubTestReport& report)
     {
         Node root;
         root.mode = test_.mode();
         root.publish_cfg = nullptr;
         root.expect_cfg = nullptr;
         root.timeout = test_.default_timeout();
-        for (const auto& block : test_.block())
+        for (const auto& run : test_.run())
         {
             Node b;
-            b.name = block.name();
-            b.mode = block.mode();
-            b.publish_cfg = &block.publish();
-            b.expect_cfg = &block.expect();
-            b.timeout = block.has_timeout() ? block.timeout() : root.timeout;
-            b.is_block = true;
-            for (const auto& step : block.step())
+            b.name = run.name();
+            b.mode = run.mode();
+            b.publish_cfg = &run.publish();
+            b.expect_cfg = &run.expect();
+            b.timeout = run.has_timeout() ? run.timeout() : root.timeout;
+            b.is_run = true;
+            for (const auto& step : run.step())
             {
                 Node st;
                 st.name = step.name();
@@ -677,7 +677,7 @@ class PubSubTestRunner
 
         for (const auto& b : root.children)
         {
-            auto& br = *report.add_block();
+            auto& br = *report.add_run();
             br.set_name(b.name);
             br.set_mode(b.mode);
             br.set_result(b.result);
@@ -1023,8 +1023,8 @@ class PubSubTestRunner
         }
     }
 
-    static void render_block(std::stringstream& ss, const protobuf::PubSubTestBlockReport& b,
-                             const std::string& index)
+    static void render_run(std::stringstream& ss, const protobuf::PubSubTestRunReport& b,
+                           const std::string& index)
     {
         ss << "  [" << index << "] " << b.name();
         if (b.step_size() > 0)

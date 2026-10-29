@@ -123,7 +123,7 @@ message BasicApplicationConfig
 
 ## Command Line Tools
 
-`goby udpm publish`, `goby udpm subscribe` and `goby udpm test` mirror the `goby zeromq` tools (see the [command line tool](doc010_cli.md) page). `goby udpm test` runs a declarative publish/subscribe test file against a multicast group; because there is no daemon, its `require_app` entries wait only for the named applications' health responses.
+`goby udpm publish` and `goby udpm subscribe` mirror the `goby zeromq` tools, and `goby test` runs a declarative publish/subscribe test against udpm endpoints (alone or alongside zeromq ones); see the [command line tool](doc010_cli.md) page. Because there is no daemon, a udpm endpoint's `require_app` entries wait only for the named applications' health responses.
 
 ## Implementation Details
 

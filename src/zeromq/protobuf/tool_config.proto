@@ -2,8 +2,6 @@ syntax = "proto2";
 import "goby/middleware/protobuf/app_config.proto";
 import "goby/protobuf/option_extensions.proto";
 import "goby/zeromq/protobuf/interprocess_config.proto";
-import "goby/middleware/protobuf/layer.proto";
-import "goby/middleware/protobuf/pubsub_test.proto";
 
 package goby.apps.zeromq.protobuf;
 
@@ -38,9 +36,6 @@ message ZeroMQToolConfig
         playback = 5 [(goby.ev).cfg = {
             short_help_msg: "Playback .goby log files",
             external_command: "goby_playback"
-        }];
-        test = 6 [(goby.ev).cfg = {
-            short_help_msg: "Run a publish/subscribe test defined in a YAML, JSON or TextFormat file",
         }];
 
         // core apps pub/sub
@@ -176,48 +171,4 @@ message SubscribeToolConfig
     }];
 
     optional bool include_internal_groups = 30 [default = false];
-}
-
-message TestToolConfig
-{
-    option (goby.msg).cfg.tool = {
-        is_tool: true
-        has_subtools: false
-        has_help_action: false
-    };
-
-    optional goby.middleware.protobuf.AppConfig app = 1
-        [(goby.field) = { cfg { action: DEVELOPER } }];
-    optional goby.zeromq.protobuf.InterProcessPortalConfig interprocess = 2 [(goby.field) = {
-        description: "Settings for the 'default' interprocess endpoint, used when no endpoint is declared in the test file",
-        cfg { env: "GOBY_INTERPROCESS" }
-    }];
-
-    optional string test_file = 10 [(goby.field) = {
-        description: "Test file in YAML (.yml/.yaml), JSON (.json) or Protobuf TextFormat (other extensions). Its contents are this configuration message (typically 'endpoint' and 'test').",
-        cfg { position: { enable: true }, cli_short: "f" }
-    }];
-
-    message Endpoint
-    {
-        required string name = 1;
-        optional goby.middleware.protobuf.Layer layer = 2 [default = LAYER_INTERPROCESS];
-        optional goby.zeromq.protobuf.InterProcessPortalConfig interprocess = 3;
-    }
-    repeated Endpoint endpoint = 11;
-    optional goby.middleware.protobuf.PubSubTest test = 12;
-
-    repeated string load_shared_library = 20 [(goby.field) = {
-        description: "Load this shared library containing compiled Protobuf/DCCL messages.",
-        cfg { cli_short: "l" env: "GOBY_TOOL_LOAD_SHARED_LIBRARY" }
-    }];
-
-    enum OutputFormat
-    {
-        HUMAN = 1;
-        JSON = 2;
-    }
-    optional OutputFormat output_format = 30 [default = HUMAN, (goby.field) = { cfg { cli_short: "o" } }];
-    optional string output_file = 31
-        [(goby.field).description = "Write the report here instead of stdout"];
 }

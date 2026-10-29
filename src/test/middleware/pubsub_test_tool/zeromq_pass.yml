@@ -1,0 +1,26 @@
+# Same shape as zeromq_pass.pb.cfg, in YAML
+endpoint:
+  - { name: a, zeromq: { platform: pstest_a } }
+  - { name: b, zeromq: { platform: pstest_b } }
+  - { name: mod, layer: LAYER_INTERMODULE, zeromq: { platform: pstest_mod } }
+
+test:
+  name: zeromq pass (yaml)
+  default_timeout: 3
+  require_app:
+    - { endpoint: a, name: [gobyd], timeout: 10 }
+  run:
+    - name: protobuf round trip with match and condition
+      publish:
+        - { endpoint: a, group: nav, type: goby.middleware.protobuf.LatLonPoint, value: "lat: 42.5 lon: -70.3", delay: 0.2 }
+      expect:
+        - endpoint: a
+          group: nav
+          type: PROTOBUF/goby.middleware.protobuf.LatLonPoint
+          min_count: 1
+          match: "lat: 42.5"
+          condition: [{ field: lon, op: LT, value: 0 }]
+        - { endpoint: b, group: nav, type: ".*", count: 0, timeout: 1 }
+    - name: intermodule
+      publish: [{ endpoint: mod, group: g, type: goby.middleware.protobuf.LatLonPoint, value: "lat: 1 lon: 2", delay: 0.2 }]
+      expect: [{ endpoint: mod, group: g, type: ".*LatLonPoint", min_count: 1, match: "lat: 1" }]

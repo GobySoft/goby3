@@ -253,6 +253,11 @@ include(time/src.cmake)
 include(middleware/src.cmake)
 include(udpm/src.cmake)
 
+# transport-neutral tools (goby test) describe zeromq endpoints without linking goby_zeromq
+protobuf_generate_cpp_dccl(ZEROMQ_CONFIG_PROTO_SRCS ZEROMQ_CONFIG_PROTO_HDRS
+  zeromq/protobuf/interprocess_config.proto
+  )
+
 if(NOT enable_janus_acomms)
   list(FILTER ACOMMS_SRC EXCLUDE REGEX ".*janus_driver.cpp")
 endif()
@@ -264,6 +269,7 @@ add_library(goby
   ${TIME_SRC}
   ${MIDDLEWARE_SRC}
   ${UDPM_SRC}
+  ${ZEROMQ_CONFIG_PROTO_SRCS} ${ZEROMQ_CONFIG_PROTO_HDRS}
   )
 
 

@@ -38,6 +38,58 @@ goby_liaison
 
 See `goby help launch` for more options.
 
+## goby test
+
+Runs a declarative publish/subscribe test against a running system and reports the result. This is useful for integration tests of a deployment (for example in CI, or in a launch script) without writing a Goby application.
+
+```
+goby test <test file> [--output_format HUMAN|JSON] [--output_file <path>] [-l <shared library>]
+```
+
+The test file is YAML (`.yml`/`.yaml`), JSON (`.json`) or Protobuf TextFormat (any other extension); all three forms carry the same `TestToolConfig` message (`goby test -e` prints it in TextFormat). YAML requires Goby built with yaml-cpp (`libyaml-cpp-dev`; `-Denable_yaml=ON`, the default when found); JSON and TextFormat are always available. The exit code is 0 when every expectation passed, 1 when one failed, and 2 when the test could not be set up (a bad file, an endpoint that could not connect, or a required application that never responded).
+
+A test has three parts:
+
+1. `endpoint`: named connections, each with `zeromq` settings (one `gobyd`) or `udpm` settings (one multicast group), on either the interprocess (`LAYER_INTERPROCESS`, the default) or intermodule (`LAYER_INTERMODULE`) layer. A test may mix transports. An endpoint with neither uses zeromq when Goby was built with it, otherwise udpm; if no endpoint is declared, one named `default` is created. Each endpoint's settings are layered over the tool-wide `--zeromq` (also `GOBY_INTERPROCESS`) or `--udpm` settings.
+2. `test.require_app` (optional): application names that must answer the coroner health request before the test starts. If a `goby_coroner` is running, its report is used instead once seen.
+3. `test.run`: runs execute `SEQUENTIAL` (default) or `PARALLEL` as given by `test.mode`. A run either holds `publish` and `expect` entries directly, or a list of `step` entries executed by its own `mode`.
+
+Within a run or step the expectations are subscribed first, then the publications are sent (after `delay`), then the tool waits until every expectation is satisfied or times out. An expectation names an endpoint, a `group` regex and a `type` regex (optionally prefixed by a scheme, such as `DCCL/`), and passes when the number of matching messages satisfies `min_count` (default 1, completes as soon as it is reached) or `count` (an exact number; the step lasts its whole timeout so that extra messages are seen, and `count: 0` asserts nothing arrives). A message matches when it satisfies `match`, a partial message in the same syntax as `publish` (TextFormat for Protobuf and DCCL, JSON for JSON), and every `condition` (a `field` path such as `pos.lat` or `waypoint[0].id`, an `op` of `EQ`, `NE`, `LT`, `LE`, `GT`, `GE`, `REGEX`, `EXISTS` or `ABSENT`, and a `value`). Messages that fail to match are counted as rejected and the reason for the last rejection is reported.
+
+```yaml
+endpoint:
+  - { name: auv, zeromq: { platform: auv0 } }
+  - { name: topside, zeromq: { platform: topside, transport: TCP, ipv4_address: 10.0.0.5 } }
+  - { name: payload, udpm: { platform: auv0, multicast_port: 11150 } }
+
+test:
+  name: nav forwarding
+  default_timeout: 5
+  require_app:
+    - { endpoint: auv, name: [gobyd, goby_frontseat_interface], timeout: 30 }
+  run:
+    - name: nav reaches topside
+      publish:
+        - { endpoint: auv, group: nav, type: goby.middleware.protobuf.LatLonPoint, value: "lat: 42.5 lon: -70.3" }
+      expect:
+        - endpoint: topside
+          group: nav
+          type: goby.middleware.protobuf.LatLonPoint
+          match: "lat: 42.5"
+          condition: [{ field: lon, op: LT, value: 0 }]
+    - name: status and no raw passthrough
+      mode: PARALLEL
+      step:
+        - name: status
+          expect: [{ endpoint: auv, group: status, type: JSON/Status, min_count: 3, timeout: 10 }]
+        - name: no raw
+          expect: [{ endpoint: topside, group: raw, count: 0, timeout: 3 }]
+        - name: payload heartbeat
+          expect: [{ endpoint: payload, group: heartbeat, min_count: 2, timeout: 10 }]
+```
+
+Durations are in seconds. Custom Protobuf or DCCL messages are loaded with `-l` or `GOBY_TOOL_LOAD_SHARED_LIBRARY` as for `publish` and `subscribe`.
+
 ## goby zeromq
 
 This function is for launching and interfacing with the ZeroMQ *interprocess* applications.
@@ -114,59 +166,6 @@ This publishes the goby::middleware::protobuf::LatLonPoint message defined in `g
 1 | nav_group | goby.middleware.protobuf.LatLonPoint | 2025-Mar-11 23:32:18.002199 | lat: 42.5 lon: -70.3
 ```
 
-
-### goby zeromq test
-
-Runs a declarative publish/subscribe test against a running system and reports the result. This is useful for integration tests of a deployment (for example in CI, or in a launch script) without writing a Goby application.
-
-```
-goby zeromq test <test file> [--output_format HUMAN|JSON] [--output_file <path>] [-l <shared library>]
-```
-
-The test file is YAML (`.yml`/`.yaml`), JSON (`.json`) or Protobuf TextFormat (any other extension); all three forms carry the same `TestToolConfig` message (`goby zeromq test -e` prints it in TextFormat). YAML requires Goby built with yaml-cpp (`libyaml-cpp-dev`; `-Denable_yaml=ON`, the default when found); JSON and TextFormat are always available. The exit code is 0 when every expectation passed, 1 when one failed, and 2 when the test could not be set up (a bad file, an endpoint that could not connect, or a required application that never responded).
-
-A test has three parts:
-
-1. `endpoint`: named connections, each to one `gobyd` on either the interprocess (`LAYER_INTERPROCESS`, the default) or intermodule (`LAYER_INTERMODULE`) layer. If omitted, a single endpoint named `default` is created from `--interprocess` / `GOBY_INTERPROCESS`. Each endpoint's `interprocess` settings are layered over the tool-wide `--interprocess` settings.
-2. `test.require_app` (optional): application names that must answer the coroner health request before the test starts. If a `goby_coroner` is running, its report is used instead once seen.
-3. `test.block`: blocks run `SEQUENTIAL` (default) or `PARALLEL` as given by `test.mode`. A block either holds `publish` and `expect` entries directly, or a list of `step` entries that it runs by its own `mode`.
-
-Within a block or step the expectations are subscribed first, then the publications are sent (after `delay`), then the tool waits until every expectation is satisfied or times out. An expectation names an endpoint, a `group` regex and a `type` regex (optionally prefixed by a scheme, such as `DCCL/`), and passes when the number of matching messages satisfies `min_count` (default 1, completes as soon as it is reached) or `count` (an exact number; the step runs for its whole timeout so that extra messages are seen, and `count: 0` asserts nothing arrives). A message matches when it satisfies `match`, a partial message in the same syntax as `publish` (TextFormat for Protobuf and DCCL, JSON for JSON), and every `condition` (a `field` path such as `pos.lat` or `waypoint[0].id`, an `op` of `EQ`, `NE`, `LT`, `LE`, `GT`, `GE`, `REGEX`, `EXISTS` or `ABSENT`, and a `value`). Messages that fail to match are counted as rejected and the reason for the last rejection is reported.
-
-```yaml
-endpoint:
-  - { name: auv, interprocess: { platform: auv0 } }
-  - { name: topside, interprocess: { platform: topside, transport: TCP, ipv4_address: 10.0.0.5 } }
-
-test:
-  name: nav forwarding
-  default_timeout: 5
-  require_app:
-    - { endpoint: auv, name: [gobyd, goby_frontseat_interface], timeout: 30 }
-  block:
-    - name: nav reaches topside
-      publish:
-        - { endpoint: auv, group: nav, type: goby.middleware.protobuf.LatLonPoint, value: "lat: 42.5 lon: -70.3" }
-      expect:
-        - endpoint: topside
-          group: nav
-          type: goby.middleware.protobuf.LatLonPoint
-          match: "lat: 42.5"
-          condition: [{ field: lon, op: LT, value: 0 }]
-    - name: status and no raw passthrough
-      mode: PARALLEL
-      step:
-        - name: status
-          expect: [{ endpoint: auv, group: status, type: JSON/Status, min_count: 3, timeout: 10 }]
-        - name: no raw
-          expect: [{ endpoint: topside, group: raw, count: 0, timeout: 3 }]
-```
-
-Durations are in seconds. Custom Protobuf or DCCL messages are loaded with `-l` or `GOBY_TOOL_LOAD_SHARED_LIBRARY` as for `publish` and `subscribe`.
-
-## goby udpm
-
-The `goby udpm` command has `publish`, `subscribe` and `test` actions equivalent to the `goby zeromq` ones, for the [UDP multicast](doc700_udpm.md) transport. There is no daemon to wait for; each endpoint joins the configured multicast group directly.
 
 ## goby protobuf
 

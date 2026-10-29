@@ -1,0 +1,12 @@
+# requires the goby binary (and gobyd for the zeromq cases)
+if(build_apps)
+  if(build_zeromq)
+    list(APPEND args zeromq)
+  endif()
+  if(enable_yaml)
+    list(APPEND args yaml)
+  endif()
+  add_test(NAME goby_test_middleware_pubsub_test_tool
+    COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/run.sh ${goby_BIN_DIR} ${CMAKE_CURRENT_SOURCE_DIR} ${args})
+  set_tests_properties(goby_test_middleware_pubsub_test_tool PROPERTIES TIMEOUT 120)
+endif()

@@ -28,6 +28,7 @@
 #include "goby/apps/middleware/goby_tool/log.pb.h"
 #include "goby/apps/middleware/goby_tool/tool.pb.h"
 #include "marshalling/protobuf.h"
+#include "test_tool.h"
 #include "unified_log_tool.h"
 
 using goby::glog;
@@ -80,6 +81,7 @@ goby::apps::middleware::GobyTool::GobyTool()
         app_cfg().app().binary(), app_cfg().app().tool_cfg(),
         goby::apps::middleware::protobuf::GobyToolConfig::Action_descriptor());
 
+    int exit_code = 0;
     if (!tool_helper.perform_action(app_cfg().action()))
     {
         switch (app_cfg().action())
@@ -97,6 +99,11 @@ goby::apps::middleware::GobyTool::GobyTool()
                         case goby::apps::middleware::protobuf::GobyToolConfig::protobuf:
                             tool_helper.help<goby::apps::middleware::ProtobufTool>(action_for_help);
                             break;
+                        case goby::apps::middleware::protobuf::GobyToolConfig::test:
+                            tool_helper.help<goby::apps::middleware::TestTool,
+                                             goby::apps::middleware::TestToolConfigurator>(
+                                action_for_help);
+                            break;
                         default:
                             throw(goby::Exception(
                                 "Help was expected to be handled by external tool"));
@@ -113,6 +120,11 @@ goby::apps::middleware::GobyTool::GobyTool()
                 tool_helper.run_subtool<goby::apps::middleware::ProtobufTool>();
                 break;
 
+            case goby::apps::middleware::protobuf::GobyToolConfig::test:
+                exit_code = tool_helper.run_subtool<goby::apps::middleware::TestTool,
+                                                    goby::apps::middleware::TestToolConfigurator>();
+                break;
+
             default:
                 // perform action will call 'exec' if an external tool performs the action,
                 // so if we are continuing, this didn't happen
@@ -121,5 +133,5 @@ goby::apps::middleware::GobyTool::GobyTool()
         }
     }
 
-    quit(0);
+    quit(exit_code);
 }

@@ -51,9 +51,6 @@ message UDPMToolConfig
         subscribe = 2 [(goby.ev).cfg = {
             short_help_msg: "Subscribe to messages (on interprocess)",
         }];
-        test = 3 [(goby.ev).cfg = {
-            short_help_msg: "Run a publish/subscribe test defined in a YAML, JSON or TextFormat file",
-        }];
     }
     optional Action action = 2 [
         default = help,

@@ -13,4 +13,5 @@ endif()
 
 add_subdirectory(json)
 add_subdirectory(pubsub_test)
+add_subdirectory(pubsub_test_tool)
 

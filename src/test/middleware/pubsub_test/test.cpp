@@ -194,43 +194,43 @@ void test_pass_fail_counts()
 {
     auto report = run(parse_test(R"(
         default_timeout: 0.3
-        block {
+        run {
             name: "match and condition"
             publish { group: "nav" type: "goby.middleware.protobuf.LatLonPoint" value: "lat: 1 lon: -2" }
             expect { group: "nav" type: "PROTOBUF/.*LatLonPoint" min_count: 1 match: "lat: 1"
                      condition { field: "lon" op: LT value: "0" } }
         }
-        block {
+        run {
             name: "rejected"
             publish { group: "nav" type: "goby.middleware.protobuf.LatLonPoint" value: "lat: 1 lon: 2" }
             expect { group: "nav" type: "PROTOBUF/.*" min_count: 1 match: "lat: 5" }
         }
-        block {
+        run {
             name: "exact count"
             publish { group: "j" type: "JSON/Thing" value: "{\"x\": 1}" repeat: 2 }
             expect { group: "j" type: "JSON/Thing" count: 2 match: "{\"x\": 1}" }
         }
-        block {
+        run {
             name: "too many"
             publish { group: "j" type: "JSON" value: "{}" repeat: 3 }
             expect { group: "j" type: "JSON/.*" count: 2 }
         }
-        block {
+        run {
             name: "nothing expected"
             expect { group: "quiet" count: 0 }
         }
     )"));
 
     assert(report.result() == protobuf::FAIL);
-    assert(report.block_size() == 5);
-    assert(report.block(0).result() == protobuf::PASS);
-    assert(report.block(1).result() == protobuf::FAIL);
-    assert(report.block(1).expect(0).rejected() == 1);
-    assert(report.block(1).expect(0).last_rejected().find("lat") != std::string::npos);
-    assert(report.block(2).result() == protobuf::PASS);
-    assert(report.block(2).expect(0).received() == 2);
-    assert(report.block(3).result() == protobuf::FAIL);
-    assert(report.block(4).result() == protobuf::PASS);
+    assert(report.run_size() == 5);
+    assert(report.run(0).result() == protobuf::PASS);
+    assert(report.run(1).result() == protobuf::FAIL);
+    assert(report.run(1).expect(0).rejected() == 1);
+    assert(report.run(1).expect(0).last_rejected().find("lat") != std::string::npos);
+    assert(report.run(2).result() == protobuf::PASS);
+    assert(report.run(2).expect(0).received() == 2);
+    assert(report.run(3).result() == protobuf::FAIL);
+    assert(report.run(4).result() == protobuf::PASS);
 }
 
 void test_sequential_and_parallel()
@@ -240,20 +240,20 @@ void test_sequential_and_parallel()
         step { name: "a" expect { group: "none" count: 0 timeout: 0.3 } }
         step { name: "b" expect { group: "none" count: 0 timeout: 0.3 } }
     )";
-    auto parallel = run(parse_test("block { name: \"p\" mode: PARALLEL " + steps + " }"));
-    auto sequential = run(parse_test("block { name: \"s\" mode: SEQUENTIAL " + steps + " }"));
+    auto parallel = run(parse_test("run { name: \"p\" mode: PARALLEL " + steps + " }"));
+    auto sequential = run(parse_test("run { name: \"s\" mode: SEQUENTIAL " + steps + " }"));
     assert(parallel.result() == protobuf::PASS);
     assert(sequential.result() == protobuf::PASS);
-    assert(parallel.block(0).step_size() == 2);
-    assert(parallel.block(0).elapsed() < 0.5);
-    assert(sequential.block(0).elapsed() > 0.55);
+    assert(parallel.run(0).step_size() == 2);
+    assert(parallel.run(0).elapsed() < 0.5);
+    assert(sequential.run(0).elapsed() > 0.55);
 }
 
 void test_require_app()
 {
     auto test = parse_test(R"(
         require_app { name: "alpha" name: "beta" timeout: 1 request_interval: 0.05 }
-        block { name: "noop" }
+        run { name: "noop" }
     )");
     auto ok = run(test, {"alpha", "beta"});
     assert(ok.result() == protobuf::PASS);
@@ -263,17 +263,17 @@ void test_require_app()
     assert(missing.result() == protobuf::ERROR);
     assert(missing.require_app(0).missing_size() == 1);
     assert(missing.require_app(0).missing(0) == "beta");
-    assert(missing.block_size() == 0);
+    assert(missing.run_size() == 0);
 }
 
 void test_json_render()
 {
-    auto report = run(parse_test("name: \"r\" block { name: \"noop\" }"));
+    auto report = run(parse_test("name: \"r\" run { name: \"noop\" }"));
     const std::string json = PubSubTestRunner::render_json(report);
     auto j = nlohmann::json::parse(json);
     assert(j["name"] == "r");
     assert(j["result"] == "PASS");
-    assert(j["block"][0]["name"] == "noop");
+    assert(j["run"][0]["name"] == "noop");
 }
 
 int main(int argc, char* argv[])

@@ -35,6 +35,9 @@ message GobyToolConfig
             external_command: "goby_launch"
             include_binary_flag: false
         }];
+        test = 3 [(goby.ev).cfg = {
+            short_help_msg: "Run a publish/subscribe test defined in a YAML, JSON or TextFormat file",
+        }];
 
         // middleware/transport
         zeromq = 10 [(goby.ev).cfg = {

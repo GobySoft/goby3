@@ -31,7 +31,7 @@ package goby.middleware.protobuf;
 // Endpoints (connections to a layer) are declared by the transport-specific
 // tool configuration and referenced here by name.
 
-enum PubSubTestBlockMode
+enum PubSubTestRunMode
 {
     SEQUENTIAL = 1;
     PARALLEL = 2;
@@ -80,7 +80,7 @@ message PubSubTestPublish
     optional double delay = 7 [
         default = 0,
         (dccl.field).units.base_dimensions = "T",
-        (goby.field).description = "Wait this long after arming the block's expectations "
+        (goby.field).description = "Wait this long after arming the run's expectations "
                                    "before publishing"
     ];
 }
@@ -104,19 +104,19 @@ message PubSubTestExpect
 
     optional uint32 count = 10
         [(goby.field).description =
-             "Exactly this many matching messages. The block runs for its full timeout "
+             "Exactly this many matching messages. The run lasts its full timeout "
              "so that extra messages are detected. Use 0 to assert that nothing arrives."];
     optional uint32 min_count = 11 [
         default = 1,
         (goby.field).description = "At least this many matching messages (ignored if 'count' is set). "
-                                   "The block completes as soon as every expectation reaches its minimum"
+                                   "The run completes as soon as every expectation reaches its minimum"
     ];
     optional uint32 max_count = 12
         [(goby.field).description = "More than this many matching messages fails the expectation "
                                     "(ignored if 'count' is set)"];
     optional double timeout = 13
         [(dccl.field).units.base_dimensions = "T",
-         (goby.field).description = "Defaults to the block timeout, then the test default_timeout"];
+         (goby.field).description = "Defaults to the run timeout, then the test default_timeout"];
 
     optional string match = 20
         [(goby.field).description =
@@ -138,23 +138,23 @@ message PubSubTestStep
          (goby.field).description = "Default timeout for this step's expectations"];
 }
 
-message PubSubTestBlock
+message PubSubTestRun
 {
     option (dccl.msg).unit_system = "si";
 
     optional string name = 1;
-    optional PubSubTestBlockMode mode = 2
-        [default = SEQUENTIAL, (goby.field).description = "How this block's steps are run"];
+    optional PubSubTestRunMode mode = 2
+        [default = SEQUENTIAL, (goby.field).description = "How this run's steps are executed"];
     repeated PubSubTestStep step = 3
         [(goby.field).description =
-             "Child steps. A block with no steps is itself a step using its own publish/expect"];
+             "Child steps. A run with no steps is itself a step using its own publish/expect"];
 
     repeated PubSubTestPublish publish = 10;
     repeated PubSubTestExpect expect = 11;
 
     optional double timeout = 20
         [(dccl.field).units.base_dimensions = "T",
-         (goby.field).description = "Default timeout for this block's expectations"];
+         (goby.field).description = "Default timeout for this run's expectations"];
 }
 
 message PubSubTestRequireApp
@@ -191,9 +191,9 @@ message PubSubTest
 
     repeated PubSubTestRequireApp require_app = 10;
 
-    optional PubSubTestBlockMode mode = 20
-        [default = SEQUENTIAL, (goby.field).description = "How the blocks are run"];
-    repeated PubSubTestBlock block = 21;
+    optional PubSubTestRunMode mode = 20
+        [default = SEQUENTIAL, (goby.field).description = "How the runs are executed"];
+    repeated PubSubTestRun run = 21;
 }
 
 // Result of a test run, emitted as JSON by --output_format json
@@ -243,12 +243,12 @@ message PubSubTestStepReport
     repeated PubSubTestExpectReport expect = 5;
 }
 
-message PubSubTestBlockReport
+message PubSubTestRunReport
 {
     option (dccl.msg).unit_system = "si";
 
     optional string name = 1;
-    optional PubSubTestBlockMode mode = 2;
+    optional PubSubTestRunMode mode = 2;
     required PubSubTestResult result = 3;
     optional double elapsed = 4 [(dccl.field).units.base_dimensions = "T"];
     repeated PubSubTestStepReport step = 5;
@@ -280,5 +280,5 @@ message PubSubTestReport
     optional string error = 4 [(goby.field).description = "Set when result is ERROR"];
 
     repeated PubSubTestRequireAppReport require_app = 10;
-    repeated PubSubTestBlockReport block = 11;
+    repeated PubSubTestRunReport run = 11;
 }
