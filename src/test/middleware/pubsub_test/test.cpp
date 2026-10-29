@@ -58,12 +58,15 @@ class LoopbackEndpoint : public PubSubTestEndpoint
         const std::string scheme = slash == std::string::npos ? "" : spec.substr(0, slash);
         const std::string type = slash == std::string::npos ? spec : spec.substr(slash + 1);
 
-        if (scheme == "JSON")
+        if (scheme == "JSON" || spec == "JSON")
         {
             msg.scheme = MarshallingScheme::JSON;
-            msg.type = type.empty() ? "nlohmann::json" : type;
-            const std::string dumped = nlohmann::json::parse(pub.value()).dump();
-            msg.bytes.assign(dumped.begin(), dumped.end());
+            msg.type = (type.empty() || spec == "JSON") ? "nlohmann::json" : type;
+            // the JSON scheme's wire format (BSON), as the real portals produce
+            const auto bytes =
+                SerializerParserHelper<nlohmann::json, MarshallingScheme::JSON>::serialize(
+                    nlohmann::json::parse(pub.value()));
+            msg.bytes.assign(bytes.begin(), bytes.end());
         }
         else
         {
@@ -71,7 +74,9 @@ class LoopbackEndpoint : public PubSubTestEndpoint
             msg.type = type;
             auto pb = dccl::DynamicProtobufManager::new_protobuf_message<
                 std::shared_ptr<google::protobuf::Message>>(type);
-            assert(google::protobuf::TextFormat::ParseFromString(pub.value(), pb.get()));
+            const bool parsed =
+                google::protobuf::TextFormat::ParseFromString(pub.value(), pb.get());
+            assert(parsed);
             std::string serialized;
             pb->SerializeToString(&serialized);
             msg.bytes.assign(serialized.begin(), serialized.end());
@@ -128,7 +133,8 @@ class LoopbackEndpoint : public PubSubTestEndpoint
 protobuf::PubSubTest parse_test(const std::string& text)
 {
     protobuf::PubSubTest test;
-    assert(google::protobuf::TextFormat::ParseFromString(text, &test));
+    const bool parsed = google::protobuf::TextFormat::ParseFromString(text, &test);
+    assert(parsed);
     return test;
 }
 
