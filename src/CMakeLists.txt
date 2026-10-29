@@ -101,6 +101,21 @@ if(enable_hdf5)
   add_definitions(-DHAS_HDF5)
 endif()
 
+## yaml-cpp
+find_package(yaml-cpp QUIET)
+set(YAML_DOC_STRING "Enable YAML test files for 'goby zeromq test' and 'goby udpm test' (requires libyaml-cpp-dev)")
+if(yaml-cpp_FOUND)
+  option(enable_yaml ${YAML_DOC_STRING} ON)
+else()
+  option(enable_yaml ${YAML_DOC_STRING} OFF)
+  message(">> setting enable_yaml to OFF ... if you need this functionality: 1) install libyaml-cpp-dev; 2) run cmake -Denable_yaml=ON")
+endif()
+
+if(enable_yaml)
+  goby_find_required_package(yaml-cpp)
+  add_definitions(-DHAS_YAML_CPP)
+endif()
+
 # OpenSSL
 find_package(OpenSSL QUIET)
 set(OPENSSL_DOC_STRING "Enable OpenSSL components")
@@ -365,7 +380,5 @@ endif()
 option(build_apps "Build applications (as well as libraries)" ON)
 
 if(build_apps)
-  # YAML test files for 'goby zeromq test' / 'goby udpm test' (requires libyaml-cpp-dev)
-  goby_find_required_package(yaml-cpp)
   add_subdirectory(apps)
 endif()

@@ -1,9 +1,0 @@
-endpoint:
-  - { name: u, interprocess: { platform: pstest_udpm, multicast_port: 11198 } }
-test:
-  name: udpm pass
-  default_timeout: 2
-  block:
-    - name: self receive
-      publish: [{ endpoint: u, group: g, type: goby.middleware.protobuf.LatLonPoint, value: "lat: 5 lon: 6", delay: 0.3 }]
-      expect: [{ endpoint: u, group: g, type: PROTOBUF/.*, min_count: 1, condition: [{ field: lat, op: EQ, value: 5 }] }]

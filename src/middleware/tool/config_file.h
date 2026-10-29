@@ -33,7 +33,10 @@
 #include <google/protobuf/message.h>
 #include <google/protobuf/text_format.h>
 #include <google/protobuf/util/json_util.h>
+
+#ifdef HAS_YAML_CPP
 #include <yaml-cpp/yaml.h>
+#endif
 
 #include "goby/exception.h"
 #include "goby/util/debug_logger.h"
@@ -44,6 +47,7 @@ namespace middleware
 {
 namespace tool
 {
+#ifdef HAS_YAML_CPP
 namespace detail
 {
 inline std::string yaml_path(const std::string& parent, const std::string& key)
@@ -208,10 +212,22 @@ inline void yaml_to_protobuf(const std::string& yaml, google::protobuf::Message&
     }
     detail::yaml_to_protobuf(root, msg, "");
 }
+#endif // HAS_YAML_CPP
+
+/// \brief True if YAML configuration files are supported by this build
+inline constexpr bool yaml_supported()
+{
+#ifdef HAS_YAML_CPP
+    return true;
+#else
+    return false;
+#endif
+}
 
 /// \brief Merge a configuration file into a Protobuf message.
 ///
-/// Format is chosen by extension: .yml/.yaml is YAML, .json is JSON, anything else is Protobuf TextFormat.
+/// Format is chosen by extension: .yml/.yaml is YAML (when built with yaml-cpp), .json is JSON,
+/// anything else is Protobuf TextFormat.
 inline void load_config_file(const std::string& path, google::protobuf::Message& msg)
 {
     std::ifstream fin(path);
@@ -229,7 +245,13 @@ inline void load_config_file(const std::string& path, google::protobuf::Message&
 
     if (ends_with(".yml") || ends_with(".yaml"))
     {
+#ifdef HAS_YAML_CPP
         yaml_to_protobuf(contents, msg);
+#else
+        throw goby::Exception("'" + path +
+                              "': YAML support is not compiled in (install libyaml-cpp-dev and "
+                              "build with -Denable_yaml=ON), or use a JSON or TextFormat file");
+#endif
     }
     else if (ends_with(".json"))
     {

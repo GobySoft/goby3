@@ -1,5 +1,0 @@
-endpoint: [{ name: a, interprocess: { platform: pstest_a } }]
-test:
-  name: zeromq missing app
-  require_app: [{ endpoint: a, name: [gobyd, not_running], timeout: 1, request_interval: 0.2 }]
-  block: [{ name: never runs, expect: [{ endpoint: a, group: x, min_count: 1 }] }]

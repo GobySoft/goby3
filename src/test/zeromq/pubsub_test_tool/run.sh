@@ -2,10 +2,12 @@
 # Integration test for 'goby zeromq test': launches gobyd instances and checks the tool's
 # behavior and exit codes against the YAML files in this directory.
 #
-# Usage: run.sh <goby bin dir> <this directory>
+# Usage: run.sh <goby bin dir> <this directory> [yaml]
+# Pass "yaml" when the tools were built with yaml-cpp to also exercise a YAML test file.
 set -u
 bin=$1
 dir=$2
+yaml=${3:-}
 export PATH=$bin:$PATH
 
 pids=()
@@ -36,12 +38,18 @@ check() {
     fi
 }
 
-check 0 goby zeromq test "$dir/pass.yml"
-check 1 goby zeromq test "$dir/fail.yml"
-check 2 goby zeromq test "$dir/missing_app.yml"
-check 1 goby zeromq test "$dir/bad_field.yml"
+check 0 goby zeromq test "$dir/pass.pb.cfg"
+check 1 goby zeromq test "$dir/fail.pb.cfg"
+check 2 goby zeromq test "$dir/missing_app.pb.cfg"
+check 1 goby zeromq test "$dir/bad_field.pb.cfg"
+if [ "$yaml" = yaml ]; then
+    check 0 goby zeromq test "$dir/pass.yml"
+else
+    # without yaml-cpp a YAML file is a configuration error
+    check 1 goby zeromq test "$dir/pass.yml"
+fi
 
-json=$(goby zeromq test "$dir/pass.yml" --output_format JSON)
+json=$(goby zeromq test "$dir/pass.pb.cfg" --output_format JSON)
 echo "$json" | grep -q '"result": "PASS"' || { echo "FAILED: JSON report missing PASS"; fail=1; }
 
 exit $fail

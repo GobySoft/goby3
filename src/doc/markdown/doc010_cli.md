@@ -123,7 +123,7 @@ Runs a declarative publish/subscribe test against a running system and reports t
 goby zeromq test <test file> [--output_format HUMAN|JSON] [--output_file <path>] [-l <shared library>]
 ```
 
-The test file is YAML (`.yml`/`.yaml`), JSON (`.json`) or Protobuf TextFormat (any other extension); all three forms carry the same `TestToolConfig` message (`goby zeromq test -e` prints it in TextFormat). The exit code is 0 when every expectation passed, 1 when one failed, and 2 when the test could not be set up (a bad file, an endpoint that could not connect, or a required application that never responded).
+The test file is YAML (`.yml`/`.yaml`), JSON (`.json`) or Protobuf TextFormat (any other extension); all three forms carry the same `TestToolConfig` message (`goby zeromq test -e` prints it in TextFormat). YAML requires Goby built with yaml-cpp (`libyaml-cpp-dev`; `-Denable_yaml=ON`, the default when found); JSON and TextFormat are always available. The exit code is 0 when every expectation passed, 1 when one failed, and 2 when the test could not be set up (a bad file, an endpoint that could not connect, or a required application that never responded).
 
 A test has three parts:
 
