@@ -155,38 +155,38 @@ void test_conditions()
     c.set_field("a.b");
     c.set_op(protobuf::PubSubTestCondition::GT);
     c.set_value("2");
-    assert(detail::evaluate_condition(c, j, why));
+    assert(tool::detail::evaluate_condition(c, j, why));
     c.set_op(protobuf::PubSubTestCondition::LT);
-    assert(!detail::evaluate_condition(c, j, why));
+    assert(!tool::detail::evaluate_condition(c, j, why));
 
     c.set_field("list[0].id");
     c.set_op(protobuf::PubSubTestCondition::EQ);
     c.set_value("7");
-    assert(detail::evaluate_condition(c, j, why));
+    assert(tool::detail::evaluate_condition(c, j, why));
 
     c.set_field("s");
     c.set_op(protobuf::PubSubTestCondition::REGEX);
     c.set_value("O.");
-    assert(detail::evaluate_condition(c, j, why));
+    assert(tool::detail::evaluate_condition(c, j, why));
 
     c.set_field("missing");
     c.set_op(protobuf::PubSubTestCondition::ABSENT);
-    assert(detail::evaluate_condition(c, j, why));
+    assert(tool::detail::evaluate_condition(c, j, why));
     c.set_op(protobuf::PubSubTestCondition::EXISTS);
-    assert(!detail::evaluate_condition(c, j, why));
+    assert(!tool::detail::evaluate_condition(c, j, why));
 
     // JSON subset
-    assert(detail::json_subset(nlohmann::json::parse(R"({"a": {"b": 2.5}})"), j, "", why));
-    assert(!detail::json_subset(nlohmann::json::parse(R"({"a": {"b": 3}})"), j, "", why));
+    assert(tool::detail::json_subset(nlohmann::json::parse(R"({"a": {"b": 2.5}})"), j, "", why));
+    assert(!tool::detail::json_subset(nlohmann::json::parse(R"({"a": {"b": 3}})"), j, "", why));
 
     // Protobuf partial match
     protobuf::LatLonPoint actual, expected;
     actual.set_lat(42.5);
     actual.set_lon(-70.3);
     expected.set_lat(42.5);
-    assert(detail::protobuf_partial_match(expected, actual, "", why));
+    assert(tool::detail::protobuf_partial_match(expected, actual, "", why));
     expected.set_lon(0);
-    assert(!detail::protobuf_partial_match(expected, actual, "", why));
+    assert(!tool::detail::protobuf_partial_match(expected, actual, "", why));
     assert(why.find("lon") != std::string::npos);
 }
 
