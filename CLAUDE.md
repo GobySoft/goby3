@@ -21,3 +21,7 @@ Guidance for Claude when working in this repository.
 
 - Do not add dependencies to the minimal build: the apt package list of the `amd64-resolute-minimal-build` job in `.circleci/config.yml` is the floor, and everything must compile with only those packages.
 - A new third-party library is an optional feature: find it quietly, gate it behind an `enable_*` CMake option that defaults to ON only when it is found, define a `HAS_*` macro, and keep the code compiling and the tools usable without it.
+
+## Branches
+
+- Name a feature branch after the release branch it targets, then a short description of the change: `3.0/add-goby-test-tool`, `3.1/fix-udpm-reassembly`.
