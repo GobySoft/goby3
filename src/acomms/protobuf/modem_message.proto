@@ -1,6 +1,7 @@
 syntax = "proto2";
 import "dccl/option_extensions.proto";
 import "goby/protobuf/option_extensions.proto";
+import "goby/acomms/protobuf/modem_driver_status.proto";
 
 package goby.acomms.protobuf;
 
@@ -167,6 +168,8 @@ message ModemReport
         QUALITY_VERY_HIGH = 6;
     }
     optional LinkQuality link_quality = 4 [default = QUALITY_UNKNOWN];
+
+    optional ModemDriverStatus.Status driver_status = 5 [default = NOMINAL];
 
     // same assignment as ModemTransmission
     extensions 1000 to max;
