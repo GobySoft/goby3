@@ -1,0 +1,338 @@
+// Copyright 2026:
+//   GobySoft, LLC (2013-)
+//   Community contributors (see AUTHORS file)
+// File authors:
+//   Toby Schneider <toby@gobysoft.org>
+//
+//
+// This file is part of the Goby Underwater Autonomy Project Libraries
+// ("The Goby Libraries").
+//
+// The Goby Libraries are free software: you can redistribute them and/or modify
+// them under the terms of the GNU Lesser General Public License as published by
+// the Free Software Foundation, either version 2.1 of the License, or
+// (at your option) any later version.
+//
+// The Goby Libraries are distributed in the hope that they will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU Lesser General Public License for more details.
+//
+// You should have received a copy of the GNU Lesser General Public License
+// along with Goby.  If not, see <http://www.gnu.org/licenses/>.
+
+syntax = "proto2";
+import "dccl/option_extensions.proto";
+import "goby/protobuf/option_extensions.proto";
+
+package goby.middleware.protobuf;
+
+// Declarative publish/subscribe test run by 'goby zeromq test' and 'goby udpm test'.
+// Endpoints (connections to a layer) are declared by the transport-specific
+// tool configuration and referenced here by name.
+
+enum PubSubTestRunMode
+{
+    SEQUENTIAL = 1;
+    PARALLEL = 2;
+}
+
+message PubSubTestCondition
+{
+    enum Op
+    {
+        EQ = 1;
+        NE = 2;
+        LT = 3;
+        LE = 4;
+        GT = 5;
+        GE = 6;
+        REGEX = 7;
+        EXISTS = 8;
+        ABSENT = 9;
+    }
+
+    required string field = 1 [(goby.field).description =
+                                   "Dotted path into the message, with [n] for repeated fields, "
+                                   "e.g. 'pos.lat' or 'waypoint[0].id'"];
+    required Op op = 2;
+    optional string value = 3
+        [(goby.field).description =
+             "Value to compare against. Numeric comparison when both sides parse as numbers, "
+             "otherwise string comparison (enums compare by name). Regex for REGEX."];
+}
+
+message PubSubTestPublish
+{
+    option (dccl.msg).unit_system = "si";
+
+    optional string endpoint = 1
+        [(goby.field).description = "Endpoint name. Defaults to the first declared endpoint"];
+    required string group = 2;
+    required string type = 3 [(goby.field).description =
+                                  "Scheme and type as for 'goby zeromq publish', e.g. "
+                                  "'PROTOBUF/NavigationReport', 'DCCL/NavigationReport', "
+                                  "'JSON/NavigationReport', 'JSON' or 'protobuf.NavigationReport'"];
+    required string value = 4 [(goby.field).description =
+                                   "TextFormat (PROTOBUF/DCCL) or JSON (JSON) message contents"];
+    optional uint32 repeat = 5 [default = 1];
+    optional double interval = 6 [default = 0, (dccl.field).units.base_dimensions = "T"];
+    optional double delay = 7 [
+        default = 0,
+        (dccl.field).units.base_dimensions = "T",
+        (goby.field).description = "Wait this long after arming the run's expectations "
+                                   "before publishing"
+    ];
+}
+
+message PubSubTestExpect
+{
+    option (dccl.msg).unit_system = "si";
+
+    optional string endpoint = 1
+        [(goby.field).description = "Endpoint name. Defaults to the first declared endpoint"];
+    optional string group = 2 [default = ".*", (goby.field).description = "Group regex"];
+    optional string type = 3 [
+        default = ".*",
+        (goby.field).description =
+            "Type regex, optionally prefixed by scheme and '/', e.g. 'DCCL/.*', "
+            "'JSON/NavigationReport', 'protobuf.NavigationReport'"
+    ];
+    optional string scheme = 4
+        [(goby.field).description =
+             "Restrict to this marshalling scheme (name or number) when 'type' has no prefix"];
+
+    optional uint32 count = 10
+        [(goby.field).description =
+             "Exactly this many matching messages. The run lasts its full timeout "
+             "so that extra messages are detected. Use 0 to assert that nothing arrives."];
+    optional uint32 min_count = 11 [
+        default = 1,
+        (goby.field).description = "At least this many matching messages (ignored if 'count' is set). "
+                                   "The run completes as soon as every expectation reaches its minimum"
+    ];
+    optional uint32 max_count = 12
+        [(goby.field).description = "More than this many matching messages fails the expectation "
+                                    "(ignored if 'count' is set)"];
+    optional double timeout = 13
+        [(dccl.field).units.base_dimensions = "T",
+         (goby.field).description = "Defaults to the run timeout, then the test default_timeout"];
+
+    optional string match = 20
+        [(goby.field).description =
+             "Partial message (TextFormat for PROTOBUF/DCCL, JSON for JSON): every field set here "
+             "must equal the received value. Messages that do not match are counted as rejected "
+             "rather than received."];
+    repeated PubSubTestCondition condition = 21;
+}
+
+message PubSubTestStep
+{
+    option (dccl.msg).unit_system = "si";
+
+    optional string name = 1;
+    repeated PubSubTestPublish publish = 10;
+    repeated PubSubTestExpect expect = 11;
+    optional double timeout = 20
+        [(dccl.field).units.base_dimensions = "T",
+         (goby.field).description = "Default timeout for this step's expectations"];
+    optional double wait = 21 [
+        (dccl.field).units.base_dimensions = "T",
+        (goby.field).description =
+            "Hold this step open for at least this long (seconds). With no publish or expect "
+            "entries it is a plain pause."
+    ];
+}
+
+message PubSubTestRun
+{
+    option (dccl.msg).unit_system = "si";
+
+    optional string name = 1;
+    optional PubSubTestRunMode mode = 2
+        [default = SEQUENTIAL, (goby.field).description = "How this run's steps are executed"];
+    repeated PubSubTestStep step = 3
+        [(goby.field).description =
+             "Child steps. A run with no steps is itself a step using its own publish/expect"];
+
+    repeated PubSubTestPublish publish = 10;
+    repeated PubSubTestExpect expect = 11;
+
+    optional double timeout = 20
+        [(dccl.field).units.base_dimensions = "T",
+         (goby.field).description = "Default timeout for this run's expectations"];
+    optional double wait = 21 [
+        (dccl.field).units.base_dimensions = "T",
+        (goby.field).description =
+            "Hold this run open for at least this long (seconds); only for a run without "
+            "steps. With no publish or expect entries it is a plain pause."
+    ];
+}
+
+message PubSubTestRequireApp
+{
+    option (dccl.msg).unit_system = "si";
+
+    optional string endpoint = 1
+        [(goby.field).description = "Endpoint name. Defaults to the first declared endpoint"];
+    repeated string name = 2 [(goby.field).description = "Application names that must respond"];
+    optional double timeout = 3 [default = 30, (dccl.field).units.base_dimensions = "T"];
+    optional bool require_ok = 4
+        [default = false,
+         (goby.field).description = "Also require each application to report HEALTH__OK"];
+    optional double request_interval = 5 [
+        default = 1,
+        (dccl.field).units.base_dimensions = "T",
+        (goby.field).description =
+            "How often to publish HealthRequest. Requests stop once a goby_coroner report is seen, "
+            "after which the coroner's report is used instead."
+    ];
+}
+
+message PubSubTest
+{
+    option (dccl.msg).unit_system = "si";
+
+    optional string name = 1;
+    optional double default_timeout = 2 [default = 5, (dccl.field).units.base_dimensions = "T"];
+    optional double connect_timeout = 3 [
+        default = 10,
+        (dccl.field).units.base_dimensions = "T",
+        (goby.field).description = "Time allowed for all endpoints to connect"
+    ];
+
+    repeated PubSubTestRequireApp require_app = 10;
+
+    optional PubSubTestRunMode mode = 20
+        [default = SEQUENTIAL, (goby.field).description = "How the runs are executed"];
+    repeated PubSubTestRun run = 21;
+}
+
+// Result of a test run, emitted as JSON by --output_format json
+
+enum PubSubTestResult
+{
+    PASS = 1;
+    FAIL = 2;
+    ERROR = 3;
+}
+
+message PubSubTestExpectReport
+{
+    option (dccl.msg).unit_system = "si";
+
+    optional string endpoint = 1;
+    optional string group = 2;
+    optional string type = 3;
+    required PubSubTestResult result = 4;
+    optional uint32 received = 5 [(goby.field).description = "Matching messages"];
+    optional uint32 rejected = 6
+        [(goby.field).description = "Messages on the group/type that failed match or conditions"];
+    optional uint32 min_count = 7;
+    optional uint32 max_count = 8;
+    optional double elapsed = 9 [(dccl.field).units.base_dimensions = "T"];
+    optional string reason = 10;
+    optional string last_rejected = 11
+        [(goby.field).description = "Why the most recent rejected message was rejected"];
+}
+
+message PubSubTestPublishReport
+{
+    optional string endpoint = 1;
+    optional string group = 2;
+    optional string type = 3;
+    optional uint32 count = 4;
+}
+
+message PubSubTestStepReport
+{
+    option (dccl.msg).unit_system = "si";
+
+    optional string name = 1;
+    required PubSubTestResult result = 2;
+    optional double elapsed = 3 [(dccl.field).units.base_dimensions = "T"];
+    repeated PubSubTestPublishReport publish = 4;
+    repeated PubSubTestExpectReport expect = 5;
+    optional double wait = 6 [(dccl.field).units.base_dimensions = "T"];
+}
+
+message PubSubTestRunReport
+{
+    option (dccl.msg).unit_system = "si";
+
+    optional string name = 1;
+    optional PubSubTestRunMode mode = 2;
+    required PubSubTestResult result = 3;
+    optional double elapsed = 4 [(dccl.field).units.base_dimensions = "T"];
+    repeated PubSubTestStepReport step = 5;
+    repeated PubSubTestPublishReport publish = 6;
+    repeated PubSubTestExpectReport expect = 7;
+    optional double wait = 8 [(dccl.field).units.base_dimensions = "T"];
+}
+
+message PubSubTestRequireAppReport
+{
+    option (dccl.msg).unit_system = "si";
+
+    optional string endpoint = 1;
+    required PubSubTestResult result = 2;
+    repeated string name = 3;
+    repeated string missing = 4;
+    repeated string unhealthy = 5;
+    optional double elapsed = 6 [(dccl.field).units.base_dimensions = "T"];
+    optional bool from_coroner = 7
+        [(goby.field).description = "True if a goby_coroner report was used"];
+}
+
+// A problem found while loading or validating a test file
+message PubSubTestIssue
+{
+    optional string location = 1
+        [(goby.field).description =
+             "Where the problem is: a file name, a field path such as "
+             "'test.run[2].expect[0].match', or both"];
+    required string message = 2;
+}
+
+message PubSubTestValidation
+{
+    optional string file = 1;
+    required bool valid = 2;
+    repeated PubSubTestIssue issue = 3;
+}
+
+message PubSubTestFixtureReport
+{
+    option (dccl.msg).unit_system = "si";
+
+    required string name = 1;
+    required PubSubTestResult result = 2;
+    optional double ready_time = 3 [
+        (dccl.field).units.base_dimensions = "T",
+        (goby.field).description = "Seconds from start until the fixture was ready"
+    ];
+    optional string reason = 4;
+    optional string log_file = 5;
+    optional int32 exit_status = 6
+        [(goby.field).description = "Exit status if the fixture exited by itself"];
+    optional int32 exit_signal = 7
+        [(goby.field).description = "Signal number if the fixture was ended by a signal"];
+    repeated string output_tail = 8
+        [(goby.field).description = "Last lines of output, included when the test did not pass"];
+}
+
+message PubSubTestReport
+{
+    option (dccl.msg).unit_system = "si";
+
+    optional string name = 1;
+    required PubSubTestResult result = 2;
+    optional double elapsed = 3 [(dccl.field).units.base_dimensions = "T"];
+    optional string error = 4 [(goby.field).description = "Set when result is ERROR"];
+
+    repeated PubSubTestRequireAppReport require_app = 10;
+    repeated PubSubTestRunReport run = 11;
+    repeated PubSubTestFixtureReport fixture = 12;
+    repeated PubSubTestIssue issue = 13
+        [(goby.field).description = "Validation problems that prevented the test from running"];
+}

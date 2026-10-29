@@ -59,6 +59,10 @@ template <typename Config> class ConfiguratorInterface
     /// \brief Override to output the configuration object as a string
     virtual std::string str() const = 0;
 
+    /// \brief True if the command line was invalid and a fallback (usually help) is run instead,
+    /// in which case the process exits with failure
+    virtual bool invalid_command() const { return false; }
+
   protected:
     /// \brief Derived classes can modify the configuration as needed in their constructor
     Config& mutable_cfg() { return cfg_; }
@@ -90,6 +94,8 @@ template <typename Config> class ProtobufConfigurator : public ConfiguratorInter
     {
         middleware::ConfigReader::check_required_cfg(this->cfg(), this->cfg().app().binary());
     }
+
+    bool invalid_command() const override { return invalid_command_; }
 
   private:
     virtual std::string str() const override { return this->cfg().DebugString(); }
@@ -124,6 +130,8 @@ template <typename Config> class ProtobufConfigurator : public ConfiguratorInter
             .tool()
             .has_help_action();
     }
+
+    bool invalid_command_{false};
 };
 
 template <typename Config>
@@ -166,6 +174,7 @@ ProtobufConfigurator<Config>::ProtobufConfigurator(int argc, char* argv[])
         // allow default action to take place (usually "help")
         if (!tool_has_help_action())
             throw;
+        invalid_command_ = true;
     }
 
     // TODO: convert to C++ struct app3 configuration format

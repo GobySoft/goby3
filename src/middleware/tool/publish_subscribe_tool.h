@@ -54,6 +54,37 @@ namespace middleware
 namespace tool
 {
 
+/// \brief Split a publish type specification into marshalling scheme and type name.
+///
+/// \param spec e.g. "PROTOBUF/NavigationReport", "DCCL/NavigationReport", "JSON/NavigationReport",
+///        "JSON", or a name containing "protobuf." (implies PROTOBUF)
+/// \param scheme Set to the scheme, or 0 if \p spec does not name one
+/// \param type Set to the type name (empty for generic JSON)
+/// \throw std::invalid_argument if the scheme prefix is not a known scheme name or number
+inline void parse_publish_type(const std::string& spec, int& scheme, std::string& type)
+{
+    scheme = 0;
+    type.clear();
+    std::string::size_type slash_pos = spec.find('/');
+    if (slash_pos == std::string::npos)
+    {
+        if (spec == "JSON")
+        {
+            scheme = goby::middleware::MarshallingScheme::JSON;
+        }
+        else if (spec.find("protobuf.") != std::string::npos)
+        {
+            scheme = goby::middleware::MarshallingScheme::PROTOBUF;
+            type = spec;
+        }
+    }
+    else
+    {
+        scheme = goby::middleware::MarshallingScheme::from_string(spec.substr(0, slash_pos));
+        type = spec.substr(slash_pos + 1);
+    }
+}
+
 /// \brief Publish a single message on the interprocess layer using the provided publish config.
 ///
 /// \tparam InterprocessType Transport-specific interprocess portal type
@@ -67,30 +98,9 @@ void publish_tool_impl(InterprocessType& interprocess, const PublishConfig& cfg,
                        const std::string& tool_name)
 {
     using goby::glog;
-    std::string type_scheme_str = cfg.type();
     std::string type;
     int scheme{0};
-
-    std::string::size_type slash_pos = type_scheme_str.find('/');
-    if (slash_pos == std::string::npos)
-    {
-        // special cases
-        if (type_scheme_str == "JSON")
-        {
-            scheme = goby::middleware::MarshallingScheme::JSON;
-        }
-        else if (type_scheme_str.find("protobuf.") != std::string::npos)
-        {
-            scheme = goby::middleware::MarshallingScheme::PROTOBUF;
-            type = type_scheme_str;
-        }
-    }
-    else
-    {
-        scheme =
-            goby::middleware::MarshallingScheme::from_string(type_scheme_str.substr(0, slash_pos));
-        type = type_scheme_str.substr(slash_pos + 1);
-    }
+    parse_publish_type(cfg.type(), scheme, type);
 
     goby::middleware::DynamicGroup group(cfg.group());
     switch (scheme)
@@ -108,15 +118,13 @@ void publish_tool_impl(InterprocessType& interprocess, const PublishConfig& cfg,
             parser.ParseFromString(cfg.value(), pb_msg.get());
 
             if (scheme == goby::middleware::MarshallingScheme::DCCL)
-                interprocess
-                    .template publish_dynamic<google::protobuf::Message,
-                                              goby::middleware::MarshallingScheme::DCCL>(pb_msg,
-                                                                                         group);
+                interprocess.template publish_dynamic<google::protobuf::Message,
+                                                      goby::middleware::MarshallingScheme::DCCL>(
+                    pb_msg, group);
             else if (scheme == goby::middleware::MarshallingScheme::PROTOBUF)
-                interprocess
-                    .template publish_dynamic<google::protobuf::Message,
-                                              goby::middleware::MarshallingScheme::PROTOBUF>(pb_msg,
-                                                                                             group);
+                interprocess.template publish_dynamic<
+                    google::protobuf::Message, goby::middleware::MarshallingScheme::PROTOBUF>(
+                    pb_msg, group);
             break;
         }
 
@@ -157,10 +165,9 @@ void publish_tool_impl(InterprocessType& interprocess, const PublishConfig& cfg,
 /// \param internal_group_regex Regex pattern for internal groups to filter unless
 ///        include_internal_groups() is set. Pass empty string to disable filtering.
 template <typename InterprocessType, typename SubscribeConfig>
-void subscribe_tool_impl(
-    InterprocessType& interprocess, const SubscribeConfig& cfg,
-    std::map<int, std::unique_ptr<goby::middleware::log::LogPlugin>>& plugins,
-    const std::string& internal_group_regex = "")
+void subscribe_tool_impl(InterprocessType& interprocess, const SubscribeConfig& cfg,
+                         std::map<int, std::unique_ptr<goby::middleware::log::LogPlugin>>& plugins,
+                         const std::string& internal_group_regex = "")
 {
     std::set<int> schemes{goby::middleware::MarshallingScheme::ALL_SCHEMES};
 

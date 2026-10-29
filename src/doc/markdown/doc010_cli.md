@@ -38,6 +38,78 @@ goby_liaison
 
 See `goby help launch` for more options.
 
+## goby test
+
+Runs declarative publish/subscribe tests against a Goby system, for example in CI or after a deployment, without writing a Goby application. It has three actions:
+
+```
+goby test run <test file> [-D NAME=value] [-o HUMAN|JSON] [--output_file <path>] [--log_dir <dir>] [-l <shared library>]
+goby test validate <test file> [-D NAME=value] [-o HUMAN|JSON] [-l <shared library>]
+goby test visualize <test file> [-D NAME=value] [--output_file <file.dot>]
+```
+
+- `run` starts the test's fixtures, runs the test and stops the fixtures. It exits 0 when every expectation passed, 1 when one failed, and 2 when the test could not run (an invalid file, a fixture that never became ready, an endpoint that could not connect, a required application that never responded, or an interruption).
+- `validate` checks the file without connecting to anything and lists every problem with its location (such as `test.run[2].expect[0].match`). It exits 0 when the file is valid and 1 otherwise. `run` performs the same checks first.
+- `visualize` writes the test plan as a Graphviz graph, e.g. `goby test visualize nav.yml | dot -Tpng -o nav.png`.
+
+The test file is YAML (`.yml`/`.yaml`), JSON (`.json`) or Protobuf TextFormat (any other extension). Its fields are the `TestFile` message in `goby/apps/middleware/test_tool/test_tool_config.proto`, with the test itself in `goby/middleware/protobuf/pubsub_test.proto`. YAML requires Goby built with yaml-cpp (`libyaml-cpp-dev`; `-Denable_yaml=ON`, the default when found).
+
+### Test file
+
+```yaml
+endpoint:
+  - { name: auv, zeromq: { platform: auv0 } }
+  - { name: topside, zeromq: { platform: "${TOPSIDE:-topside}", transport: TCP, ipv4_address: 10.0.0.5 } }
+  - { name: payload, udpm: { platform: auv0, multicast_port: 11150 } }
+
+fixture:
+  - name: auv0
+    command: goby_launch -r auv0.launch
+    cwd: ../launch
+    ready: { output_regex: "All processes running", timeout: 30 }
+
+test:
+  name: nav forwarding
+  default_timeout: 5
+  require_app:
+    - { endpoint: auv, name: [gobyd, goby_frontseat_interface], timeout: 30 }
+  run:
+    - { name: settle, wait: 10 }
+    - name: nav reaches topside
+      publish:
+        - { endpoint: auv, group: nav, type: goby.middleware.protobuf.LatLonPoint, value: "lat: 42.5 lon: -70.3" }
+      expect:
+        - endpoint: topside
+          group: nav
+          type: goby.middleware.protobuf.LatLonPoint
+          match: "lat: 42.5"
+          condition: [{ field: lon, op: LT, value: 0 }]
+    - name: status, no raw passthrough, payload heartbeat
+      mode: PARALLEL
+      step:
+        - name: status
+          expect: [{ endpoint: auv, group: status, type: JSON/Status, min_count: 3, timeout: 10 }]
+        - name: no raw
+          expect: [{ endpoint: topside, group: raw, count: 0, timeout: 3 }]
+        - name: payload heartbeat
+          expect: [{ endpoint: payload, group: heartbeat, min_count: 2, timeout: 10 }]
+```
+
+![](images/goby-test-plan.png)
+
+- `endpoint`: named connections, each with `zeromq` settings (one `gobyd`) or `udpm` settings (one multicast group), on the interprocess (`LAYER_INTERPROCESS`, the default) or intermodule (`LAYER_INTERMODULE`) layer. A test may mix transports. An endpoint with neither uses zeromq when Goby was built with it, otherwise udpm; with no endpoints, one named `default` is created. Endpoint settings are layered over `run`'s `--zeromq` (also `GOBY_INTERPROCESS`) and `--udpm` settings.
+- `fixture`: commands (run with `/bin/sh -c`, in `cwd`, each in its own process group) started in order before the test, each waiting until it is `ready`: a line of output matching `output_regex` within `timeout`, then an optional `delay`. After the test they are stopped in reverse order with `stop.signal` (default `SIGINT`), escalating to `SIGTERM` and `SIGKILL` after `stop.grace` seconds. On Linux, `goby test` also stops descendants that left the process group (such as detached `screen` sessions). Each fixture's output is written to a log in `--log_dir` (a new temporary directory by default); a failed test's report includes the log path and its last lines.
+- `test.require_app`: application names that must answer the coroner health request before the runs start; a running `goby_coroner`'s report is used instead once seen.
+- `test.run`: runs execute `SEQUENTIAL` (default) or `PARALLEL` as given by `test.mode`. A run holds `publish`, `expect` and `wait` entries directly, or a list of `step` entries executed by its own `mode`. A `wait` keeps a run or step open for at least that long; on its own it is a pause.
+
+Within a run or step the expectations are subscribed first, then the publications are sent (after `delay`), then the tool waits until every expectation is satisfied or times out. An expectation names an endpoint, a `group` regex and a `type` regex (optionally prefixed by a scheme, such as `DCCL/`), and passes when the number of matching messages satisfies `min_count` (default 1, done as soon as it is reached) or `count` (exact; the step lasts its whole timeout so that extra messages are seen, and `count: 0` asserts nothing arrives). A message matches when it satisfies `match`, a partial message in the same syntax as `publish` (TextFormat for Protobuf and DCCL, JSON for JSON), and every `condition` (a `field` path such as `pos.lat` or `waypoint[0].id`, an `op` of `EQ`, `NE`, `LT`, `LE`, `GT`, `GE`, `REGEX`, `EXISTS` or `ABSENT`, and a `value`). Messages that fail to match are counted as rejected and the reason for the last rejection is reported. Durations are in seconds.
+
+### Reusing test files
+
+- `${NAME}` and `${NAME:-default}` are replaced by `-D NAME=value`, then the environment, then the default; `${TEST_DIR}` is the directory of the file being read, and `$${` is a literal `${`.
+- `include: [endpoints.yml]` merges other files (of any format) before this one, so endpoints or fixtures can be shared.
+- `load_shared_library` entries, `include` paths and fixture `cwd` resolve relative to the file that declares them. Libraries can also be given with `-l` or `GOBY_TOOL_LOAD_SHARED_LIBRARY` as for `publish` and `subscribe`.
+
 ## goby zeromq
 
 This function is for launching and interfacing with the ZeroMQ *interprocess* applications.

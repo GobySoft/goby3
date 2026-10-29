@@ -24,6 +24,7 @@ protobuf_generate_cpp_dccl(MIDDLEWARE_PROTO_SRCS MIDDLEWARE_PROTO_HDRS
   middleware/protobuf/navigation.proto
   middleware/protobuf/logger.proto
   middleware/protobuf/tool_config.proto
+  middleware/protobuf/pubsub_test.proto
   )
 
 set(MIDDLEWARE_SRC
