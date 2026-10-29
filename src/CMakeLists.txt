@@ -365,5 +365,7 @@ endif()
 option(build_apps "Build applications (as well as libraries)" ON)
 
 if(build_apps)
+  # YAML test files for 'goby zeromq test' / 'goby udpm test' (requires libyaml-cpp-dev)
+  goby_find_required_package(yaml-cpp)
   add_subdirectory(apps)
 endif()

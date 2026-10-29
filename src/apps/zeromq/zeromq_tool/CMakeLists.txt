@@ -1,2 +1,2 @@
 add_executable(goby_zeromq_tool zeromq_tool.cpp)
-target_link_libraries(goby_zeromq_tool goby goby_zeromq)
+target_link_libraries(goby_zeromq_tool goby goby_zeromq yaml-cpp)
