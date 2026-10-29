@@ -1,0 +1,6 @@
+endpoint: [{ name: a, interprocess: { platform: pstest_a } }]
+test:
+  name: zeromq fail
+  block:
+    - name: nothing arrives
+      expect: [{ endpoint: a, group: never, min_count: 1, timeout: 0.5 }]

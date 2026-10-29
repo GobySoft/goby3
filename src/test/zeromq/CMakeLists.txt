@@ -12,3 +12,4 @@ add_subdirectory(multi_thread_app2)
 
 add_subdirectory(zeromq_intermodule_and_interprocess)
 add_subdirectory(poller_attach_test)
+add_subdirectory(pubsub_test_tool)
