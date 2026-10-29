@@ -32,17 +32,21 @@ using namespace goby::middleware::protobuf;
 
 namespace
 {
-std::string escape(const std::string& s)
+// Graphviz HTML-like labels: https://graphviz.org/doc/info/shapes.html#html
+std::string html(const std::string& s)
 {
     std::string out;
     for (char c : s)
     {
-        if (c == '"' || c == '\\')
-            out += '\\';
-        if (c == '\n')
-            out += "\\l";
-        else
-            out += c;
+        switch (c)
+        {
+            case '&': out += "&amp;"; break;
+            case '<': out += "&lt;"; break;
+            case '>': out += "&gt;"; break;
+            case '"': out += "&quot;"; break;
+            case '\n': out += ' '; break;
+            default: out += c;
+        }
     }
     return out;
 }
@@ -61,6 +65,76 @@ std::string number(double d)
     return ss.str();
 }
 
+std::string code(const std::string& s) { return "<FONT FACE=\"Courier\">" + html(s) + "</FONT>"; }
+
+std::string bold(const std::string& s) { return "<B>" + html(s) + "</B>"; }
+
+std::string keyword(const std::string& s, const std::string& color)
+{
+    return "<FONT COLOR=\"" + color + "\"><B>" + s + "</B></FONT>";
+}
+
+const std::string publish_color = "#1f6f8b";
+const std::string expect_color = "#2d7a4f";
+const std::string wait_color = "#8a5a00";
+const std::string muted_color = "#5d6a63";
+
+// Builds a borderless two-column table: a heading row, then keyword / content rows
+class Table
+{
+  public:
+    explicit Table(const std::string& heading)
+    {
+        rows_ << "<TR><TD COLSPAN=\"2\" ALIGN=\"LEFT\">" << heading << "</TD></TR>";
+    }
+
+    // content lines are joined with left-aligned line breaks
+    Table& row(const std::string& key, const std::vector<std::string>& lines)
+    {
+        rows_ << "<TR><TD ALIGN=\"LEFT\" VALIGN=\"TOP\">" << key
+              << "</TD><TD ALIGN=\"LEFT\" BALIGN=\"LEFT\">";
+        for (std::size_t i = 0; i < lines.size(); ++i) rows_ << (i ? "<BR/>" : "") << lines[i];
+        rows_ << "</TD></TR>";
+        return *this;
+    }
+
+    std::string str() const
+    {
+        return "<<TABLE BORDER=\"0\" CELLBORDER=\"0\" CELLSPACING=\"0\" CELLPADDING=\"2\">" +
+               rows_.str() + "</TABLE>>";
+    }
+
+  private:
+    std::ostringstream rows_;
+};
+
+std::string op_text(PubSubTestCondition::Op op)
+{
+    switch (op)
+    {
+        case PubSubTestCondition::EQ: return "==";
+        case PubSubTestCondition::NE: return "!=";
+        case PubSubTestCondition::LT: return "<";
+        case PubSubTestCondition::LE: return "<=";
+        case PubSubTestCondition::GT: return ">";
+        case PubSubTestCondition::GE: return ">=";
+        case PubSubTestCondition::REGEX: return "=~";
+        case PubSubTestCondition::EXISTS: return "exists";
+        case PubSubTestCondition::ABSENT: return "absent";
+    }
+    return "?";
+}
+
+std::string condition_text(const PubSubTestCondition& c)
+{
+    std::string s = c.field() + " " + op_text(c.op());
+    if (c.op() == PubSubTestCondition::REGEX)
+        s += " /" + c.value() + "/";
+    else if (c.has_value())
+        s += " " + truncate(c.value(), 32);
+    return s;
+}
+
 class DotWriter
 {
   public:
@@ -73,8 +147,8 @@ class DotWriter
     std::string write(const std::string& title)
     {
         out_ << "digraph goby_test {\n"
-             << "  graph [rankdir=TB, fontname=\"Helvetica\", fontsize=12, labelloc=t, label=\""
-             << escape(title) << "\"];\n"
+             << "  graph [rankdir=TB, fontname=\"Helvetica\", fontsize=12, labelloc=t, label=<"
+             << bold(title) << ">];\n"
              << "  node [shape=box, style=rounded, fontname=\"Helvetica\", fontsize=10];\n"
              << "  edge [fontname=\"Helvetica\", fontsize=9];\n"
              << "  start [shape=circle, label=\"\", width=0.2, style=filled, fillcolor=black];\n";
@@ -85,18 +159,24 @@ class DotWriter
         {
             // edges are written after the cluster so 'start' isn't drawn inside it
             std::vector<std::pair<std::string, std::string>> fixture_edges;
-            out_ << "  subgraph cluster_fixtures {\n    label=\"fixtures\"; style=dashed;\n";
+            out_ << "  subgraph cluster_fixtures {\n    label=<" << keyword("fixtures", muted_color)
+                 << ">; style=dashed;\n";
             for (int i = 0, n = file_.fixture_size(); i < n; ++i)
             {
                 const auto& f = file_.fixture(i);
-                std::string label = f.name() + "\n$ " + truncate(f.command(), 60) + "\n";
+                Table t(bold(f.name()));
+                t.row(keyword("run", muted_color), {code("$ " + truncate(f.command(), 60))});
+                std::vector<std::string> ready;
                 if (f.ready().has_output_regex())
-                    label += "ready: /" + f.ready().output_regex() + "/ within " +
-                             number(f.ready().timeout()) + " s\n";
+                    ready.push_back("output " + code("/" + f.ready().output_regex() + "/") +
+                                    " within " + html(number(f.ready().timeout())) + " s");
                 if (f.ready().delay() > 0)
-                    label += "then wait " + number(f.ready().delay()) + " s\n";
+                    ready.push_back("then " + html(number(f.ready().delay())) + " s");
+                if (!ready.empty())
+                    t.row(keyword("ready", muted_color), ready);
+
                 const std::string id = "fixture_" + std::to_string(i);
-                out_ << "    " << id << " [shape=component, label=\"" << escape(label) << "\"];\n";
+                out_ << "    " << id << " [shape=component, label=" << t.str() << "];\n";
                 fixture_edges.push_back({prev, id});
                 prev = id;
             }
@@ -110,11 +190,13 @@ class DotWriter
             for (int i = 0, n = test.require_app_size(); i < n; ++i)
             {
                 const auto& req = test.require_app(i);
-                std::string label = "require_app " + endpoint(req.endpoint()) + "\n";
-                for (const auto& name : req.name()) label += "  " + name + "\n";
-                label += "within " + number(req.timeout()) + " s\n";
+                std::vector<std::string> names;
+                for (const auto& name : req.name()) names.push_back(code(name));
+                names.push_back("within " + html(number(req.timeout())) + " s");
+                Table t(keyword("require_app", muted_color) + " " + html(endpoint(req.endpoint())));
+                t.row("", names);
                 const std::string id = "require_app_" + std::to_string(i);
-                out_ << "  " << id << " [shape=hexagon, label=\"" << escape(label) << "\"];\n";
+                out_ << "  " << id << " [shape=hexagon, label=" << t.str() << "];\n";
                 edge(prev, id);
                 prev = id;
             }
@@ -183,40 +265,47 @@ class DotWriter
     {
         if (e.has_count())
             return e.count() == 0 ? "none" : "exactly " + std::to_string(e.count());
-        std::string s = ">= " + std::to_string(e.min_count());
+        std::string s = "&#8805; " + std::to_string(e.min_count());
         if (e.has_max_count())
-            s += ", <= " + std::to_string(e.max_count());
+            s += ", &#8804; " + std::to_string(e.max_count());
         return s;
     }
 
     template <typename Leaf>
     std::string leaf_label(const Leaf& leaf, const std::string& fallback_name, double timeout)
     {
-        std::string label = (leaf.name().empty() ? fallback_name : leaf.name()) + "\n";
+        Table t(bold(leaf.name().empty() ? fallback_name : leaf.name()));
         if (leaf.wait() > 0)
-            label += "wait " + number(leaf.wait()) + " s\n";
+            t.row(keyword("wait", wait_color), {html(number(leaf.wait())) + " s"});
+
         for (const auto& p : leaf.publish())
         {
-            label += "publish " + endpoint(p.endpoint()) + " " + p.group() + " : " + p.type();
+            std::string head =
+                html(endpoint(p.endpoint()) + " " + p.group()) + " : <I>" + html(p.type()) + "</I>";
+            std::vector<std::string> lines{head, code(truncate(p.value()))};
+            std::string timing;
             if (p.repeat() > 1)
-                label +=
-                    " x" + std::to_string(p.repeat()) + " every " + number(p.interval()) + " s";
+                timing = std::to_string(p.repeat()) + " times every " + number(p.interval()) + " s";
             if (p.delay() > 0)
-                label += " after " + number(p.delay()) + " s";
-            label += "\n  " + truncate(p.value()) + "\n";
+                timing +=
+                    (timing.empty() ? "" : ", ") + std::string("after ") + number(p.delay()) + " s";
+            if (!timing.empty())
+                lines.push_back("<FONT COLOR=\"" + muted_color + "\">" + html(timing) + "</FONT>");
+            t.row(keyword("publish", publish_color), lines);
         }
+
         for (const auto& e : leaf.expect())
         {
-            label += "expect " + endpoint(e.endpoint()) + " " + e.group() + " : " + e.type() +
-                     "\n  " + count_text(e) + " within " +
-                     number(e.has_timeout() ? e.timeout() : timeout) + " s\n";
+            std::vector<std::string> lines{
+                html(endpoint(e.endpoint()) + " " + e.group()) + " : <I>" + html(e.type()) + "</I>",
+                count_text(e) + " within " + html(number(e.has_timeout() ? e.timeout() : timeout)) +
+                    " s"};
             if (e.has_match())
-                label += "  match " + truncate(e.match()) + "\n";
-            for (const auto& c : e.condition())
-                label += "  where " + c.field() + " " + PubSubTestCondition::Op_Name(c.op()) +
-                         (c.has_value() ? " " + truncate(c.value(), 32) : "") + "\n";
+                lines.push_back("match " + code(truncate(e.match())));
+            for (const auto& c : e.condition()) lines.push_back("where " + code(condition_text(c)));
+            t.row(keyword("expect", expect_color), lines);
         }
-        return label;
+        return t.str();
     }
 
     std::pair<std::string, std::string> write_run(const PubSubTestRun& run, int i,
@@ -229,23 +318,23 @@ class DotWriter
 
         if (run.step_size() == 0)
         {
-            out_ << "  " << id << " [label=\"" << escape(leaf_label(run, run_name, timeout))
-                 << "\"];\n";
+            out_ << "  " << id << " [label=" << leaf_label(run, run_name, timeout) << "];\n";
             return {id, id};
         }
 
-        out_ << "  subgraph cluster_" << id << " {\n    label=\""
-             << escape(run_name + (run.mode() == PARALLEL ? " (parallel)" : " (sequential)"))
-             << "\"; style=rounded;\n";
+        out_ << "  subgraph cluster_" << id << " {\n    label=<" << bold(run_name)
+             << " <FONT COLOR=\"" << muted_color << "\">("
+             << (run.mode() == PARALLEL ? "parallel" : "sequential")
+             << ")</FONT>>; style=rounded;\n";
         std::vector<std::pair<std::string, std::string>> steps;
         for (int j = 0, m = run.step_size(); j < m; ++j)
         {
             const auto& step = run.step(j);
             const std::string sid = id + "_step_" + std::to_string(j);
             const double step_timeout = step.has_timeout() ? step.timeout() : timeout;
-            out_ << "    " << sid << " [label=\""
-                 << escape(leaf_label(step, "step " + std::to_string(j + 1), step_timeout))
-                 << "\"];\n";
+            out_ << "    " << sid
+                 << " [label=" << leaf_label(step, "step " + std::to_string(j + 1), step_timeout)
+                 << "];\n";
             steps.push_back({sid, sid});
         }
 
