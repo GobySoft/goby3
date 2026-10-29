@@ -136,6 +136,12 @@ message PubSubTestStep
     optional double timeout = 20
         [(dccl.field).units.base_dimensions = "T",
          (goby.field).description = "Default timeout for this step's expectations"];
+    optional double wait = 21 [
+        (dccl.field).units.base_dimensions = "T",
+        (goby.field).description =
+            "Hold this step open for at least this long (seconds). With no publish or expect "
+            "entries it is a plain pause."
+    ];
 }
 
 message PubSubTestRun
@@ -155,6 +161,12 @@ message PubSubTestRun
     optional double timeout = 20
         [(dccl.field).units.base_dimensions = "T",
          (goby.field).description = "Default timeout for this run's expectations"];
+    optional double wait = 21 [
+        (dccl.field).units.base_dimensions = "T",
+        (goby.field).description =
+            "Hold this run open for at least this long (seconds); only for a run without "
+            "steps. With no publish or expect entries it is a plain pause."
+    ];
 }
 
 message PubSubTestRequireApp
@@ -241,6 +253,7 @@ message PubSubTestStepReport
     optional double elapsed = 3 [(dccl.field).units.base_dimensions = "T"];
     repeated PubSubTestPublishReport publish = 4;
     repeated PubSubTestExpectReport expect = 5;
+    optional double wait = 6 [(dccl.field).units.base_dimensions = "T"];
 }
 
 message PubSubTestRunReport
@@ -254,6 +267,7 @@ message PubSubTestRunReport
     repeated PubSubTestStepReport step = 5;
     repeated PubSubTestPublishReport publish = 6;
     repeated PubSubTestExpectReport expect = 7;
+    optional double wait = 8 [(dccl.field).units.base_dimensions = "T"];
 }
 
 message PubSubTestRequireAppReport
@@ -270,6 +284,43 @@ message PubSubTestRequireAppReport
         [(goby.field).description = "True if a goby_coroner report was used"];
 }
 
+// A problem found while loading or validating a test file
+message PubSubTestIssue
+{
+    optional string location = 1
+        [(goby.field).description =
+             "Where the problem is: a file name, a field path such as "
+             "'test.run[2].expect[0].match', or both"];
+    required string message = 2;
+}
+
+message PubSubTestValidation
+{
+    optional string file = 1;
+    required bool valid = 2;
+    repeated PubSubTestIssue issue = 3;
+}
+
+message PubSubTestFixtureReport
+{
+    option (dccl.msg).unit_system = "si";
+
+    required string name = 1;
+    required PubSubTestResult result = 2;
+    optional double ready_time = 3 [
+        (dccl.field).units.base_dimensions = "T",
+        (goby.field).description = "Seconds from start until the fixture was ready"
+    ];
+    optional string reason = 4;
+    optional string log_file = 5;
+    optional int32 exit_status = 6
+        [(goby.field).description = "Exit status if the fixture exited by itself"];
+    optional int32 exit_signal = 7
+        [(goby.field).description = "Signal number if the fixture was ended by a signal"];
+    repeated string output_tail = 8
+        [(goby.field).description = "Last lines of output, included when the test did not pass"];
+}
+
 message PubSubTestReport
 {
     option (dccl.msg).unit_system = "si";
@@ -281,4 +332,7 @@ message PubSubTestReport
 
     repeated PubSubTestRequireAppReport require_app = 10;
     repeated PubSubTestRunReport run = 11;
+    repeated PubSubTestFixtureReport fixture = 12;
+    repeated PubSubTestIssue issue = 13
+        [(goby.field).description = "Validation problems that prevented the test from running"];
 }

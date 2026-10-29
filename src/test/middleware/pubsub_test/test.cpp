@@ -26,6 +26,7 @@
 
 #include <cassert>
 #include <iostream>
+#include <set>
 
 #include <google/protobuf/text_format.h>
 
@@ -272,6 +273,85 @@ void test_require_app()
     assert(missing.run_size() == 0);
 }
 
+void test_wait()
+{
+    // a step with only a wait is a pause; a step with a wait and a quickly satisfied expectation
+    // still lasts at least the wait
+    auto report = run(parse_test(R"(
+        run { name: "pause" wait: 0.3 }
+        run {
+            name: "held open"
+            wait: 0.3
+            publish { group: "g" type: "JSON" value: "{}" }
+            expect { group: "g" type: "JSON/.*" }
+        }
+    )"));
+    assert(report.result() == protobuf::PASS);
+    assert(report.run(0).wait() == 0.3);
+    assert(report.run(0).elapsed() >= 0.3);
+    assert(report.run(1).elapsed() >= 0.3);
+    assert(report.run(1).expect(0).received() == 1);
+}
+
+// Collects the validator's issue locations for a test using the single endpoint "loop"
+std::set<std::string> issue_locations(const std::string& text)
+{
+    auto issues = PubSubTestValidator(parse_test(text), {"loop"}).validate();
+    std::set<std::string> locations;
+    for (const auto& i : issues)
+    {
+        std::cout << "  issue: " << i.location() << ": " << i.message() << std::endl;
+        locations.insert(i.location());
+    }
+    return locations;
+}
+
+void test_validator()
+{
+    // a well-formed test has no issues
+    assert(issue_locations(R"(
+        run {
+            publish { group: "nav" type: "goby.middleware.protobuf.LatLonPoint" value: "lat: 1 lon: 2" }
+            expect { group: "nav" type: "PROTOBUF/goby.middleware.protobuf.LatLonPoint"
+                     match: "lat: 1" condition { field: "lon" op: GT value: "0" } }
+        }
+    )")
+               .empty());
+
+    // every problem is reported at its own location, not just the first
+    auto locations = issue_locations(R"(
+        require_app { endpoint: "nope" name: "x" }
+        run {
+            wait: -1
+            publish { group: "g" type: "goby.middleware.protobuf.LatLonPoint" value: "lat: 1 lonn: 2" }
+            publish { group: "g" type: "PROTOBUF/no.such.Type" value: "" }
+            publish { group: "g" type: "JSON" value: "{not json" }
+            expect { group: "(" type: "goby.middleware.protobuf.LatLonPoint" count: 1 min_count: 2
+                     match: "lat: abc"
+                     condition { field: "pos.lat" op: GT value: "1" }
+                     condition { field: "lat" op: EQ } }
+        }
+        run { step { name: "s" } wait: 1 }
+    )");
+    const std::set<std::string> expected{"test.require_app[0].endpoint",
+                                         "test.run[0].wait",
+                                         "test.run[0].publish[0].value",
+                                         "test.run[0].publish[1].type",
+                                         "test.run[0].publish[2].value",
+                                         "test.run[0].expect[0].group",
+                                         "test.run[0].expect[0].count",
+                                         "test.run[0].expect[0].match",
+                                         "test.run[0].expect[0].condition[0].field",
+                                         "test.run[0].expect[0].condition[1].value",
+                                         "test.run[1]"};
+    for (const auto& e : expected)
+    {
+        if (!locations.count(e))
+            std::cerr << "missing issue at " << e << std::endl;
+        assert(locations.count(e));
+    }
+}
+
 void test_json_render()
 {
     auto report = run(parse_test("name: \"r\" run { name: \"noop\" }"));
@@ -291,6 +371,8 @@ int main(int argc, char* argv[])
     test_pass_fail_counts();
     test_sequential_and_parallel();
     test_require_app();
+    test_wait();
+    test_validator();
     test_json_render();
 
     std::cout << "all tests passed" << std::endl;

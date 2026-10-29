@@ -28,7 +28,6 @@
 #include "goby/apps/middleware/goby_tool/log.pb.h"
 #include "goby/apps/middleware/goby_tool/tool.pb.h"
 #include "marshalling/protobuf.h"
-#include "test_tool.h"
 #include "unified_log_tool.h"
 
 using goby::glog;
@@ -99,11 +98,6 @@ goby::apps::middleware::GobyTool::GobyTool()
                         case goby::apps::middleware::protobuf::GobyToolConfig::protobuf:
                             tool_helper.help<goby::apps::middleware::ProtobufTool>(action_for_help);
                             break;
-                        case goby::apps::middleware::protobuf::GobyToolConfig::test:
-                            tool_helper.help<goby::apps::middleware::TestTool,
-                                             goby::apps::middleware::TestToolConfigurator>(
-                                action_for_help);
-                            break;
                         default:
                             throw(goby::Exception(
                                 "Help was expected to be handled by external tool"));
@@ -113,16 +107,11 @@ goby::apps::middleware::GobyTool::GobyTool()
                 break;
 
             case goby::apps::middleware::protobuf::GobyToolConfig::log:
-                tool_helper.run_subtool<goby::apps::middleware::UnifiedLogTool>();
+                exit_code = tool_helper.run_subtool<goby::apps::middleware::UnifiedLogTool>();
                 break;
 
             case goby::apps::middleware::protobuf::GobyToolConfig::protobuf:
-                tool_helper.run_subtool<goby::apps::middleware::ProtobufTool>();
-                break;
-
-            case goby::apps::middleware::protobuf::GobyToolConfig::test:
-                exit_code = tool_helper.run_subtool<goby::apps::middleware::TestTool,
-                                                    goby::apps::middleware::TestToolConfigurator>();
+                exit_code = tool_helper.run_subtool<goby::apps::middleware::ProtobufTool>();
                 break;
 
             default:

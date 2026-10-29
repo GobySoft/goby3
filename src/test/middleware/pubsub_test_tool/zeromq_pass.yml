@@ -1,4 +1,5 @@
-# Same shape as zeromq_pass.pb.cfg, in YAML
+# Same shape as zeromq_pass.pb.cfg, in YAML; includes may mix formats
+include: [zeromq_daemons.pb.cfg]
 endpoint:
   - { name: a, zeromq: { platform: pstest_a } }
   - { name: b, zeromq: { platform: pstest_b } }

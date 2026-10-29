@@ -28,8 +28,10 @@
 #include <regex>
 #include <sstream>
 #include <string>
+#include <vector>
 
 #include <google/protobuf/descriptor.h>
+#include <google/protobuf/io/tokenizer.h>
 #include <google/protobuf/message.h>
 #include <google/protobuf/text_format.h>
 #include <google/protobuf/util/json_util.h>
@@ -39,7 +41,6 @@
 #endif
 
 #include "goby/exception.h"
-#include "goby/util/debug_logger.h"
 
 namespace goby
 {
@@ -189,7 +190,9 @@ inline void yaml_to_protobuf(const YAML::Node& node, google::protobuf::Message& 
         if (!field)
             field = desc->FindFieldByCamelcaseName(key);
         if (!field)
-            throw goby::Exception(yaml_path(path, key) + ": no such field in " + desc->full_name());
+            throw goby::Exception(yaml_path(path, key) + " (line " +
+                                  std::to_string(kv.first.Mark().line + 1) +
+                                  "): no such field in " + desc->full_name());
         yaml_to_field(kv.second, msg, field, yaml_path(path, key));
     }
 }
@@ -224,19 +227,30 @@ inline constexpr bool yaml_supported()
 #endif
 }
 
-/// \brief Merge a configuration file into a Protobuf message.
-///
-/// Format is chosen by extension: .yml/.yaml is YAML (when built with yaml-cpp), .json is JSON,
-/// anything else is Protobuf TextFormat.
-inline void load_config_file(const std::string& path, google::protobuf::Message& msg)
+namespace detail
 {
-    std::ifstream fin(path);
-    if (!fin.is_open())
-        throw goby::Exception("could not open '" + path + "' for reading");
-    std::stringstream ss;
-    ss << fin.rdbuf();
-    const std::string contents = ss.str();
+class CollectingErrorCollector : public google::protobuf::io::ErrorCollector
+{
+  public:
+    void AddError(int line, int column, const std::string& message) override
+    {
+        errors.push_back("line " + std::to_string(line + 1) + " column " +
+                         std::to_string(column + 1) + ": " + message);
+    }
+    void AddWarning(int, int, const std::string&) override {}
+    std::vector<std::string> errors;
+};
+} // namespace detail
 
+/// \brief Merge configuration text into a Protobuf message.
+///
+/// \param contents The configuration text
+/// \param path Used to choose the format by extension (.yml/.yaml is YAML when built with
+///        yaml-cpp, .json is JSON, anything else is Protobuf TextFormat)
+/// \throw goby::Exception describing the parse error(s)
+inline void parse_config_string(const std::string& contents, const std::string& path,
+                                google::protobuf::Message& msg)
+{
     auto ends_with = [&](const std::string& suffix)
     {
         return path.size() >= suffix.size() &&
@@ -248,8 +262,7 @@ inline void load_config_file(const std::string& path, google::protobuf::Message&
 #ifdef HAS_YAML_CPP
         yaml_to_protobuf(contents, msg);
 #else
-        throw goby::Exception("'" + path +
-                              "': YAML support is not compiled in (install libyaml-cpp-dev and "
+        throw goby::Exception("YAML support is not compiled in (install libyaml-cpp-dev and "
                               "build with -Denable_yaml=ON), or use a JSON or TextFormat file");
 #endif
     }
@@ -258,16 +271,31 @@ inline void load_config_file(const std::string& path, google::protobuf::Message&
         google::protobuf::util::JsonParseOptions opts;
         auto status = google::protobuf::util::JsonStringToMessage(contents, &msg, opts);
         if (!status.ok())
-            throw goby::Exception("JSON parse error in '" + path + "': " + status.ToString());
+            throw goby::Exception("JSON parse error: " + status.ToString());
     }
     else
     {
         google::protobuf::TextFormat::Parser parser;
-        goby::util::FlexOStreamErrorCollector error_collector(contents);
+        detail::CollectingErrorCollector error_collector;
         parser.RecordErrorsTo(&error_collector);
-        if (!parser.MergeFromString(contents, &msg) || error_collector.has_errors())
-            throw goby::Exception("TextFormat parse error in '" + path + "'");
+        if (!parser.MergeFromString(contents, &msg) || !error_collector.errors.empty())
+        {
+            std::string what = "TextFormat parse error";
+            for (const auto& e : error_collector.errors) what += "; " + e;
+            throw goby::Exception(what);
+        }
     }
+}
+
+/// \brief Merge a configuration file into a Protobuf message (see parse_config_string).
+inline void load_config_file(const std::string& path, google::protobuf::Message& msg)
+{
+    std::ifstream fin(path);
+    if (!fin.is_open())
+        throw goby::Exception("could not open '" + path + "' for reading");
+    std::stringstream ss;
+    ss << fin.rdbuf();
+    parse_config_string(ss.str(), path, msg);
 }
 
 } // namespace tool

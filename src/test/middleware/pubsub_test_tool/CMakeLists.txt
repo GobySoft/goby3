@@ -8,5 +8,5 @@ if(build_apps)
   endif()
   add_test(NAME goby_test_middleware_pubsub_test_tool
     COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/run.sh ${goby_BIN_DIR} ${CMAKE_CURRENT_SOURCE_DIR} ${args})
-  set_tests_properties(goby_test_middleware_pubsub_test_tool PROPERTIES TIMEOUT 120)
+  set_tests_properties(goby_test_middleware_pubsub_test_tool PROPERTIES TIMEOUT 240)
 endif()

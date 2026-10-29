@@ -36,10 +36,14 @@
 #include <string>
 #include <vector>
 
+#include <google/protobuf/dynamic_message.h>
+#include <google/protobuf/io/tokenizer.h>
 #include <google/protobuf/text_format.h>
 #include <google/protobuf/util/json_util.h>
 
 #include <boost/units/systems/si.hpp>
+
+#include "dccl/dynamic_protobuf_manager.h"
 
 #include "goby/exception.h"
 #include "goby/middleware/coroner/groups.h"
@@ -371,6 +375,328 @@ inline void parse_type_spec(const protobuf::PubSubTestExpect& expect, std::set<i
 }
 } // namespace detail
 
+/// \brief Checks a PubSubTest without connecting to anything: structure, endpoint references,
+/// regexes, and (for types whose descriptors are loaded) publish values, match messages and
+/// condition field paths. Every problem is collected rather than stopping at the first.
+class PubSubTestValidator
+{
+  public:
+    using Issues = std::vector<protobuf::PubSubTestIssue>;
+
+    PubSubTestValidator(const protobuf::PubSubTest& test, std::set<std::string> endpoint_names,
+                        std::string prefix = "test")
+        : test_(test), endpoints_(std::move(endpoint_names)), prefix_(std::move(prefix))
+    {
+    }
+
+    Issues validate()
+    {
+        issues_.clear();
+        if (endpoints_.empty())
+            add("endpoint", "no endpoints are declared");
+
+        if (test_.default_timeout() <= 0)
+            add(prefix_ + ".default_timeout", "must be greater than zero");
+        if (test_.connect_timeout() <= 0)
+            add(prefix_ + ".connect_timeout", "must be greater than zero");
+
+        for (int i = 0, n = test_.require_app_size(); i < n; ++i)
+        {
+            const auto& req = test_.require_app(i);
+            const std::string loc = index(prefix_ + ".require_app", i);
+            check_endpoint(loc, req.endpoint());
+            if (req.name_size() == 0)
+                add(loc + ".name", "at least one application name is required");
+            if (req.timeout() <= 0)
+                add(loc + ".timeout", "must be greater than zero");
+            if (req.request_interval() <= 0)
+                add(loc + ".request_interval", "must be greater than zero");
+        }
+
+        for (int i = 0, n = test_.run_size(); i < n; ++i)
+        {
+            const auto& run = test_.run(i);
+            const std::string loc = index(prefix_ + ".run", i);
+            if (run.step_size() > 0 &&
+                (run.publish_size() > 0 || run.expect_size() > 0 || run.has_wait()))
+                add(loc, "a run has either steps or its own publish/expect/wait, not both");
+            check_leaf(loc, run.publish(), run.expect(), run.has_timeout(), run.timeout(),
+                       run.wait());
+            for (int j = 0, m = run.step_size(); j < m; ++j)
+            {
+                const auto& step = run.step(j);
+                check_leaf(index(loc + ".step", j), step.publish(), step.expect(),
+                           step.has_timeout(), step.timeout(), step.wait());
+            }
+        }
+        return issues_;
+    }
+
+  private:
+    class CollectingErrorCollector : public google::protobuf::io::ErrorCollector
+    {
+      public:
+        void AddError(int line, int column, const std::string& message) override
+        {
+            errors.push_back("column " + std::to_string(column + 1) + ": " + message);
+        }
+        void AddWarning(int, int, const std::string&) override {}
+        std::vector<std::string> errors;
+    };
+
+    static std::string index(const std::string& base, int i)
+    {
+        return base + "[" + std::to_string(i) + "]";
+    }
+
+    void add(const std::string& location, const std::string& message)
+    {
+        protobuf::PubSubTestIssue issue;
+        issue.set_location(location);
+        issue.set_message(message);
+        issues_.push_back(issue);
+    }
+
+    void check_endpoint(const std::string& loc, const std::string& name)
+    {
+        if (!name.empty() && !endpoints_.count(name))
+            add(loc + ".endpoint", "unknown endpoint '" + name + "'");
+    }
+
+    void check_regex(const std::string& loc, const std::string& regex)
+    {
+        try
+        {
+            std::regex r(regex);
+        }
+        catch (const std::regex_error& e)
+        {
+            add(loc, "invalid regular expression '" + regex + "': " + e.what());
+        }
+    }
+
+    static const google::protobuf::Descriptor* find_descriptor(const std::string& name)
+    {
+        try
+        {
+            return dccl::DynamicProtobufManager::find_descriptor(name);
+        }
+        catch (const std::exception&)
+        {
+            return nullptr;
+        }
+    }
+
+    static bool looks_literal(const std::string& type)
+    {
+        static const std::regex literal("[A-Za-z0-9_.:]+");
+        return std::regex_match(type, literal);
+    }
+
+    void parse_textformat(const std::string& loc, const std::string& text,
+                          const google::protobuf::Descriptor* desc, bool allow_partial)
+    {
+        std::unique_ptr<google::protobuf::Message> msg(dynamic_factory_.GetPrototype(desc)->New());
+        google::protobuf::TextFormat::Parser parser;
+        CollectingErrorCollector errors;
+        parser.RecordErrorsTo(&errors);
+        parser.AllowPartialMessage(allow_partial);
+        if (!parser.ParseFromString(text, msg.get()))
+        {
+            if (errors.errors.empty())
+                add(loc, "does not parse as " + desc->full_name());
+            for (const auto& e : errors.errors)
+                add(loc, "does not parse as " + desc->full_name() + ": " + e);
+        }
+    }
+
+    void parse_json(const std::string& loc, const std::string& text)
+    {
+        try
+        {
+            nlohmann::json parsed = nlohmann::json::parse(text);
+            (void)parsed;
+        }
+        catch (const std::exception& e)
+        {
+            add(loc, std::string("is not valid JSON: ") + e.what());
+        }
+    }
+
+    void check_field_path(const std::string& loc, const std::string& path,
+                          const google::protobuf::Descriptor* desc)
+    {
+        static const std::regex token_regex("([^.\\[\\]]+)|\\[([0-9]+)\\]");
+        const google::protobuf::FieldDescriptor* field = nullptr;
+        bool indexed = false;
+        for (auto it = std::sregex_iterator(path.begin(), path.end(), token_regex);
+             it != std::sregex_iterator(); ++it)
+        {
+            if ((*it)[1].matched)
+            {
+                if (field && field->is_repeated() && !indexed)
+                {
+                    add(loc, "'" + field->name() + "' is repeated; index it, e.g. '" +
+                                 field->name() + "[0]'");
+                    return;
+                }
+                if (field)
+                {
+                    if (field->cpp_type() != google::protobuf::FieldDescriptor::CPPTYPE_MESSAGE)
+                    {
+                        add(loc, "'" + field->name() + "' is not a message");
+                        return;
+                    }
+                    desc = field->message_type();
+                }
+                field = desc->FindFieldByName((*it)[1].str());
+                indexed = false;
+                if (!field)
+                {
+                    add(loc, desc->full_name() + " has no field '" + (*it)[1].str() + "'");
+                    return;
+                }
+            }
+            else
+            {
+                if (!field || !field->is_repeated() || indexed)
+                {
+                    add(loc,
+                        "index " + (*it)[0].str() + " applied to a field that is not repeated");
+                    return;
+                }
+                indexed = true;
+            }
+        }
+    }
+
+    void check_publish(const std::string& loc, const protobuf::PubSubTestPublish& pub)
+    {
+        check_endpoint(loc, pub.endpoint());
+        if (pub.repeat() < 1)
+            add(loc + ".repeat", "must be at least 1");
+        if (pub.interval() < 0)
+            add(loc + ".interval", "must not be negative");
+        if (pub.delay() < 0)
+            add(loc + ".delay", "must not be negative");
+
+        int scheme = 0;
+        std::string type;
+        try
+        {
+            parse_publish_type(pub.type(), scheme, type);
+        }
+        catch (const std::exception&)
+        {
+            add(loc + ".type", "unknown marshalling scheme in '" + pub.type() + "'");
+            return;
+        }
+
+        switch (scheme)
+        {
+            case MarshallingScheme::PROTOBUF:
+            case MarshallingScheme::DCCL:
+            {
+                const auto* desc = find_descriptor(type);
+                if (!desc)
+                    add(loc + ".type",
+                        "unknown type '" + type + "' (is the library that defines it loaded?)");
+                else
+                    parse_textformat(loc + ".value", pub.value(), desc, false);
+                break;
+            }
+            case MarshallingScheme::JSON: parse_json(loc + ".value", pub.value()); break;
+            default:
+                add(loc + ".type", "'" + pub.type() +
+                                       "' does not name a supported scheme; use PROTOBUF/<type>, "
+                                       "DCCL/<type>, JSON/<type> or JSON");
+        }
+    }
+
+    void check_expect(const std::string& loc, const protobuf::PubSubTestExpect& exp)
+    {
+        check_endpoint(loc, exp.endpoint());
+        check_regex(loc + ".group", exp.group());
+
+        std::set<int> schemes;
+        std::string type_regex;
+        try
+        {
+            detail::parse_type_spec(exp, schemes, type_regex);
+        }
+        catch (const std::exception&)
+        {
+            add(loc + ".type", "unknown marshalling scheme in '" + exp.type() + "'");
+            return;
+        }
+        check_regex(loc + ".type", type_regex);
+
+        if (exp.has_count() && (exp.has_min_count() || exp.has_max_count()))
+            add(loc + ".count", "'count' cannot be combined with 'min_count' or 'max_count'");
+        if (!exp.has_count() && exp.has_max_count() && exp.max_count() < exp.min_count())
+            add(loc + ".max_count", "is less than min_count");
+        if (exp.has_timeout() && exp.timeout() <= 0)
+            add(loc + ".timeout", "must be greater than zero");
+
+        const bool any = schemes.count(MarshallingScheme::ALL_SCHEMES);
+        const bool protobuf_like = any || schemes.count(MarshallingScheme::PROTOBUF) ||
+                                   schemes.count(MarshallingScheme::DCCL);
+        const bool json_only =
+            !any && schemes.size() == 1 && schemes.count(MarshallingScheme::JSON);
+
+        const google::protobuf::Descriptor* desc =
+            protobuf_like ? find_descriptor(type_regex) : nullptr;
+        if (!desc && protobuf_like && !any && looks_literal(type_regex))
+            add(loc + ".type",
+                "unknown type '" + type_regex + "' (is the library that defines it loaded?)");
+
+        if (exp.has_match())
+        {
+            if (desc)
+                parse_textformat(loc + ".match", exp.match(), desc, true);
+            else if (json_only)
+                parse_json(loc + ".match", exp.match());
+        }
+
+        for (int i = 0, n = exp.condition_size(); i < n; ++i)
+        {
+            const auto& cond = exp.condition(i);
+            const std::string cloc = index(loc + ".condition", i);
+            using Op = protobuf::PubSubTestCondition;
+            if (cond.field().empty())
+                add(cloc + ".field", "must not be empty");
+            else if (desc)
+                check_field_path(cloc + ".field", cond.field(), desc);
+
+            if (cond.op() == Op::REGEX)
+                check_regex(cloc + ".value", cond.value());
+            else if (cond.op() != Op::EXISTS && cond.op() != Op::ABSENT && !cond.has_value())
+                add(cloc + ".value", "is required for " + Op::Op_Name(cond.op()));
+        }
+    }
+
+    void check_leaf(const std::string& loc,
+                    const google::protobuf::RepeatedPtrField<protobuf::PubSubTestPublish>& pubs,
+                    const google::protobuf::RepeatedPtrField<protobuf::PubSubTestExpect>& exps,
+                    bool has_timeout, double timeout, double wait)
+    {
+        if (has_timeout && timeout <= 0)
+            add(loc + ".timeout", "must be greater than zero");
+        if (wait < 0)
+            add(loc + ".wait", "must not be negative");
+        for (int i = 0, n = pubs.size(); i < n; ++i)
+            check_publish(index(loc + ".publish", i), pubs[i]);
+        for (int i = 0, n = exps.size(); i < n; ++i)
+            check_expect(index(loc + ".expect", i), exps[i]);
+    }
+
+    const protobuf::PubSubTest& test_;
+    std::set<std::string> endpoints_;
+    std::string prefix_;
+    Issues issues_;
+    google::protobuf::DynamicMessageFactory dynamic_factory_;
+};
+
 /// \brief Runs a PubSubTest over a set of endpoints on a single thread
 class PubSubTestRunner
 {
@@ -384,13 +710,20 @@ class PubSubTestRunner
         if (endpoints_.empty())
             throw goby::Exception("at least one endpoint is required");
 
+        std::set<std::string> names;
         for (auto& ep : endpoints_)
         {
             if (!endpoint_index_.insert({ep->name(), ep.get()}).second)
                 throw goby::Exception("duplicate endpoint name: " + ep->name());
+            names.insert(ep->name());
         }
-        validate();
+        auto issues = PubSubTestValidator(test_, names).validate();
+        if (!issues.empty())
+            throw goby::Exception(issues.front().location() + ": " + issues.front().message());
     }
+
+    /// \brief Called regularly while running; returning true aborts the test with an error
+    void set_cancel_check(std::function<bool()> cancelled) { cancelled_ = std::move(cancelled); }
 
     protobuf::PubSubTestReport run()
     {
@@ -436,6 +769,21 @@ class PubSubTestRunner
            << report.elapsed() << " s)\n";
         if (report.has_error())
             ss << "  error: " << report.error() << "\n";
+        for (const auto& issue : report.issue())
+            ss << "  invalid: " << issue.location() << ": " << issue.message() << "\n";
+
+        for (const auto& f : report.fixture())
+        {
+            ss << "  fixture [" << f.name() << "] ... " << result_name(f.result());
+            if (f.has_ready_time())
+                ss << " (ready after " << f.ready_time() << " s)";
+            if (f.has_reason())
+                ss << ", " << f.reason();
+            ss << "\n";
+            if (f.has_log_file())
+                ss << "      log: " << f.log_file() << "\n";
+            for (const auto& line : f.output_tail()) ss << "      | " << line << "\n";
+        }
 
         for (const auto& req : report.require_app())
         {
@@ -454,7 +802,7 @@ class PubSubTestRunner
         return ss.str();
     }
 
-    static std::string render_json(const protobuf::PubSubTestReport& report)
+    static std::string render_json(const google::protobuf::Message& report)
     {
         std::string out;
         google::protobuf::util::JsonPrintOptions opts;
@@ -501,6 +849,7 @@ class PubSubTestRunner
         const google::protobuf::RepeatedPtrField<protobuf::PubSubTestPublish>* publish_cfg;
         const google::protobuf::RepeatedPtrField<protobuf::PubSubTestExpect>* expect_cfg;
         double timeout;
+        double wait{0};
         bool is_run{false};
         bool started{false};
         bool done{false};
@@ -514,44 +863,6 @@ class PubSubTestRunner
         std::vector<unsigned> publish_counts;
     };
 
-    void validate()
-    {
-        for (const auto& req : test_.require_app()) endpoint(req.endpoint());
-        for (const auto& run : test_.run())
-        {
-            if (run.step_size() > 0 && (run.publish_size() > 0 || run.expect_size() > 0))
-                throw goby::Exception("run '" + run.name() +
-                                      "': a run has either steps or publish/expect entries, "
-                                      "not both");
-            validate_leaf(run.name(), run.publish(), run.expect());
-            for (const auto& step : run.step())
-                validate_leaf(run.name() + "/" + step.name(), step.publish(), step.expect());
-        }
-    }
-
-    void validate_leaf(const std::string& name,
-                       const google::protobuf::RepeatedPtrField<protobuf::PubSubTestPublish>& pubs,
-                       const google::protobuf::RepeatedPtrField<protobuf::PubSubTestExpect>& exps)
-    {
-        for (const auto& pub : pubs) endpoint(pub.endpoint());
-        for (const auto& exp : exps)
-        {
-            endpoint(exp.endpoint());
-            std::set<int> schemes;
-            std::string type_regex;
-            detail::parse_type_spec(exp, schemes, type_regex);
-            try
-            {
-                std::regex type_check(type_regex);
-                std::regex group_check(exp.group());
-            }
-            catch (const std::regex_error& e)
-            {
-                throw goby::Exception("'" + name + "': invalid regex: " + e.what());
-            }
-        }
-    }
-
     PubSubTestEndpoint* endpoint(const std::string& name)
     {
         if (name.empty())
@@ -564,6 +875,8 @@ class PubSubTestRunner
 
     void poll_all()
     {
+        if (cancelled_ && cancelled_())
+            throw goby::Exception("interrupted");
         for (auto& ep : endpoints_) ep->poll(std::chrono::milliseconds(2));
     }
 
@@ -653,6 +966,7 @@ class PubSubTestRunner
             b.publish_cfg = &run.publish();
             b.expect_cfg = &run.expect();
             b.timeout = run.has_timeout() ? run.timeout() : root.timeout;
+            b.wait = run.wait();
             b.is_run = true;
             for (const auto& step : run.step())
             {
@@ -662,6 +976,7 @@ class PubSubTestRunner
                 st.publish_cfg = &step.publish();
                 st.expect_cfg = &step.expect();
                 st.timeout = step.has_timeout() ? step.timeout() : b.timeout;
+                st.wait = step.wait();
                 b.children.push_back(std::move(st));
             }
             root.children.push_back(std::move(b));
@@ -682,6 +997,8 @@ class PubSubTestRunner
             br.set_mode(b.mode);
             br.set_result(b.result);
             br.set_elapsed_with_units(b.elapsed * boost::units::si::seconds);
+            if (b.wait > 0)
+                br.set_wait_with_units(b.wait * boost::units::si::seconds);
             write_leaf_report(b, *br.mutable_publish(), *br.mutable_expect());
             for (const auto& st : b.children)
             {
@@ -689,6 +1006,8 @@ class PubSubTestRunner
                 sr.set_name(st.name);
                 sr.set_result(st.result);
                 sr.set_elapsed_with_units(st.elapsed * boost::units::si::seconds);
+                if (st.wait > 0)
+                    sr.set_wait_with_units(st.wait * boost::units::si::seconds);
                 write_leaf_report(st, *sr.mutable_publish(), *sr.mutable_expect());
             }
         }
@@ -834,7 +1153,8 @@ class PubSubTestRunner
             any_fail = any_fail || (e.resolved && !e.passed);
         }
 
-        if (all_resolved && !publishing)
+        const bool waiting = now < s.start + detail::to_duration(s.wait);
+        if (all_resolved && !publishing && !waiting)
             finish_node(s, any_fail ? protobuf::FAIL : protobuf::PASS);
     }
 
@@ -1030,12 +1350,16 @@ class PubSubTestRunner
         if (b.step_size() > 0)
             ss << " (" << (b.mode() == protobuf::PARALLEL ? "parallel" : "sequential") << ")";
         ss << " ... " << result_name(b.result()) << " (" << b.elapsed() << " s)\n";
+        if (b.has_wait())
+            ss << "      wait " << b.wait() << " s\n";
         render_leaf(ss, "      ", b.publish(), b.expect());
         for (int i = 0; i < b.step_size(); ++i)
         {
             const auto& st = b.step(i);
             ss << "    [" << index << "." << i + 1 << "] " << st.name() << " ... "
                << result_name(st.result()) << " (" << st.elapsed() << " s)\n";
+            if (st.has_wait())
+                ss << "        wait " << st.wait() << " s\n";
             render_leaf(ss, "        ", st.publish(), st.expect());
         }
     }
@@ -1051,6 +1375,7 @@ class PubSubTestRunner
 
     std::map<std::string, protobuf::HealthState> health_;
     bool coroner_seen_{false};
+    std::function<bool()> cancelled_;
 };
 
 } // namespace tool

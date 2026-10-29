@@ -9,3 +9,4 @@ add_subdirectory(basic_frontseat_simulator)
 add_subdirectory(serial_mux)
 
 add_subdirectory(goby_tool)
+add_subdirectory(test_tool)

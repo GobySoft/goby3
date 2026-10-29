@@ -21,14 +21,12 @@
 // You should have received a copy of the GNU General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-#ifndef GOBY_APPS_MIDDLEWARE_GOBY_TOOL_TEST_TOOL_H
-#define GOBY_APPS_MIDDLEWARE_GOBY_TOOL_TEST_TOOL_H
+#ifndef GOBY_APPS_MIDDLEWARE_TEST_TOOL_VISUALIZE_H
+#define GOBY_APPS_MIDDLEWARE_TEST_TOOL_VISUALIZE_H
 
-#include "goby/middleware/application/configurator.h"
-#include "goby/middleware/application/interface.h"
-#include "goby/middleware/application/tool.h"
+#include <string>
 
-#include "goby/apps/middleware/goby_tool/test.pb.h"
+#include "goby/apps/middleware/test_tool/test_tool_config.pb.h"
 
 namespace goby
 {
@@ -36,27 +34,9 @@ namespace apps
 {
 namespace middleware
 {
-class TestToolConfigurator : public goby::middleware::ProtobufConfigurator<protobuf::TestToolConfig>
-{
-  public:
-    TestToolConfigurator(int argc, char* argv[]);
-
-  private:
-    void validate() const override;
-
-    std::string error_;
-};
-
-class TestTool : public goby::middleware::Application<protobuf::TestToolConfig>,
-                 public goby::middleware::ToolSharedLibraryLoader
-{
-  public:
-    TestTool() : goby::middleware::ToolSharedLibraryLoader(app_cfg().load_shared_library()) {}
-    ~TestTool() override {}
-
-  private:
-    void run() override;
-};
+/// \brief Graphviz (dot) rendering of a test file's plan: fixtures, the required-application
+/// gate, then each run and step in execution order with its publications, expectations and waits
+std::string test_file_to_dot(const protobuf::TestFile& file, const std::string& title);
 
 } // namespace middleware
 } // namespace apps
