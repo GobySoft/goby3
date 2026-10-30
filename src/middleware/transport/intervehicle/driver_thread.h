@@ -37,6 +37,7 @@
 #include "goby/acomms/amac/mac_manager.h"
 #include "goby/acomms/buffer/dynamic_buffer.h"
 #include "goby/acomms/modemdriver/driver_base.h"
+#include "goby/acomms/protobuf/modem_driver_status.pb.h"
 #include "goby/middleware/application/thread.h"
 #include "goby/middleware/group.h"
 #include "goby/middleware/marshalling/dccl.h"
@@ -192,6 +193,8 @@ class ModemDriverThread
     }
 
     void _publish_subscription_report(const intervehicle::protobuf::Subscription& changed);
+    bool _try_driver_startup();
+    void _publish_modem_report();
 
   private:
     std::unique_ptr<InterThreadTransporter> interthread_;
@@ -221,6 +224,11 @@ class ModemDriverThread
 
     goby::time::SteadyClock::time_point next_modem_report_time_;
     const goby::time::SteadyClock::duration modem_report_interval_;
+
+    bool driver_started_{false};
+    goby::acomms::protobuf::ModemDriverStatus::Status startup_failure_status_{
+        goby::acomms::protobuf::ModemDriverStatus::NOMINAL};
+    goby::time::SteadyClock::time_point next_startup_attempt_;
 };
 
 } // namespace intervehicle

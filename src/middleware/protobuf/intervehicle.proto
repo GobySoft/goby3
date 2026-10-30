@@ -45,6 +45,14 @@ message PortalConfig
             (goby.field).description = "Time between modem reports",
             (dccl.field) = { units { base_dimensions: "T" } }
         ];
+
+        optional double startup_retry_interval = 22 [
+            (goby.field).description =
+                "If set, a driver that fails to start up is retried at this "
+                "interval while the portal's other links keep running. If "
+                "omitted, a driver startup failure terminates the portal.",
+            (dccl.field) = { units { base_dimensions: "T" } }
+        ];
     }
 
     repeated LinkConfig link = 1;
