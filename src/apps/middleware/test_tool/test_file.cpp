@@ -21,7 +21,6 @@
 // You should have received a copy of the GNU General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-#include <dlfcn.h>
 #include <sys/stat.h>
 #include <unistd.h>
 
@@ -33,6 +32,7 @@
 #include <set>
 #include <sstream>
 
+#include "goby/middleware/marshalling/detail/dccl_serializer_parser.h"
 #include "goby/middleware/tool/config_file.h"
 #include "goby/middleware/tool/pubsub_test.h"
 
@@ -339,11 +339,13 @@ void goby::apps::middleware::load_test_libraries(const protobuf::TestFile& file,
             add_issue(issues, loc, "'" + lib + "' does not exist");
             continue;
         }
-        // RTLD_NODELETE: descriptor pools may reference memory owned by the library at exit
-        if (!dlopen(lib.c_str(), RTLD_LAZY | RTLD_NODELETE))
+        try
         {
-            const char* err = dlerror();
-            add_issue(issues, loc, std::string("cannot load: ") + (err ? err : lib));
+            goby::middleware::detail::DCCLSerializerParserHelperBase::load_library(lib);
+        }
+        catch (const std::exception& e)
+        {
+            add_issue(issues, loc, e.what());
         }
     }
 }
