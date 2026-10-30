@@ -234,8 +234,8 @@ void goby::apps::middleware::kill_descendants()
 goby::apps::middleware::Fixture::Fixture(const protobuf::TestFixture& cfg, std::string log_path)
     : cfg_(cfg), log_path_(std::move(log_path))
 {
-    if (cfg_.ready().has_output_regex())
-        ready_regex_ = std::make_unique<std::regex>(cfg_.ready().output_regex());
+    for (const auto& r : cfg_.ready().output_regex()) ready_regexes_.emplace_back(r);
+    matched_.resize(ready_regexes_.size(), false);
 }
 
 goby::apps::middleware::Fixture::~Fixture()
@@ -317,11 +317,17 @@ void goby::apps::middleware::Fixture::read_output()
         tail_.push_back(line);
         if (tail_.size() > tail_lines)
             tail_.pop_front();
-        if (ready_regex_ && !matched_ && std::regex_search(line, *ready_regex_))
+        bool newly_matched = false;
+        for (std::size_t i = 0; i < ready_regexes_.size(); ++i)
         {
-            matched_ = true;
-            cv_.notify_all();
+            if (!matched_[i] && std::regex_search(line, ready_regexes_[i]))
+            {
+                matched_[i] = true;
+                newly_matched = true;
+            }
         }
+        if (newly_matched)
+            cv_.notify_all();
     };
 
     for (;;)
@@ -371,6 +377,14 @@ void goby::apps::middleware::Fixture::update_exit_status()
         exit_signal_ = WTERMSIG(it->second);
 }
 
+bool goby::apps::middleware::Fixture::all_matched() const
+{
+    for (bool m : matched_)
+        if (!m)
+            return false;
+    return true;
+}
+
 bool goby::apps::middleware::Fixture::wait_ready(const std::function<bool()>& cancelled)
 {
     const auto start = Clock::now();
@@ -382,7 +396,7 @@ bool goby::apps::middleware::Fixture::wait_ready(const std::function<bool()>& ca
                    : "exited with status " + std::to_string(exit_status_) + " before ready";
     };
 
-    if (ready_regex_)
+    if (!ready_regexes_.empty())
     {
         const auto deadline = start + std::chrono::duration_cast<Clock::duration>(
                                           std::chrono::duration<double>(cfg_.ready().timeout()));
@@ -390,7 +404,8 @@ bool goby::apps::middleware::Fixture::wait_ready(const std::function<bool()>& ca
         {
             {
                 std::unique_lock<std::mutex> lock(mutex_);
-                if (cv_.wait_for(lock, std::chrono::milliseconds(50), [this] { return matched_; }))
+                if (cv_.wait_for(lock, std::chrono::milliseconds(50),
+                                 [this] { return all_matched(); }))
                     break;
             }
             if (cancelled())
@@ -403,14 +418,20 @@ bool goby::apps::middleware::Fixture::wait_ready(const std::function<bool()>& ca
             {
                 // the line may have arrived just before exit
                 std::lock_guard<std::mutex> lock(mutex_);
-                if (matched_)
+                if (all_matched())
                     break;
                 reason_ = exited_reason();
                 return false;
             }
             if (Clock::now() > deadline)
             {
-                reason_ = "no output matched /" + cfg_.ready().output_regex() + "/ within " +
+                std::lock_guard<std::mutex> lock(mutex_);
+                std::string unmatched;
+                for (std::size_t i = 0; i < matched_.size(); ++i)
+                    if (!matched_[i])
+                        unmatched +=
+                            (unmatched.empty() ? "/" : ", /") + cfg_.ready().output_regex(i) + "/";
+                reason_ = "no output matched " + unmatched + " within " +
                           number(cfg_.ready().timeout()) + " s";
                 return false;
             }

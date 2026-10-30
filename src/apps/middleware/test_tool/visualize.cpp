@@ -167,9 +167,10 @@ class DotWriter
                 Table t(bold(f.name()));
                 t.row(keyword("run", muted_color), {code("$ " + truncate(f.command(), 60))});
                 std::vector<std::string> ready;
-                if (f.ready().has_output_regex())
-                    ready.push_back("output " + code("/" + f.ready().output_regex() + "/") +
-                                    " within " + html(number(f.ready().timeout())) + " s");
+                for (const auto& r : f.ready().output_regex())
+                    ready.push_back("output " + code("/" + r + "/"));
+                if (f.ready().output_regex_size() > 0)
+                    ready.push_back("within " + html(number(f.ready().timeout())) + " s");
                 if (f.ready().delay() > 0)
                     ready.push_back("then " + html(number(f.ready().delay())) + " s");
                 if (!ready.empty())
