@@ -51,7 +51,7 @@ if ("${CMAKE_CXX_COMPILER_ID}" MATCHES "Clang")
 endif()
 
 set(GOBY_VERSION_MAJOR "3")
-set(GOBY_VERSION_MINOR "5")
+set(GOBY_VERSION_MINOR "6")
 set(GOBY_VERSION_PATCH "1")
 
 if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/.git")
@@ -93,7 +93,7 @@ if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/.git")
    
 else()
    message(STATUS "Compiling from release tarball (${GOBY_VERSION_MAJOR}.${GOBY_VERSION_MINOR}.${GOBY_VERSION_PATCH}).")
-   set(GOBY_VERSION_DATE "2026.06.04")
+   set(GOBY_VERSION_DATE "2026.09.15")
 endif()
 
 set(GOBY_VERSION "${GOBY_VERSION_MAJOR}.${GOBY_VERSION_MINOR}.${GOBY_VERSION_PATCH}")
@@ -302,6 +302,8 @@ write_basic_package_version_file(${CMAKE_BINARY_DIR}/goby-config-version.cmake
                                  COMPATIBILITY SameMajorVersion )
                                
 install(EXPORT goby_core-config DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/goby)
+# lets goby-config.cmake find the installed 'goby' from its own location
+file(RELATIVE_PATH GOBY_CONFIG_TO_BINDIR ${CMAKE_INSTALL_FULL_LIBDIR}/cmake/goby ${CMAKE_INSTALL_FULL_BINDIR})
 configure_file(${goby_SRC_DIR}/goby-config.cmake.in ${CMAKE_BINARY_DIR}/goby-config.cmake @ONLY)
 install(FILES ${CMAKE_BINARY_DIR}/goby-config.cmake ${CMAKE_BINARY_DIR}/goby-config-version.cmake 
   DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/goby)

@@ -38,6 +38,9 @@ if __name__ == "__main__":
 | `goby/__init__.py` | The public API: `run`, `ApplicationMixin`, `Transporter`, the layer and scheme constants. |
 | `goby/_application.py` | The Python side of an application: layer accessors, publish/subscribe, configuration, threads. |
 | `goby/_interthread.py` | The interthread layer, implemented in Python, and the threads that use it. |
+| `goby/_runtime.py` | Holds the extension module the generated module binds, which `goby.time` and `goby.glog` reach C++ through. |
+| `goby/time.py` | Simulation-aware time: `now`, `monotonic`, `sleep`, `warp_factor`. |
+| `goby/glog.py` | The Goby logger, and a `logging.Handler` that routes Python logging into it. |
 | `goby/_schemes.py` | Layer and marshalling scheme constants, mirroring the C++ enumerations. |
 | `goby/gen.py` | Code generator. Reads `interface.yml` and writes the C++ glue plus the Python module that application code imports. Installed as the `goby_gen_cpp` command. |
 | `goby/schema/` | The machine-readable definition of the `interface.yml` format. |
@@ -71,6 +74,22 @@ The interthread layer is implemented in Python, so an interthread message is any
 and an interthread group is any string. The outer layers belong to the C++ application, which
 lives on the main thread; a thread's publications and subscriptions are handed to it and
 delivered back. See `doc250_languages.md` for the details and the costs.
+
+## Time, logging and health
+
+`goby.time` is the Python face of `goby::time`, so an application that waits or timestamps stays
+on the simulated clock under `warp_factor` rather than dropping to the wall clock:
+
+```python
+goby.time.sleep(0.5)      # half a simulated second
+stamp = goby.time.now()
+```
+
+`goby.glog` writes to `goby::glog` at the verbosity `app { glog_config { ... } }` configured, and
+`goby.glog.install()` routes the standard `logging` module there so existing code needs no edits.
+
+`health()` is overridable on applications and threads, answering `goby_coroner` with a
+`ThreadHealth`; extensions survive the round trip through C++. See `doc250_languages.md`.
 
 ## `interface.yml`
 

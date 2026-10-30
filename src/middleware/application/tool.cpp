@@ -1,4 +1,4 @@
-// Copyright 2024:
+// Copyright 2024-2026:
 //   GobySoft, LLC (2013-)
 //   Community contributors (see AUTHORS file)
 // File authors:
@@ -22,6 +22,14 @@
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
 #include <unistd.h>
+
+#include <filesystem>
+#include <system_error>
+#include <vector>
+
+#ifdef __APPLE__
+#include <mach-o/dyld.h>
+#endif
 
 #include <dccl/dynamic_protobuf_manager.h>
 
@@ -111,6 +119,39 @@ bool goby::middleware::ToolHelper::help(int* action_for_help)
     }
 }
 
+namespace
+{
+// absolute path of `app` in the directory of the running executable, or empty if it isn't there
+std::string sibling_executable(const std::string& app)
+{
+    if (app.empty() || app.find('/') != std::string::npos)
+        return "";
+
+    std::string self;
+#ifdef __APPLE__
+    uint32_t size = 0;
+    _NSGetExecutablePath(nullptr, &size);
+    std::vector<char> buf(size);
+    if (_NSGetExecutablePath(buf.data(), &size) == 0)
+        self = buf.data();
+#else
+    std::vector<char> buf(4096);
+    ssize_t n = readlink("/proc/self/exe", buf.data(), buf.size() - 1);
+    if (n > 0)
+        self.assign(buf.data(), n);
+#endif
+    if (self.empty())
+        return "";
+
+    std::error_code ec;
+    auto dir = std::filesystem::canonical(self, ec).parent_path();
+    if (ec)
+        return "";
+    auto candidate = dir / app;
+    return access(candidate.c_str(), X_OK) == 0 ? candidate.string() : "";
+}
+} // namespace
+
 void goby::middleware::ToolHelper::exec_external(std::string app, std::vector<std::string> args,
                                                  const goby::GobyEnumValueOptions& ev_options)
 {
@@ -124,6 +165,11 @@ void goby::middleware::ToolHelper::exec_external(std::string app, std::vector<st
     for (const auto& arg : args) { c_args.push_back(const_cast<char*>(arg.c_str())); }
     c_args.push_back(nullptr); // execvp expects a null-terminated array
 
+    // prefer the tool installed alongside this one, so an absolute path to 'goby' uses its own
+    // build or installation regardless of PATH
+    const std::string sibling = sibling_executable(app);
+    if (!sibling.empty())
+        execv(sibling.c_str(), c_args.data());
     execvp(c_args[0], c_args.data());
     // If execvp returns, there was an error
     std::cerr << "ERROR executing:\n\t";

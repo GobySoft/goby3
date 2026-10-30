@@ -1,4 +1,5 @@
 add_subdirectory(middleware_interthread)
+add_subdirectory(middleware_intervehicle_metadata)
 
 add_subdirectory(dccl_load_library)
 
@@ -13,4 +14,6 @@ if(enable_mavlink)
 endif()
 
 add_subdirectory(json)
+add_subdirectory(pubsub_test)
+add_subdirectory(pubsub_test_tool)
 

@@ -20,9 +20,21 @@ import unittest
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 import goby  # noqa: E402
-from goby import _interthread  # noqa: E402
+from goby import _interthread, _runtime  # noqa: E402
 
 TIMEOUT = 5
+
+
+class FakeExtension:
+    """The generated extension, reduced to the simulation settings goby.time reads."""
+
+    __name__ = "_fake_goby"
+
+    def __init__(self, using_sim_time, warp_factor, reference_microtime=0):
+        self._settings = (using_sim_time, warp_factor, reference_microtime)
+
+    def _sim_time(self):
+        return self._settings
 
 
 class Message:
@@ -51,7 +63,9 @@ class FakeBase:
     """The compiled _ApplicationBase, reduced to what the Python side calls."""
 
     def __init__(self, loop_frequency_hertz=0):
-        self.loop_frequency_hertz = float(loop_frequency_hertz)
+        # the rate the C++ loop runs at, which is not the rate the application's loop() is
+        # called at once threads raise it
+        self.cxx_loop_frequency_hertz = float(loop_frequency_hertz)
         self.published = []
         self.subscriptions = []
         self.quit_values = []
@@ -63,7 +77,7 @@ class FakeBase:
         self.subscriptions.append((int(layer), type_name, int(scheme), group, callback))
 
     def _set_loop_frequency_hertz(self, loop_frequency_hertz):
-        self.loop_frequency_hertz = float(loop_frequency_hertz)
+        self.cxx_loop_frequency_hertz = float(loop_frequency_hertz)
 
     def quit(self, return_value=0):
         self.quit_values.append(return_value)
@@ -498,20 +512,20 @@ class LoopRateTest(unittest.TestCase):
 
     def test_the_rate_is_untouched_without_threads(self):
         app = FakeApp(loop_frequency_hertz=1)
-        self.assertEqual(app.loop_frequency_hertz, 1)
+        self.assertEqual(app.cxx_loop_frequency_hertz, 1)
 
     def test_a_slower_application_is_polled_at_the_poll_rate(self):
         app = FakeApp(loop_frequency_hertz=1, interthread_poll_frequency_hertz=20)
         app.launch_thread(self.Idle)
 
-        self.assertEqual(app.loop_frequency_hertz, 20)
+        self.assertEqual(app.cxx_loop_frequency_hertz, 20)
         app._goby_join_all_threads()
 
     def test_a_faster_application_is_left_alone(self):
         app = FakeApp(loop_frequency_hertz=50, interthread_poll_frequency_hertz=10)
         app.launch_thread(self.Idle)
 
-        self.assertEqual(app.loop_frequency_hertz, 50)
+        self.assertEqual(app.cxx_loop_frequency_hertz, 50)
         self.assertTrue(app._goby_loop_due())
         app._goby_join_all_threads()
 
@@ -541,7 +555,7 @@ class LoopRateTest(unittest.TestCase):
         app = FakeApp(loop_frequency_hertz=0, interthread_poll_frequency_hertz=10)
         app.launch_thread(self.Idle)
 
-        self.assertEqual(app.loop_frequency_hertz, 10)
+        self.assertEqual(app.cxx_loop_frequency_hertz, 10)
         self.assertFalse(app._goby_loop_due())
         app.loop()
         app._goby_join_all_threads()
@@ -552,12 +566,259 @@ class LoopRateTest(unittest.TestCase):
         app = FakeApp(loop_frequency_hertz=0, interthread_poll_frequency_hertz=10)
         app.interthread().subscribe("group", lambda message: None)
 
-        self.assertEqual(app.loop_frequency_hertz, 10)
+        self.assertEqual(app.cxx_loop_frequency_hertz, 10)
 
     def test_a_missing_loop_override_is_still_reported(self):
         app = FakeApp(loop_frequency_hertz=10)
         with self.assertRaisesRegex(RuntimeError, "loop\\(\\) must be overridden"):
             app.loop()
+
+
+class WarpedLoopTest(unittest.TestCase):
+    """Under warp the C++ loop runs faster in wall-clock terms, and so must the Python gate.
+
+    Scheduling loop() on time.monotonic() while riding a warped C++ loop is the bug this covers:
+    it made a 10 Hz loop fire at an effective 1 Hz under warp 10.
+    """
+
+    def setUp(self):
+        self.original_bus = _interthread.bus
+        _interthread.bus = _interthread.Bus()
+        self.original_extension = _runtime._extension
+        self.addCleanup(self._restore)
+
+    def _restore(self):
+        _interthread.bus = self.original_bus
+        _runtime._extension = self.original_extension
+        goby.time._reset_cache()
+
+    def _warp(self, factor):
+        _runtime._extension = FakeExtension(True, factor)
+        goby.time._reset_cache()
+
+    class Idle(goby.Thread):
+        pass
+
+    def _count_loops(self, wall_seconds=0.3):
+        calls = []
+
+        class Counting(FakeApp):
+            def loop(self):
+                calls.append(None)
+
+        app = Counting(loop_frequency_hertz=10, interthread_poll_frequency_hertz=1000)
+        app.launch_thread(self.Idle)
+
+        deadline = time.monotonic() + wall_seconds
+        while time.monotonic() < deadline:
+            app.loop()
+            time.sleep(0.001)
+        app._goby_join_all_threads()
+        return len(calls)
+
+    def test_unwarped_a_10hz_loop_fires_about_10_times_a_second(self):
+        self._warp(1)
+        self.assertLessEqual(self._count_loops(), 8)
+
+    def test_warped_it_keeps_its_rate_in_simulated_time(self):
+        self._warp(10)
+        # 0.3 wall seconds is 3 simulated seconds, so a 10 Hz loop is due about 30 times
+        self.assertGreater(self._count_loops(), 12)
+
+
+class SetLoopFrequencyTest(unittest.TestCase):
+    """The public rate change, which has to keep cooperating with the thread poll rate."""
+
+    def setUp(self):
+        self.original_bus = _interthread.bus
+        _interthread.bus = _interthread.Bus()
+
+    def tearDown(self):
+        _interthread.bus = self.original_bus
+
+    class Idle(goby.Thread):
+        pass
+
+    def test_the_rate_reaches_the_cxx_side(self):
+        app = FakeApp(loop_frequency_hertz=1)
+        app.set_loop_frequency(25)
+
+        self.assertEqual(app.loop_frequency_hertz, 25)
+        self.assertEqual(app.cxx_loop_frequency_hertz, 25)
+
+    def test_slowing_below_the_poll_rate_keeps_polling(self):
+        app = FakeApp(loop_frequency_hertz=50, interthread_poll_frequency_hertz=10)
+        app.launch_thread(self.Idle)
+        app.set_loop_frequency(1)
+
+        # the application loops at 1 Hz, but its threads are still picked up at 10
+        self.assertEqual(app.loop_frequency_hertz, 1)
+        self.assertEqual(app.cxx_loop_frequency_hertz, 10)
+        app._goby_join_all_threads()
+
+    def test_speeding_past_the_poll_rate_raises_the_cxx_rate(self):
+        app = FakeApp(loop_frequency_hertz=1, interthread_poll_frequency_hertz=10)
+        app.launch_thread(self.Idle)
+        app.set_loop_frequency(100)
+
+        self.assertEqual(app.cxx_loop_frequency_hertz, 100)
+        # no gating is needed once the application is the faster of the two
+        self.assertTrue(app._goby_loop_due())
+        app._goby_join_all_threads()
+
+    def test_zero_stops_loop_without_stopping_the_threads(self):
+        app = FakeApp(loop_frequency_hertz=10, interthread_poll_frequency_hertz=10)
+        app.launch_thread(self.Idle)
+        app.set_loop_frequency(0)
+
+        self.assertEqual(app.cxx_loop_frequency_hertz, 10)
+        self.assertFalse(app._goby_loop_due())
+        app._goby_join_all_threads()
+
+    def test_a_negative_rate_is_rejected(self):
+        app = FakeApp()
+        with self.assertRaisesRegex(ValueError, "negative"):
+            app.set_loop_frequency(-1)
+
+    def test_a_thread_rate_takes_effect_on_the_next_loop(self):
+        loops = []
+
+        class Counting(goby.Thread):
+            def __init__(self):
+                super().__init__(loop_frequency_hertz=1000)
+
+            def loop(self):
+                loops.append(self.loop_frequency_hertz)
+                if len(loops) == 1:
+                    self.set_loop_frequency(500)
+
+        app = FakeApp()
+        app.launch_thread(Counting)
+
+        deadline = time.monotonic() + TIMEOUT
+        while len(loops) < 2 and time.monotonic() < deadline:
+            time.sleep(0.005)
+        app._goby_join_all_threads()
+
+        self.assertGreaterEqual(len(loops), 2)
+        self.assertEqual(loops[0], 1000)
+        self.assertEqual(loops[1], 500)
+
+
+class HealthTest(unittest.TestCase):
+    """The report goby_coroner asks for, which arrives as serialized Protobuf from C++."""
+
+    def setUp(self):
+        try:
+            from goby.middleware.protobuf import coroner_pb2
+        except ImportError as error:
+            # naming the import that failed: coroner_pb2 pulls in dccl, whose extension module
+            # is built for one interpreter, so running under another skips this silently
+            self.skipTest(f"goby.middleware.protobuf.coroner_pb2 is not importable: {error}")
+        self.coroner_pb2 = coroner_pb2
+        self.original_bus = _interthread.bus
+        _interthread.bus = _interthread.Bus()
+
+    def tearDown(self):
+        _interthread.bus = self.original_bus
+
+    def _goby_report(self, name="fake_app"):
+        """What Goby hands Python: the report it already filled in."""
+        health = self.coroner_pb2.ThreadHealth()
+        health.name = name
+        health.state = self.coroner_pb2.HEALTH__OK
+        return health.SerializeToString()
+
+    class Idle(goby.Thread):
+        pass
+
+    def test_an_application_with_nothing_to_add_is_not_charged_for_it(self):
+        app = FakeApp()
+
+        # empty means "keep what Goby filled in", so no protobuf work happens on either side
+        self.assertEqual(app._goby_health(self._goby_report()), b"")
+
+    def test_an_override_is_called_with_what_goby_filled_in(self):
+        seen = []
+
+        class Reporting(FakeApp):
+            def health(self, health):
+                seen.append((health.name, health.state))
+
+        app = Reporting()
+        app._goby_health(self._goby_report("driver"))
+
+        self.assertEqual(seen, [("driver", self.coroner_pb2.HEALTH__OK)])
+
+    def test_what_the_override_sets_is_returned(self):
+        class Failing(FakeApp):
+            def health(self, health):
+                health.state = self.coroner_pb2_ref.HEALTH__FAILED
+                health.error_message = "the device is not answering"
+
+        Failing.coroner_pb2_ref = self.coroner_pb2
+        app = Failing()
+
+        updated = self.coroner_pb2.ThreadHealth()
+        updated.ParseFromString(app._goby_health(self._goby_report()))
+
+        self.assertEqual(updated.state, self.coroner_pb2.HEALTH__FAILED)
+        self.assertEqual(updated.error_message, "the device is not answering")
+
+    def test_an_extension_this_process_does_not_know_survives(self):
+        # ThreadHealth reserves 1000 and up for projects; an application built without those
+        # descriptors must not drop them on the way through
+        report = self.coroner_pb2.ThreadHealth()
+        report.name = "driver"
+        report.state = self.coroner_pb2.HEALTH__OK
+        serialized = report.SerializeToString()
+        # field 1000, varint, value 7 -- an extension no descriptor here knows about
+        serialized += b"\xc0\x3e\x07"
+
+        class Reporting(FakeApp):
+            def health(self, health):
+                health.error_message = "still here"
+
+        app = Reporting()
+        returned = app._goby_health(serialized)
+
+        self.assertIn(b"\xc0\x3e\x07", returned)
+
+    def test_running_threads_are_reported_as_children(self):
+        app = FakeApp()
+        app.launch_thread(self.Idle)
+        app.launch_thread(self.Idle, index=2)
+
+        updated = self.coroner_pb2.ThreadHealth()
+        updated.ParseFromString(app._goby_health(self._goby_report()))
+        app._goby_join_all_threads()
+
+        # the name is the thread class's qualified name, as goby.Thread reports it elsewhere
+        self.assertEqual(
+            sorted(child.name for child in updated.child),
+            ["HealthTest.Idle", "HealthTest.Idle/2"],
+        )
+        for child in updated.child:
+            self.assertEqual(child.state, self.coroner_pb2.HEALTH__OK)
+
+    def test_a_thread_can_report_its_own_state(self):
+        coroner_pb2 = self.coroner_pb2
+
+        class Unhappy(goby.Thread):
+            def health(self, health):
+                health.state = coroner_pb2.HEALTH__DEGRADED
+                health.error_message = "I2C timeout"
+
+        app = FakeApp()
+        app.launch_thread(Unhappy)
+
+        updated = self.coroner_pb2.ThreadHealth()
+        updated.ParseFromString(app._goby_health(self._goby_report()))
+        app._goby_join_all_threads()
+
+        self.assertEqual(len(updated.child), 1)
+        self.assertEqual(updated.child[0].state, coroner_pb2.HEALTH__DEGRADED)
+        self.assertEqual(updated.child[0].error_message, "I2C timeout")
 
 
 if __name__ == "__main__":

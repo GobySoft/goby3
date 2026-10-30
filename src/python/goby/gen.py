@@ -379,6 +379,10 @@ def generate_python(
         "",
         f"import {module} as _ext",
         "",
+        "# goby.time and goby.glog reach the C++ side through the extension, which is generated",
+        "# per application, so the package is told which one this process is running against",
+        "goby._bind_extension(_ext)",
+        "",
         "APPLICATION_NAME = _ext._GOBY_APPLICATION_NAME",
         "",
     ]

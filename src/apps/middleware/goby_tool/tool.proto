@@ -35,6 +35,10 @@ message GobyToolConfig
             external_command: "goby_launch"
             include_binary_flag: false
         }];
+        test = 3 [(goby.ev).cfg = {
+            short_help_msg: "Run, validate or visualize publish/subscribe test files",
+            external_command: "goby_test_tool"
+        }];
 
         // middleware/transport
         zeromq = 10 [(goby.ev).cfg = {

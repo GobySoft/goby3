@@ -76,6 +76,7 @@ import pkgutil
 # alongside this package instead of one shadowing the other.
 __path__ = pkgutil.extend_path(__path__, __name__)
 
+from . import glog, time
 from ._application import (
     ApplicationMixin,
     ConfigError,
@@ -84,6 +85,7 @@ from ._application import (
     run,
 )
 from ._interthread import Thread
+from ._runtime import bind as _bind_extension
 from ._schemes import (
     ALL_SCHEMES,
     CSTR,
@@ -120,6 +122,8 @@ __all__ = [
     "Thread",
     "Transporter",
     "__version__",
+    "glog",
     "message_type",
     "run",
+    "time",
 ]

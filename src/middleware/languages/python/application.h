@@ -24,7 +24,9 @@
 #ifndef GOBY_MIDDLEWARE_LANGUAGES_PYTHON_APPLICATION_H
 #define GOBY_MIDDLEWARE_LANGUAGES_PYTHON_APPLICATION_H
 
+#include <chrono>    // for microseconds
 #include <csignal>   // for signal, raise, sig_atomic_t
+#include <cstdint>   // for int64_t
 #include <cstdlib>   // for exit
 #include <exception> // for exception_ptr
 #include <iostream>  // for cout
@@ -44,7 +46,10 @@
 #include "goby/middleware/group.h"
 #include "goby/middleware/languages/common/interface.h"
 #include "goby/middleware/marshalling/interface.h"
+#include "goby/middleware/protobuf/coroner.pb.h"
 #include "goby/time.h"
+#include "goby/time/simulation.h"
+#include "goby/util/debug_logger.h"
 
 namespace goby
 {
@@ -159,12 +164,15 @@ template <typename AppBase> class Application : public AppBase
     using AppBase::AppBase;
 
     using Hook = std::function<void()>;
+    /// \brief Takes the serialized ThreadHealth Goby filled in and returns the one Python wrote
+    using HealthHook = std::function<std::string(const std::string&)>;
 
-    void set_hooks(Hook loop, Hook initialize, Hook finalize)
+    void set_hooks(Hook loop, Hook initialize, Hook finalize, HealthHook health)
     {
         loop_ = std::move(loop);
         initialize_ = std::move(initialize);
         finalize_ = std::move(finalize);
+        health_ = std::move(health);
     }
 
   protected:
@@ -172,6 +180,34 @@ template <typename AppBase> class Application : public AppBase
     {
         if (loop_)
             loop_();
+    }
+
+    /// \brief Hands the report goby_coroner asked for to Python, as serialized Protobuf
+    ///
+    /// Serializing round trip rather than a wrapped message: the Python and C++ descriptor pools
+    /// are separate, and this way an extension Python does not know about survives as an unknown
+    /// field instead of being dropped.
+    void health(goby::middleware::protobuf::ThreadHealth& health) override
+    {
+        AppBase::health(health);
+
+        if (!health_)
+            return;
+
+        std::string before;
+        health.SerializeToString(&before);
+
+        std::string after = health_(before);
+        if (after.empty())
+            return;
+
+        goby::middleware::protobuf::ThreadHealth updated;
+        if (updated.ParseFromString(after))
+            health.Swap(&updated);
+        else
+            goby::glog.is_warn() && goby::glog << "Python health() returned a ThreadHealth that "
+                                                  "could not be parsed; keeping the Goby one"
+                                               << std::endl;
     }
 
     // SingleThreadApplication inherits initialize()/finalize() from both Application and Thread.
@@ -199,6 +235,7 @@ template <typename AppBase> class Application : public AppBase
     Hook loop_;
     Hook initialize_;
     Hook finalize_;
+    HealthHook health_;
     bool initialize_called_{false};
     bool finalize_called_{false};
 };
@@ -224,7 +261,14 @@ template <typename App> class ApplicationWrapper
 
         app_ptr_.reset(new App(loop_frequency_hertz));
         app_ptr_->set_hooks([this]() { this->loop(); }, [this]() { this->initialize(); },
-                            [this]() { this->finalize(); });
+                            [this]() { this->finalize(); },
+                            [this](const std::string& serialized) -> std::string
+                            {
+                                // health() is called from the Goby event loop, which runs with
+                                // the GIL released
+                                py::gil_scoped_acquire gil;
+                                return this->health(py::bytes(serialized));
+                            });
     }
 
     virtual ~ApplicationWrapper() = default;
@@ -244,6 +288,12 @@ template <typename App> class ApplicationWrapper
 
     /// \brief Override in Python for cleanup just before the application exits
     virtual void finalize() {}
+
+    /// \brief Override in Python to answer goby_coroner's health request
+    ///
+    /// \param serialized the ThreadHealth Goby filled in
+    /// \return the ThreadHealth to report, or an empty string to keep Goby's unchanged
+    virtual std::string health(py::bytes serialized) { return std::string(serialized); }
 
     /// \brief Reads the command line into the application configuration
     ///
@@ -411,7 +461,52 @@ template <typename App> class ApplicationWrapperTrampoline : public ApplicationW
     void loop() override { PYBIND11_OVERRIDE(void, ApplicationWrapper<App>, loop, ); }
     void initialize() override { PYBIND11_OVERRIDE(void, ApplicationWrapper<App>, initialize, ); }
     void finalize() override { PYBIND11_OVERRIDE(void, ApplicationWrapper<App>, finalize, ); }
+    std::string health(py::bytes serialized) override
+    {
+        PYBIND11_OVERRIDE_NAME(std::string, ApplicationWrapper<App>, "_goby_health", health,
+                               serialized);
+    }
 };
+
+namespace detail
+{
+/// \brief Writes one already-formatted line to goby::glog at the given verbosity
+///
+/// is() both tests the verbosity and opens the message at it, writing the level's prefix and
+/// taking the logger lock, which the endl closes. At DIE that endl terminates the application,
+/// which is why goby.glog maps no logging level onto it.
+///
+/// The GIL is released for the write: the logger lock is process-wide, and a C++ thread holding
+/// it may be waiting on the GIL to run a callback.
+inline void glog_write(int verbosity, const std::string& group, const std::string& text)
+{
+    py::gil_scoped_release release_gil;
+
+    if (!goby::glog.is(static_cast<goby::util::logger::Verbosity>(verbosity)))
+        return;
+
+    if (!group.empty())
+        goby::glog << ::group(group);
+
+    goby::glog << text << std::endl;
+}
+
+/// \brief Whether anything is listening at this verbosity
+///
+/// Deliberately not goby::glog.is(), which opens a message as well as testing it and takes a lock
+/// that only the matching endl releases. This reads the same state that decides it and leaves
+/// nothing behind.
+inline bool glog_is(int verbosity)
+{
+    auto level = static_cast<goby::util::logger::Verbosity>(verbosity);
+    if (level == goby::util::logger::DIE)
+        return true;
+
+    const auto* buf = dynamic_cast<const goby::util::FlexOStreamBuf*>(goby::glog.rdbuf());
+    return buf != nullptr && buf->highest_verbosity() >= level;
+}
+
+} // namespace detail
 
 /// \brief Defines the contents of the generated extension module
 template <typename App>
@@ -452,7 +547,28 @@ inline void define_python_module(py::module_& m, const std::string& app_name)
         .def_static("_configure_from_text", &ApplicationWrapper<App>::configure_from_text,
                     py::arg("config_text"))
         .def_static("_configure_from_serialized",
-                    &ApplicationWrapper<App>::configure_from_serialized, py::arg("config_bytes"));
+                    &ApplicationWrapper<App>::configure_from_serialized, py::arg("config_bytes"))
+        .def("_goby_health", &ApplicationWrapper<App>::health, py::arg("serialized"));
+
+    // Simulation time lives in process-wide statics rather than on the application, and is set
+    // when the configuration is read. goby.time reads it from here so that a Python loop is
+    // scheduled on the same warped clock the C++ loop runs on.
+    m.def("_sim_time",
+          []() {
+              return py::make_tuple(
+                  goby::time::SimulatorSettings::using_sim_time,
+                  goby::time::SimulatorSettings::warp_factor,
+                  static_cast<std::int64_t>(
+                      goby::time::SimulatorSettings::reference_time.time_since_epoch() /
+                      std::chrono::microseconds(1)));
+          });
+
+    m.def("_glog_write", &detail::glog_write, py::arg("verbosity"), py::arg("group"),
+          py::arg("text"));
+    m.def("_glog_is", &detail::glog_is, py::arg("verbosity"));
+    m.def("_glog_add_group",
+          [](const std::string& name, const std::string& description)
+          { goby::glog.add_group(name, goby::util::Colors::nocolor, description); });
 
     m.attr("_GOBY_APPLICATION_NAME") = app_name;
 }
