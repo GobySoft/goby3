@@ -26,6 +26,7 @@
 #define GOBY_ACOMMS_MODEMDRIVER_IRIDIUM_DRIVER_H
 
 #include <cstdint> // for uint32_t
+#include <deque>   // for deque
 #include <iosfwd>  // for ostream
 #include <memory>  // for shared_ptr
 
@@ -33,6 +34,7 @@
 #include "goby/acomms/protobuf/driver_base.pb.h"    // for DriverConfig
 #include "goby/acomms/protobuf/iridium_driver.pb.h" // for Config, MessageT...
 #include "goby/acomms/protobuf/modem_message.pb.h"  // for ModemTransmission
+#include "goby/time/steady_clock.h"                 // for SteadyClock
 #include "iridium_driver_fsm.h"                     // for IridiumDriverFSM
 
 namespace goby
@@ -61,6 +63,8 @@ class IridiumDriver : public ModemDriverBase
 
   private:
     void process_transmission(protobuf::ModemTransmission msg, bool dial);
+    void start_sbd_session();
+    void complete_sbd_session_request();
 
     void receive(const protobuf::ModemTransmission& msg);
     void send(const protobuf::ModemTransmission& msg);
@@ -90,6 +94,17 @@ class IridiumDriver : public ModemDriverBase
     };
 
     protobuf::ModemTransmission rudics_mac_msg_;
+
+    // SBD data is requested only once the session is cleared to start (signal check passed)
+    std::unique_ptr<protobuf::ModemTransmission> sbd_data_request_;
+    std::deque<protobuf::ModemTransmission> sbd_acks_;
+    bool sbd_session_requested_{false};
+    // don't re-poll +CSQ continuously for queued acks while the signal is too weak
+    goby::time::SteadyClock::time_point sbd_followup_not_before_;
+    enum
+    {
+        SBD_SIGNAL_RECHECK_SECONDS = 10
+    };
 
     std::uint32_t next_frame_{0};
 
