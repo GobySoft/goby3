@@ -53,11 +53,15 @@ std::map<std::string, std::string>
 parse_defines(const google::protobuf::RepeatedPtrField<std::string>& defines, Issues& issues);
 
 /// \brief Replaces ${NAME} and ${NAME:-default} using defines, then TEST_DIR, then the
-/// environment; "$${" produces a literal "${". Unresolved names are reported against \p location.
+/// environment. Other names and "$${" escapes are left for expand_test_runs.
 std::string expand_variables(const std::string& text,
                              const std::map<std::string, std::string>& defines,
-                             const std::string& test_dir, const std::string& location,
-                             Issues& issues);
+                             const std::string& test_dir);
+
+/// \brief Expands runs with repeat or for_each into one run per pass, reports any ${NAME} left
+/// unresolved, and turns "$${" into a literal "${"
+void expand_test_runs(protobuf::TestFile& file, const std::map<std::string, std::string>& defines,
+                      Issues& issues);
 
 /// \brief Loads a test file and everything it includes
 LoadedTestFile load_test_file(const std::string& path,

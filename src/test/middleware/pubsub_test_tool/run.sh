@@ -97,6 +97,25 @@ rc=$?
 [ $rc -eq 2 ] || { echo "FAILED: interrupted run exited $rc, expected 2"; fail=1; }
 expect_output "interrupted" "$work/interrupted.txt"
 
+# repeated and parameterized runs, and repeating the whole test
+check 0 goby test validate "$dir/repeat_for_each.pb.cfg"
+goby test run "$dir/repeat_for_each.pb.cfg" > "$work/repeat.txt"
+check 0 goby test run "$dir/repeat_for_each.pb.cfg"
+for name in "same input \\[2/2\\]" "heading 0 is N" "heading 90 is E"; do
+    expect_output "$name ... PASS" "$work/repeat.txt"
+done
+goby test run "$dir/repeat_for_each.pb.cfg" --repeat 3 > "$work/repeat3.txt"
+check 0 goby test run "$dir/repeat_for_each.pb.cfg" --repeat 2
+expect_output "3 of 3 passes passed" "$work/repeat3.txt"
+check 2 goby test run "$dir/repeat_for_each.pb.cfg" --repeat 0
+# a for_each name that --define would replace when the file is read
+goby test validate "$dir/repeat_for_each.pb.cfg" -D DIR=S > "$work/collide.txt"
+check 1 goby test validate "$dir/repeat_for_each.pb.cfg" -D DIR=S
+expect_output "'DIR' is also set" "$work/collide.txt"
+if $yaml; then
+    check 0 goby test run "$dir/repeat_for_each.yml"
+fi
+
 if $zeromq; then
     check 0 goby test run "$dir/zeromq_pass.pb.cfg"
     check 0 goby test run "$dir/mixed_pass.pb.cfg"

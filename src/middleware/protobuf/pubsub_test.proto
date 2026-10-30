@@ -167,6 +167,29 @@ message PubSubTestRun
             "Hold this run open for at least this long (seconds); only for a run without "
             "steps. With no publish or expect entries it is a plain pause."
     ];
+
+    optional uint32 repeat = 22 [
+        default = 1,
+        (goby.field).description =
+            "Run this many times in sequence (for each for_each entry, if any). ${ITERATION} "
+            "is the pass number, from 1"
+    ];
+    repeated PubSubTestParameters for_each = 23
+        [(goby.field).description =
+             "One pass per entry, with ${NAME} in this run's text replaced by the entry's value "
+             "for NAME"];
+}
+
+message PubSubTestParameters
+{
+    // a list of key/value pairs rather than a map, which the DCCL plugin can't generate;
+    // YAML test files can still write it as a map
+    message Var
+    {
+        required string key = 1;
+        required string value = 2;
+    }
+    repeated Var var = 1;
 }
 
 message PubSubTestRequireApp
@@ -333,6 +356,8 @@ message PubSubTestReport
     repeated PubSubTestRequireAppReport require_app = 10;
     repeated PubSubTestRunReport run = 11;
     repeated PubSubTestFixtureReport fixture = 12;
+    repeated PubSubTestReport pass = 14
+        [(goby.field).description = "Each pass of the test when run with --repeat"];
     repeated PubSubTestIssue issue = 13
         [(goby.field).description = "Validation problems that prevented the test from running"];
 }

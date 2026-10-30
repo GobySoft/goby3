@@ -83,6 +83,8 @@ bool on_path(const std::string& program)
 std::string first_program(const std::string& command)
 {
     static const std::set<std::string> skip{"exec", "nohup", "env", "setsid", "command"};
+    // wrapper options that take a separate argument
+    static const std::set<std::string> option_with_argument{"-u", "--unset", "-C", "--chdir", "-a"};
     static const std::set<std::string> builtin{
         "cd",    "export", "set", "unset", "true",   "false", ":",    ".",      "source",
         "eval",  "test",   "[",   "echo",  "printf", "if",    "for",  "while",  "case",
@@ -102,6 +104,14 @@ std::string first_program(const std::string& command)
         if (skip.count(w))
         {
             rest = remainder;
+            // skip the wrapper's own options
+            while (std::regex_search(rest, m, word) && m[1].str().rfind("-", 0) == 0)
+            {
+                const bool takes_argument = option_with_argument.count(m[1].str()) > 0;
+                rest = m[2].str();
+                if (takes_argument && std::regex_search(rest, m, word))
+                    rest = m[2].str();
+            }
             continue;
         }
         if (builtin.count(w) || w.find('$') != std::string::npos ||
@@ -140,8 +150,7 @@ void load_recursive(const std::string& path, const std::map<std::string, std::st
     ss << fin.rdbuf();
     const std::string dir = canonical.parent_path().string();
 
-    const std::string text =
-        goby::apps::middleware::expand_variables(ss.str(), defines, dir, path, issues);
+    const std::string text = goby::apps::middleware::expand_variables(ss.str(), defines, dir);
 
     goby::apps::middleware::protobuf::TestFile local;
     try
@@ -184,22 +193,20 @@ std::map<std::string, std::string> goby::apps::middleware::parse_defines(
     return out;
 }
 
-std::string goby::apps::middleware::expand_variables(
-    const std::string& text, const std::map<std::string, std::string>& defines,
-    const std::string& test_dir, const std::string& location, Issues& issues)
+std::string
+goby::apps::middleware::expand_variables(const std::string& text,
+                                         const std::map<std::string, std::string>& defines,
+                                         const std::string& test_dir)
 {
     static const std::regex var("^\\$\\{([A-Za-z_][A-Za-z0-9_]*)(:-([^}]*))?\\}");
     std::string out;
     out.reserve(text.size());
-    int line = 1;
     for (std::size_t i = 0; i < text.size();)
     {
-        if (text[i] == '\n')
-            ++line;
-
+        // kept for run expansion, then unescaped
         if (text.compare(i, 3, "$${") == 0)
         {
-            out += "${";
+            out += "$${";
             i += 3;
             continue;
         }
@@ -225,8 +232,7 @@ std::string goby::apps::middleware::expand_variables(
                 else if (m[2].matched)
                     out += m[3].str();
                 else
-                    add_issue(issues, location + ":" + std::to_string(line),
-                              "variable '" + name + "' is not set and has no default");
+                    out += m[0].str(); // a for_each name, or reported once runs are expanded
                 i += m[0].length();
                 continue;
             }
@@ -245,6 +251,53 @@ goby::apps::middleware::load_test_file(const std::string& path,
     std::vector<std::string> stack;
     load_recursive(path, defines, stack, loaded.file, loaded.issues, loaded.parsed);
     return loaded;
+}
+
+void goby::apps::middleware::expand_test_runs(protobuf::TestFile& file,
+                                              const std::map<std::string, std::string>& defines,
+                                              Issues& issues)
+{
+    // names already replaced when the file was read would silently never vary per pass
+    auto set_outside = [&defines](const std::string& name)
+    { return defines.count(name) || std::getenv(name.c_str()) || name == "TEST_DIR"; };
+    bool any_passes = false;
+    for (int i = 0, n = file.test().run_size(); i < n; ++i)
+    {
+        const auto& run = file.test().run(i);
+        any_passes = any_passes || run.repeat() != 1 || run.for_each_size() > 0;
+        std::set<std::string> reported;
+        for (int j = 0, m = run.for_each_size(); j < m; ++j)
+            for (const auto& v : run.for_each(j).var())
+                if (set_outside(v.key()) && reported.insert(v.key()).second)
+                    add_issue(issues,
+                              "test.run[" + std::to_string(i) + "].for_each[" + std::to_string(j) +
+                                  "]",
+                              "'" + v.key() +
+                                  "' is also set by --define, the environment or TEST_DIR, which "
+                                  "replace it when the file is read; use another name");
+    }
+    if (any_passes && set_outside("ITERATION"))
+        add_issue(issues, "test.run",
+                  "ITERATION is set by --define or the environment, which replaces ${ITERATION} "
+                  "when the file is read; unset it");
+
+    // checked before expansion so locations match the file; each run may use its own names
+    protobuf::TestFile outside_runs = file;
+    outside_runs.mutable_test()->clear_run();
+    goby::middleware::tool::find_unresolved_variables(outside_runs, "", issues);
+    for (int i = 0, n = file.test().run_size(); i < n; ++i)
+    {
+        std::set<std::string> allowed{"ITERATION"};
+        for (const auto& p : file.test().run(i).for_each())
+            for (const auto& v : p.var()) allowed.insert(v.key());
+        auto run = file.test().run(i);
+        run.clear_for_each();
+        goby::middleware::tool::find_unresolved_variables(
+            run, "test.run[" + std::to_string(i) + "]", issues, allowed);
+    }
+
+    goby::middleware::tool::expand_runs(*file.mutable_test(), issues);
+    goby::middleware::tool::unescape_variables(file);
 }
 
 bool goby::apps::middleware::test_tool_has_zeromq()
