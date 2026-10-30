@@ -35,6 +35,7 @@
 #include "goby/middleware/application/interface.h"
 #include "goby/middleware/application/thread.h"
 
+#include "goby/middleware/transport/detail/implementation_traits.h"
 #include "goby/middleware/transport/interprocess.h"
 #include "goby/middleware/transport/intervehicle.h"
 
@@ -116,6 +117,15 @@ class SingleThreadApplication
   private:
     void run() override { MainThread::run_once(); }
 };
+
+/// \brief SingleThreadApplication for a given interprocess ImplementationTag (e.g. zeromq::detail::InterProcessTag), rather than a portal template.
+///
+/// \tparam Config Configuration type
+/// \tparam ImplementationTag Tag selecting the interprocess implementation
+template <class Config, typename ImplementationTag>
+using SingleThreadApplicationFor =
+    SingleThreadApplication<Config,
+                            detail::implementation_traits<ImplementationTag>::template Portal>;
 
 } // namespace middleware
 } // namespace goby

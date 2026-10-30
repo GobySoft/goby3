@@ -24,6 +24,7 @@
 #ifndef GOBY_UDPM_TRANSPORT_INTERMODULE_H
 #define GOBY_UDPM_TRANSPORT_INTERMODULE_H
 
+#include "goby/middleware/transport/detail/implementation_traits.h"
 #include "goby/middleware/transport/intermodule.h"
 
 #include "goby/udpm/transport/detail/tags.h"
@@ -43,6 +44,23 @@ using InterModuleForwarder =
     middleware::InterModuleForwarder<InnerTransporter, detail::InterModuleTag>;
 
 } // namespace udpm
+} // namespace goby
+
+namespace goby
+{
+namespace middleware
+{
+namespace detail
+{
+template <> struct implementation_traits<goby::udpm::detail::InterModuleTag>
+{
+    template <typename InnerTransporter>
+    using Portal = goby::udpm::InterModulePortal<InnerTransporter>;
+    using PortalConfig = goby::udpm::protobuf::InterProcessPortalConfig;
+    static constexpr const char* name = "udpm";
+};
+} // namespace detail
+} // namespace middleware
 } // namespace goby
 
 #endif
