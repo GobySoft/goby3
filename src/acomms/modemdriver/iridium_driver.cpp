@@ -47,6 +47,7 @@
 #  pragma GCC diagnostic pop
 #endif
 
+#include <algorithm>                                   // for max
 #include <cerrno>                                      // for errno
 #include <chrono>                                      // for operator/
 #include <cstring>                                     // for strerror
@@ -300,7 +301,7 @@ void goby::acomms::IridiumDriver::process_transmission(protobuf::ModemTransmissi
                              : "retry back-off")
                      << ")" << std::endl;
         }
-        else if (sbd_session_requested_ ||
+        else if (sbd_session_requested_ || sbd_data_request_ ||
                  fsm_.state_cast<const iridium::fsm::SBDReady*>() == nullptr)
         {
             glog.is(DEBUG1) && glog << group(glog_out_group()) << "SBD session already in progress"
@@ -309,7 +310,14 @@ void goby::acomms::IridiumDriver::process_transmission(protobuf::ModemTransmissi
         else
         {
             sbd_data_request_.reset(new protobuf::ModemTransmission(msg));
-            start_sbd_session();
+            std::uniform_real_distribution<double> jitter(
+                0, std::max(0.0, iridium_driver_cfg().sbd_session_jitter()));
+            const double delay = jitter(rng_);
+            sbd_data_request_start_ = goby::time::SteadyClock::now() +
+                                      std::chrono::duration_cast<goby::time::SteadyClock::duration>(
+                                          std::chrono::duration<double>(delay));
+            glog.is(DEBUG1) && glog << group(glog_out_group()) << "Starting SBD session in "
+                                    << delay << " s" << std::endl;
         }
         return;
     }
@@ -361,10 +369,17 @@ void goby::acomms::IridiumDriver::complete_sbd_session_request()
 
         if (!(msg.frame_size() == 0 || msg.frame(0).empty()))
             begin_data(msg);
-        else if (msg.GetExtension(iridium::protobuf::transmission).if_no_data_do_mailbox_check())
+        else if (msg.GetExtension(iridium::protobuf::transmission).if_no_data_do_mailbox_check() ||
+                 fsm_.sbd_mt_queued() > 0)
             fsm_.process_event(iridium::fsm::EvSBDBeginData()); // mailbox check
         else
             fsm_.process_event(iridium::fsm::EvSBDCancel());
+    }
+    else if (fsm_.sbd_mt_queued() > 0)
+    {
+        glog.is(DEBUG1) && glog << group(glog_out_group()) << "Retrieving " << fsm_.sbd_mt_queued()
+                                << " queued MT message(s)" << std::endl;
+        fsm_.process_event(iridium::fsm::EvSBDBeginData()); // mailbox check
     }
     else
     {
@@ -456,11 +471,30 @@ void goby::acomms::IridiumDriver::do_work()
                 goby::time::SteadyClock::now() + std::chrono::seconds(SBD_SIGNAL_RECHECK_SECONDS);
         }
     }
-    else if (!sbd_acks_.empty() && !fsm_.sbd_session_blocked() &&
-             goby::time::SteadyClock::now() >= sbd_followup_not_before_ &&
-             fsm_.state_cast<const iridium::fsm::SBDReady*>())
+    else if (fsm_.state_cast<const iridium::fsm::SBDReady*>())
     {
-        start_sbd_session();
+        const auto now = goby::time::SteadyClock::now();
+        if (fsm_.sbd_session_blocked())
+        {
+            if (sbd_data_request_)
+            {
+                // blocked while waiting out the jitter; the MAC will ask again
+                glog.is(DEBUG1) && glog << group(glog_out_group())
+                                        << "Dropping pending SBD session as sessions are blocked"
+                                        << std::endl;
+                sbd_data_request_.reset();
+            }
+        }
+        // acks and queued MT follow a session, so aren't aligned to the clock: no jitter
+        else if ((!sbd_acks_.empty() || fsm_.sbd_mt_queued() > 0) &&
+                 now >= sbd_followup_not_before_)
+        {
+            start_sbd_session();
+        }
+        else if (sbd_data_request_ && now >= sbd_data_request_start_)
+        {
+            start_sbd_session();
+        }
     }
 
     if (debug_client_)

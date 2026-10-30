@@ -424,6 +424,8 @@ The driver follows the Iridium SBD best practices for starting SBD sessions (`+S
 - After a failed session (or no `+SBDIX` response within 60 s) no new session is started for `sbd_retry_backoff_initial` seconds (default 60). This doubles on each consecutive failure up to `sbd_retry_backoff_max` (default 600) and is extended by a random fraction of up to `sbd_retry_jitter_fraction` (default 0.25). A successful session resets the back-off.
 - If clearing (`+SBDD2`) or writing (`+SBDWB`) the MO buffer fails, the session is abandoned without starting `+SBDIX`, and the message is dropped (use `ack_requested` for reliable delivery).
 - `+SBDLOE` is queried at startup and after MO status 38. No session is started (including in response to an `SBDRING` ring alert) until the reported traffic management period has ended.
+- Sessions started by the MAC are delayed by a random time of up to `sbd_session_jitter` seconds (default 5) so that they don't fall at the top of the second or minute. Ring alert responses, acks, and retrieval of queued MT messages are not delayed.
+- When a session receives an MT message and reports more MT messages queued at the gateway, the driver retrieves them straight away with further sessions (mailbox checks, if there is no other data).
 - Transmissions that would start a session while it is blocked are skipped and the data remains queued. Data that was sent in a failed session is not resent by the driver; use `ack_requested` for reliable delivery.
 
 ![SBD session states](images/iridium_sbd_session.svg)
