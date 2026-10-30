@@ -85,13 +85,9 @@ class ToolSharedLibraryLoader
     }
 
     ToolSharedLibraryLoader(const std::string& lib) { load_lib(lib); }
-    ~ToolSharedLibraryLoader();
 
   private:
     void load_lib(const std::string& lib);
-
-  private:
-    std::vector<void*> dl_handles_;
 };
 
 } // namespace middleware

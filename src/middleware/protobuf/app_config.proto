@@ -95,6 +95,11 @@ message AppConfig
     }
     optional Tool tool_cfg = 50 [(goby.field).cfg = { action: NEVER }];
 
+    repeated string load_shared_library = 60 [(goby.field) = {
+        description: "Load this shared library, which may contain compiled Protobuf/DCCL messages and/or DCCL field codec plugins (e.g. \"libdccl_arithmetic.so\" or \"libdccl_native_protobuf.so\"). May be given multiple times, and each entry may contain several libraries separated by ':', ';' or ','. Libraries may also be given in the GOBY_LOAD_SHARED_LIBRARY environmental variable."
+        cfg { action: ADVANCED }
+    }];
+
     optional bool debug_cfg = 100 [
         default = false,
         (goby.field).description =
