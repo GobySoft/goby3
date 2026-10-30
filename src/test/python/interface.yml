@@ -1,5 +1,7 @@
 # Interface for the Python bindings compile test. Deliberately exercises both a publication and
-# a subscription, so that both generated macros are compiled.
+# a subscription, so that both generated macros are compiled, and an interthread portal, whose
+# group is deliberately one no C++ header declares: the layer is implemented in Python, so
+# nothing is generated for it.
 application:
   name: GobyPythonTestApp
   cpp_type: goby::zeromq::SingleThreadApplication
@@ -14,5 +16,15 @@ interprocess:
       type: goby.test.python.protobuf.CommsTx
   subscribes:
     - group: goby::test::python::groups::rx
+      scheme: PROTOBUF
+      type: goby.test.python.protobuf.CommsRx
+
+interthread:
+  publishes:
+    - group: thread_status
+      scheme: PROTOBUF
+      type: goby.test.python.protobuf.CommsTx
+  subscribes:
+    - group: thread_request
       scheme: PROTOBUF
       type: goby.test.python.protobuf.CommsRx

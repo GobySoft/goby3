@@ -121,6 +121,10 @@ message BasicApplicationConfig
 
 `goby::middleware::Application` reads the `app` field, and `goby::udpm::InterProcessPortal` reads the `interprocess` field.
 
+## Command Line Tools
+
+`goby udpm publish` and `goby udpm subscribe` mirror the `goby zeromq` tools, and `goby test` runs a declarative publish/subscribe test against udpm endpoints (alone or alongside zeromq ones); see the [command line tool](doc010_cli.md) page. Because there is no daemon, a udpm endpoint's `require_app` entries wait only for the named applications' health responses.
+
 ## Implementation Details
 
 The `goby::udpm::InterProcessPortal` is a single-threaded portal: all sending and receiving are performed on the calling thread via a Boost.Asio `io_context`. During each call to `poll()`, the io_context is polled to:

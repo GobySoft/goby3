@@ -101,6 +101,21 @@ if(enable_hdf5)
   add_definitions(-DHAS_HDF5)
 endif()
 
+## yaml-cpp
+find_package(yaml-cpp QUIET)
+set(YAML_DOC_STRING "Enable YAML test files for 'goby zeromq test' and 'goby udpm test' (requires libyaml-cpp-dev)")
+if(yaml-cpp_FOUND)
+  option(enable_yaml ${YAML_DOC_STRING} ON)
+else()
+  option(enable_yaml ${YAML_DOC_STRING} OFF)
+  message(">> setting enable_yaml to OFF ... if you need this functionality: 1) install libyaml-cpp-dev; 2) run cmake -Denable_yaml=ON")
+endif()
+
+if(enable_yaml)
+  goby_find_required_package(yaml-cpp)
+  add_definitions(-DHAS_YAML_CPP)
+endif()
+
 # OpenSSL
 find_package(OpenSSL QUIET)
 set(OPENSSL_DOC_STRING "Enable OpenSSL components")
@@ -238,6 +253,11 @@ include(time/src.cmake)
 include(middleware/src.cmake)
 include(udpm/src.cmake)
 
+# transport-neutral tools (goby test) describe zeromq endpoints without linking goby_zeromq
+protobuf_generate_cpp_dccl(ZEROMQ_CONFIG_PROTO_SRCS ZEROMQ_CONFIG_PROTO_HDRS
+  zeromq/protobuf/interprocess_config.proto
+  )
+
 if(NOT enable_janus_acomms)
   list(FILTER ACOMMS_SRC EXCLUDE REGEX ".*janus_driver.cpp")
 endif()
@@ -249,6 +269,7 @@ add_library(goby
   ${TIME_SRC}
   ${MIDDLEWARE_SRC}
   ${UDPM_SRC}
+  ${ZEROMQ_CONFIG_PROTO_SRCS} ${ZEROMQ_CONFIG_PROTO_HDRS}
   )
 
 

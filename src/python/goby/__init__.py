@@ -48,6 +48,22 @@ A Goby Python application is written as a subclass of the application class gene
     if __name__ == "__main__":
         sys.exit(goby.run(PythonDemo))
 
+Threads are written in Python too, and launched by the application::
+
+    class Reporter(Thread):
+        def __init__(self):
+            super().__init__(loop_frequency_hertz=1)
+            self.interthread().subscribe(groups.status, self.on_status)
+
+    class PythonDemo(SingleThreadApplication):
+        def __init__(self):
+            super().__init__(loop_frequency_hertz=10)
+            self.launch_thread(Reporter)
+
+The interthread layer is implemented in Python rather than through the C++
+``InterThreadTransporter``, so an interthread message is any Python object and an interthread
+group is any string.
+
 See ``share/goby/interface/README.md`` for the ``interface.yml`` format, which is shared with the
 Julia bindings.
 """
@@ -60,6 +76,7 @@ import pkgutil
 # alongside this package instead of one shadowing the other.
 __path__ = pkgutil.extend_path(__path__, __name__)
 
+from . import glog, time
 from ._application import (
     ApplicationMixin,
     ConfigError,
@@ -67,6 +84,8 @@ from ._application import (
     message_type,
     run,
 )
+from ._interthread import Thread
+from ._runtime import bind as _bind_extension
 from ._schemes import (
     ALL_SCHEMES,
     CSTR,
@@ -100,8 +119,11 @@ __all__ = [
     "NULL_SCHEME",
     "PROTOBUF",
     "PubSubLayer",
+    "Thread",
     "Transporter",
     "__version__",
+    "glog",
     "message_type",
     "run",
+    "time",
 ]

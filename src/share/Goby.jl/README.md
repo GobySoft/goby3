@@ -271,3 +271,32 @@ Goby.run(goby_app)
 | `Goby.subscribe(app, layer, group, callback)` | Subscribes to messages on `layer`/`group`; `callback` must accept a single argument of the expected protobuf type. |
 | `Goby.run(app)` | Starts the Goby event loop (blocking). Calls `start()` and then enters the C++ run loop, invoking `loop()` at `goby_cfg[:loop_frequency]` Hz. |
 | `Goby.run(app, Main, [TaskModuleA, …])` | Multi-threaded variant; each `TaskModule` is spawned on its own Julia thread. Requires `julia -t <N>` where N is at least the number of TaskModules plus 3 (e.g., -t 5 for an application with two TaskModules). |
+
+---
+
+## Multi-Threaded Julia Usage
+
+`Goby.run(app, Main, [TaskModuleA, …])` spawns each task module on its own Julia thread. A task
+module may define `start()`, called on its own thread before the event loop, and a `goby_cfg`
+with `:loop_function` and `:loop_frequency` to have a function called periodically.
+
+`Goby.publish` and `Goby.subscribe` work from any task, on any layer:
+
+* `INTERTHREAD` is implemented in Julia, carrying messages between tasks over `Channel`s. It
+  never reaches the C++ side, so an interthread group is a plain string chosen by the
+  application rather than a group declared in `interface.yml`, and an interthread message can be
+  any Julia value rather than only a protobuf message.
+* `INTERPROCESS` and `INTERMODULE` belong to the C++ application, which lives on one task. A
+  publication from any other task is handed to that task over an interthread channel, and a
+  subscription is registered there and its messages delivered back to the task that asked for
+  it. This is what a C++ thread's `InterProcessForwarder` does, so no task needs a portal of its
+  own, and none has to route through `Main`.
+
+The C++ task drains those channels from its `loop()`, whose rate `Main`'s `goby_cfg` sets:
+
+```julia
+goby_cfg = Dict(:cxx_channel_check_frequency => 10)   # Hz, the default
+```
+
+That rate bounds how long an interprocess publication from another task waits before it goes
+out, so raise it for latency-sensitive traffic.

@@ -4,7 +4,6 @@
 //   Community contributors (see AUTHORS file)
 // File authors:
 //   Toby Schneider <toby@gobysoft.org>
-//   Copilot <198982749+Copilot@users.noreply.github.com>
 //
 //
 // This file is part of the Goby Underwater Autonomy Project Libraries
@@ -400,6 +399,8 @@ int goby::run(const goby::middleware::ConfiguratorInterface<typename App::Config
         // instantiate the application (with the configuration already set)
         App app;
         return_value = app.__run();
+        if (return_value == 0 && cfgtor.invalid_command())
+            return_value = EXIT_FAILURE;
     }
     catch (std::exception& e)
     {

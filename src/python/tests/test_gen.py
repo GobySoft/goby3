@@ -36,6 +36,28 @@ interprocess:
 """
 
 
+INTERTHREAD_AND_INTERPROCESS = """
+application:
+  name: PythonDemo
+  cpp_type: goby::zeromq::SingleThreadApplication
+  config:
+    scheme: PROTOBUF
+    type: project.config.protobuf.PythonDemoConfig
+
+interthread:
+  publishes:
+    - group: project::groups::status
+      scheme: PROTOBUF
+      type: project.protobuf.Status
+
+interprocess:
+  publishes:
+    - group: project::groups::modem_tx
+      scheme: PROTOBUF
+      type: project.protobuf.CommsTx
+"""
+
+
 def parse_yaml(text):
     import yaml
 
@@ -187,6 +209,16 @@ class GenerateCppTest(unittest.TestCase):
     def test_defines_the_module(self):
         self.assertIn("GOBY_PYTHON_DEFINE_MODULE(APPLICATION_NAME, _python_demo_goby)", self.cpp)
 
+    def test_interthread_is_left_out(self):
+        # the layer is implemented in Python and never crosses into C++, so the glue has no case
+        # for it -- and needs no interthread() accessor on the application class
+        cpp = gen.generate_cpp(
+            parse_yaml(INTERTHREAD_AND_INTERPROCESS), [], "_python_demo_goby", "interface.yml"
+        )
+        self.assertNotIn("INTERTHREAD", cpp)
+        self.assertNotIn("project::groups::status", cpp)
+        self.assertIn("INTERPROCESS", cpp)
+
     def test_macro_parameter_names_match_the_generated_signatures(self):
         # the macros refer to 'data' and 'callback' by name
         self.assertIn(
@@ -226,6 +258,19 @@ class GeneratePythonTest(unittest.TestCase):
     def test_emits_layer_accessors(self):
         self.assertIn("def interprocess(self):", self.module)
         self.assertIn('self._goby_transporter("interprocess", goby.INTERPROCESS)', self.module)
+
+    def test_emits_a_thread_base_class(self):
+        self.assertIn("class Thread(goby.Thread):", self.module)
+        # the same accessors as the application, so a thread publishes the same way it does
+        self.assertEqual(self.module.count("def interprocess(self):"), 2)
+
+    def test_interthread_groups_are_still_named(self):
+        module = gen.generate_python(
+            parse_yaml(INTERTHREAD_AND_INTERPROCESS), "_python_demo_goby", [], "interface.yml"
+        )
+        compile(module, "python_demo_goby.py", "exec")
+        self.assertIn('status = "project::groups::status"', module)
+        self.assertIn('self._goby_transporter("interthread", goby.INTERTHREAD)', module)
 
     def test_resolves_the_config_type(self):
         self.assertIn(

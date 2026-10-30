@@ -5,7 +5,6 @@
 // File authors:
 //   Toby Schneider <toby@gobysoft.org>
 //   James D. Turner <james.turner@nrl.navy.mil>
-//   Copilot <198982749+Copilot@users.noreply.github.com>
 //   Shawn Dooley <shawn@shawndooley.net>
 //
 //
