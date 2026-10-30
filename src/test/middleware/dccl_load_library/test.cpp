@@ -55,20 +55,20 @@ BOOST_AUTO_TEST_CASE(load_nonexistent_library)
                       goby::Exception);
 }
 
-// without the external DCCL plugin library loaded, the message cannot be used
-BOOST_AUTO_TEST_CASE(codec_unavailable_before_load)
+// Library loading is process-wide and permanent, so the "before" and "after" checks
+// must live in a single test case to be independent of test ordering.
+BOOST_AUTO_TEST_CASE(codec_available_only_after_load)
 {
+    // without the external DCCL plugin library loaded, the message cannot be used
     BOOST_CHECK_THROW(Helper::id(), dccl::Exception);
-}
 
-BOOST_AUTO_TEST_CASE(codec_available_after_load)
-{
     goby::middleware::detail::DCCLSerializerParserHelperBase::load_library(
-        "libdccl_native_protobuf" SHARED_LIBRARY_SUFFIX);
+        DCCL_NATIVE_PROTOBUF_LIBRARY);
 
-    // loading the same library twice is a no-op
+    // loading the same library twice is a no-op, and empty entries (from the trailing
+    // delimiter) are skipped rather than passed to dlopen
     goby::middleware::detail::DCCLSerializerParserHelperBase::load_library(
-        "libdccl_native_protobuf" SHARED_LIBRARY_SUFFIX);
+        std::string(DCCL_NATIVE_PROTOBUF_LIBRARY) + ":");
 
     BOOST_CHECK_EQUAL(Helper::id(), 126);
 

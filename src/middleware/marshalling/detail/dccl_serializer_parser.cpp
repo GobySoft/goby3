@@ -69,7 +69,6 @@ void goby::middleware::detail::DCCLSerializerParserHelperBase::load_library(
     const std::string& library)
 {
     std::vector<std::string> libraries;
-    // allow a single entry to contain multiple libraries separated by a common delimiter
     boost::split(libraries, library, boost::is_any_of(";:,"));
 
     for (const auto& lib : libraries)
@@ -80,9 +79,7 @@ void goby::middleware::detail::DCCLSerializerParserHelperBase::load_library(
         glog.is(goby::util::logger::DEBUG1) && glog << "Loading DCCL shared library: " << lib
                                                     << std::endl;
 
-        // RTLD_NODELETE: keep the library mapped for the life of the process (even if
-        // dlclose() is called) as the protobuf descriptor pools may reference memory
-        // (e.g. custom options extensions) owned by this library at static destruction
+        // RTLD_NODELETE: protobuf may reference library memory during static destruction
         void* handle = dlopen(lib.c_str(), RTLD_LAZY | RTLD_NODELETE);
         if (!handle)
         {
@@ -102,14 +99,11 @@ void goby::middleware::detail::DCCLSerializerParserHelperBase::load_library(void
 
     std::lock_guard<std::mutex> lock(dccl_mutex_);
 
-    // ensure the codec exists first, as its creation loads all previously registered libraries
-    auto& dccl_codec = codec();
-
     if (std::find(loaded_libs_.begin(), loaded_libs_.end(), dl_handle) != loaded_libs_.end())
         return;
 
+    codec().load_library(dl_handle);
     loaded_libs_.push_back(dl_handle);
-    dccl_codec.load_library(dl_handle);
 }
 
 void goby::middleware::detail::DCCLSerializerParserHelperBase::load_metadata(

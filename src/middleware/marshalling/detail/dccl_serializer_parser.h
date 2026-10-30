@@ -116,18 +116,21 @@ struct DCCLSerializerParserHelperBase
     {
         if (!codec_)
         {
-            codec_ = std::make_unique<dccl::Codec>();
-            for (void* handle : loaded_libs_) codec_->load_library(handle);
+            auto new_codec = std::make_unique<dccl::Codec>();
+            for (void* handle : loaded_libs_) new_codec->load_library(handle);
+            codec_ = std::move(new_codec);
         }
         return *codec_;
     }
 
     static dccl::Codec& set_codec(dccl::Codec* new_codec)
     {
-        codec_.reset(new_codec);
+        std::unique_ptr<dccl::Codec> codec(new_codec);
+        for (void* handle : loaded_libs_) codec->load_library(handle);
+        // Loader destructors unload from codec(), so must run before codec_ is replaced
         loader_map_.clear();
-        for (void* handle : loaded_libs_) new_codec->load_library(handle);
-        return *new_codec;
+        codec_ = std::move(codec);
+        return *codec_;
     }
 
   public:

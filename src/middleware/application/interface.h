@@ -247,14 +247,21 @@ template <typename Config> void goby::middleware::Application<Config>::configure
 
 template <typename Config> void goby::middleware::Application<Config>::load_shared_libraries()
 {
-    // environmental variable is loaded first so that configuration file entries can rely on
-    // codecs and messages provided by these libraries
-    if (const char* env_libs = getenv("GOBY_LOAD_SHARED_LIBRARY"))
-        goby::middleware::detail::DCCLSerializerParserHelperBase::load_library(
-            std::string(env_libs));
+    using goby::glog;
+    using goby::middleware::detail::DCCLSerializerParserHelperBase;
 
-    for (const auto& lib : app3_base_configuration_->load_shared_library())
-        goby::middleware::detail::DCCLSerializerParserHelperBase::load_library(lib);
+    try
+    {
+        if (const char* env_libs = getenv("GOBY_LOAD_SHARED_LIBRARY"))
+            DCCLSerializerParserHelperBase::load_library(std::string(env_libs));
+
+        for (const auto& lib : app3_base_configuration_->load_shared_library())
+            DCCLSerializerParserHelperBase::load_library(lib);
+    }
+    catch (const std::exception& e)
+    {
+        glog.is_die() && glog << e.what() << std::endl;
+    }
 }
 
 template <typename Config> void goby::middleware::Application<Config>::configure_intervehicle()
