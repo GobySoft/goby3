@@ -186,6 +186,12 @@ message TestRunConfig
     optional string log_dir = 32
         [(goby.field).description =
              "Directory for fixture output logs; a new temporary directory if omitted"];
+    optional uint32 repeat = 33 [
+        default = 1,
+        (goby.field).description =
+            "Run the whole test this many times with the fixtures left running; fails if any pass "
+            "fails"
+    ];
 }
 
 message TestValidateConfig

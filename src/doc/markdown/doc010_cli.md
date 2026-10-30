@@ -43,7 +43,7 @@ See `goby help launch` for more options.
 Runs declarative publish/subscribe tests against a Goby system, for example in CI or after a deployment, without writing a Goby application. It has three actions:
 
 ```
-goby test run <test file> [-D NAME=value] [-o HUMAN|JSON] [--output_file <path>] [--log_dir <dir>] [-l <shared library>]
+goby test run <test file> [-D NAME=value] [--repeat N] [-o HUMAN|JSON] [--output_file <path>] [--log_dir <dir>] [-l <shared library>]
 goby test validate <test file> [-D NAME=value] [-o HUMAN|JSON] [-l <shared library>]
 goby test visualize <test file> [-D NAME=value] [--output_file <file.dot>]
 ```
@@ -104,9 +104,28 @@ test:
 
 Within a run or step the expectations are subscribed first, then the publications are sent (after `delay`), then the tool waits until every expectation is satisfied or times out. An expectation names an endpoint, a `group` regex and a `type` regex (optionally prefixed by a scheme, such as `DCCL/`), and passes when the number of matching messages satisfies `min_count` (default 1, done as soon as it is reached) or `count` (exact; the step lasts its whole timeout so that extra messages are seen, and `count: 0` asserts nothing arrives). A message matches when it satisfies `match`, a partial message in the same syntax as `publish` (TextFormat for Protobuf and DCCL, JSON for JSON), and every `condition` (a `field` path such as `pos.lat` or `waypoint[0].id`, an `op` of `EQ`, `NE`, `LT`, `LE`, `GT`, `GE`, `REGEX`, `EXISTS` or `ABSENT`, and a `value`). Messages that fail to match are counted as rejected and the reason for the last rejection is reported. Durations are in seconds.
 
+### Repeating runs
+
+A run with `repeat: N` runs N times in sequence. A run with `for_each` runs once per entry, with `${NAME}` anywhere in the run (its name, groups, types, publish values, `match` and conditions) replaced by that entry's value; with both, each entry runs `repeat` times. `${ITERATION}` is the pass number, from 1. Each pass is reported as its own run, named after the run (or `<name> [k/N]` when the name doesn't use a variable), and `validate` and `visualize` show every pass.
+
+```yaml
+run:
+  - { name: nav round trip, repeat: 5, publish: [...], expect: [...] }
+  - name: heading ${HEADING} is ${DIR}
+    for_each:
+      - { HEADING: 0, DIR: N }
+      - { HEADING: 90, DIR: E }
+    publish: [{ group: cmd, type: JSON/Heading, value: '{"heading": ${HEADING}}' }]
+    expect: [{ group: status, type: JSON/Status, match: '{"dir": "${DIR}"}' }]
+```
+
+`for_each` names must not also be set by `-D` or the environment, which replace `${NAME}` when the file is read (`validate` reports this). In TextFormat an entry is written `for_each { var { key: "HEADING" value: "0" } ... }`.
+
+`goby test run --repeat N` runs the whole test N times with the fixtures left running, and fails if any pass fails; the report lists each pass, with details for those that didn't pass.
+
 ### Reusing test files
 
-- `${NAME}` and `${NAME:-default}` are replaced by `-D NAME=value`, then the environment, then the default; `${TEST_DIR}` is the directory of the file being read, and `$${` is a literal `${`.
+- `${NAME}` and `${NAME:-default}` are replaced by `-D NAME=value`, then the environment, then the default (or a run's `for_each`); `${TEST_DIR}` is the directory of the file being read, and `$${` is a literal `${`. A name that is never set is reported by `validate`.
 - `include: [endpoints.yml]` merges other files (of any format) before this one, so endpoints or fixtures can be shared.
 - `load_shared_library` entries, `include` paths and fixture `cwd` resolve relative to the file that declares them. Libraries can also be given with `-l` or `GOBY_TOOL_LOAD_SHARED_LIBRARY` as for `publish` and `subscribe`.
 - In CMake, `find_package(GOBY)` sets `GOBY_EXECUTABLE` to the `goby` tool from the same build or installation as the libraries, e.g. `add_test(NAME nav COMMAND ${GOBY_EXECUTABLE} test run nav.yml)`.

@@ -352,6 +352,52 @@ void test_validator()
     }
 }
 
+// repeat and for_each expand into one plain run per pass, with ${ITERATION} and the entry's
+// names substituted everywhere in the run (here: name, publish value, match and a condition)
+void test_expand_runs()
+{
+    auto test = parse_test(R"(
+        run { name: "plain" }
+        run { name: "same" repeat: 2 publish { group: "g" type: "JSON" value: "{\"n\": ${ITERATION}}" } }
+        run {
+            name: "h ${H}"
+            repeat: 2
+            for_each { var { key: "H" value: "0" } var { key: "D" value: "N" } }
+            for_each { var { key: "H" value: "90" } var { key: "D" value: "E" } }
+            expect { group: "g" type: "JSON/.*" match: "{\"d\": \"${D}\", \"lit\": \"$${D}\"}"
+                     condition { field: "h" op: EQ value: "${H}" } }
+        }
+    )");
+    std::vector<protobuf::PubSubTestIssue> issues;
+    expand_runs(test, issues);
+    unescape_variables(test);
+    assert(issues.empty());
+    assert(test.run_size() == 1 + 2 + 4);
+    assert(test.run(0).name() == "plain");
+    assert(test.run(1).name() == "same [1/2]");
+    assert(test.run(2).name() == "same [2/2]");
+    assert(test.run(2).publish(0).value() == "{\"n\": 2}");
+    // for_each entries in order, each repeated
+    assert(test.run(3).name() == "h 0" && test.run(4).name() == "h 0");
+    assert(test.run(5).name() == "h 90");
+    assert(test.run(5).expect(0).match() == "{\"d\": \"E\", \"lit\": \"${D}\"}");
+    assert(test.run(5).expect(0).condition(0).value() == "90");
+    assert(test.run(5).repeat() == 1 && test.run(5).for_each_size() == 0);
+
+    // repeat: 0 is reported rather than silently dropping the run
+    auto zero = parse_test("run { name: \"z\" repeat: 0 }");
+    expand_runs(zero, issues);
+    assert(issues.size() == 1 && issues[0].location() == "test.run[0].repeat");
+
+    // unresolved names are found, except allowed ones and $${ escapes
+    std::vector<protobuf::PubSubTestIssue> unresolved;
+    auto run = parse_test("run { name: \"${A} ${B} $${C}\" }").run(0);
+    find_unresolved_variables(run, "test.run[0]", unresolved, {"A"});
+    assert(unresolved.size() == 1);
+    assert(unresolved[0].location() == "test.run[0].name");
+    assert(unresolved[0].message().find("'B'") != std::string::npos);
+}
+
 void test_json_render()
 {
     auto report = run(parse_test("name: \"r\" run { name: \"noop\" }"));
@@ -373,6 +419,7 @@ int main(int argc, char* argv[])
     test_require_app();
     test_wait();
     test_validator();
+    test_expand_runs();
     test_json_render();
 
     std::cout << "all tests passed" << std::endl;

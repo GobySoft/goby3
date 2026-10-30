@@ -59,6 +59,19 @@ inline std::string yaml_path(const std::string& parent, const std::string& key)
 inline void yaml_to_protobuf(const YAML::Node& node, google::protobuf::Message& msg,
                              const std::string& path);
 
+/// a map, or a repeated message with exactly 'key' and 'value' fields, can be written as a YAML map
+inline bool is_key_value_list(const google::protobuf::FieldDescriptor* field)
+{
+    if (field->is_map())
+        return true;
+    if (!field->is_repeated() ||
+        field->cpp_type() != google::protobuf::FieldDescriptor::CPPTYPE_MESSAGE)
+        return false;
+    const auto* type = field->message_type();
+    return type->field_count() == 2 && type->FindFieldByName("key") &&
+           type->FindFieldByName("value");
+}
+
 inline void yaml_scalar_to_field(const YAML::Node& node, google::protobuf::Message& msg,
                                  const google::protobuf::FieldDescriptor* field,
                                  const std::string& path)
@@ -135,6 +148,22 @@ inline void yaml_to_field(const YAML::Node& node, google::protobuf::Message& msg
     if (node.IsNull())
         return;
 
+    if (detail::is_key_value_list(field) && node.IsMap())
+    {
+        if (!node.IsMap())
+            throw goby::Exception(path + ": expected a map");
+        const auto* entry_desc = field->message_type();
+        for (const auto& kv : node)
+        {
+            const std::string key = kv.first.as<std::string>();
+            auto& entry = *refl->AddMessage(&msg, field);
+            yaml_scalar_to_field(kv.first, entry, entry_desc->FindFieldByName("key"),
+                                 path + "." + key);
+            yaml_to_field(kv.second, entry, entry_desc->FindFieldByName("value"), path + "." + key);
+        }
+        return;
+    }
+
     if (field->is_repeated())
     {
         // a scalar or map where a list is expected is treated as a one element list
@@ -183,6 +212,15 @@ inline void yaml_to_protobuf(const YAML::Node& node, google::protobuf::Message& 
                               ": expected a map for message " + msg.GetDescriptor()->full_name());
 
     const auto* desc = msg.GetDescriptor();
+
+    // a message that only wraps a map can be written as the map itself
+    if (desc->field_count() == 1 && is_key_value_list(desc->field(0)) &&
+        !(node[desc->field(0)->name()] || node[desc->field(0)->camelcase_name()]))
+    {
+        yaml_to_field(node, msg, desc->field(0), path);
+        return;
+    }
+
     for (const auto& kv : node)
     {
         const std::string key = kv.first.as<std::string>();

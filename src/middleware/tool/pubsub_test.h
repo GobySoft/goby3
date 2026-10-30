@@ -375,6 +375,175 @@ inline void parse_type_spec(const protobuf::PubSubTestExpect& expect, std::set<i
 }
 } // namespace detail
 
+namespace detail
+{
+inline void walk_strings(google::protobuf::Message& msg, const std::string& path,
+                         const std::function<void(std::string&, const std::string&)>& f)
+{
+    using google::protobuf::FieldDescriptor;
+    const auto* refl = msg.GetReflection();
+    std::vector<const FieldDescriptor*> fields;
+    refl->ListFields(msg, &fields);
+    for (const auto* field : fields)
+    {
+        const std::string fpath = path.empty() ? field->name() : path + "." + field->name();
+        if (field->cpp_type() == FieldDescriptor::CPPTYPE_STRING)
+        {
+            if (field->is_repeated())
+            {
+                for (int i = 0, n = refl->FieldSize(msg, field); i < n; ++i)
+                {
+                    std::string s = refl->GetRepeatedString(msg, field, i);
+                    f(s, fpath + "[" + std::to_string(i) + "]");
+                    refl->SetRepeatedString(&msg, field, i, s);
+                }
+            }
+            else
+            {
+                std::string s = refl->GetString(msg, field);
+                f(s, fpath);
+                refl->SetString(&msg, field, s);
+            }
+        }
+        else if (field->cpp_type() == FieldDescriptor::CPPTYPE_MESSAGE)
+        {
+            if (field->is_repeated())
+                for (int i = 0, n = refl->FieldSize(msg, field); i < n; ++i)
+                    walk_strings(*refl->MutableRepeatedMessage(&msg, field, i),
+                                 fpath + "[" + std::to_string(i) + "]", f);
+            else
+                walk_strings(*refl->MutableMessage(&msg, field), fpath, f);
+        }
+    }
+}
+
+/// Replaces ${NAME} for names in `vars`, leaving other names and "$${" escapes untouched
+inline std::string substitute(const std::string& s, const std::map<std::string, std::string>& vars)
+{
+    static const std::regex var("^\\$\\{([A-Za-z_][A-Za-z0-9_]*)\\}");
+    std::string out;
+    for (std::size_t i = 0; i < s.size();)
+    {
+        if (s.compare(i, 3, "$${") == 0)
+        {
+            out += "$${";
+            i += 3;
+            continue;
+        }
+        std::smatch m;
+        const std::string tail = s.substr(i, 256);
+        if (s[i] == '$' && std::regex_search(tail, m, var))
+        {
+            auto it = vars.find(m[1].str());
+            if (it != vars.end())
+            {
+                out += it->second;
+                i += m[0].length();
+                continue;
+            }
+        }
+        out += s[i++];
+    }
+    return out;
+}
+} // namespace detail
+
+/// \brief Replaces each run that has 'repeat' or 'for_each' with one plain run per pass.
+///
+/// Each pass sets ${ITERATION} (from 1) and the for_each entry's names. Passes of a run whose
+/// name doesn't vary are named "<name> [k/N]".
+inline void expand_runs(protobuf::PubSubTest& test, std::vector<protobuf::PubSubTestIssue>& issues)
+{
+    google::protobuf::RepeatedPtrField<protobuf::PubSubTestRun> out;
+    for (int i = 0, n = test.run_size(); i < n; ++i)
+    {
+        const auto& run = test.run(i);
+        if (run.repeat() == 0)
+        {
+            protobuf::PubSubTestIssue issue;
+            issue.set_location("test.run[" + std::to_string(i) + "].repeat");
+            issue.set_message("must be at least 1");
+            issues.push_back(issue);
+            continue;
+        }
+
+        std::vector<std::map<std::string, std::string>> entries;
+        for (const auto& p : run.for_each())
+        {
+            entries.emplace_back();
+            for (const auto& v : p.var()) entries.back()[v.key()] = v.value();
+        }
+        if (entries.empty())
+            entries.emplace_back();
+
+        const unsigned total = entries.size() * run.repeat();
+        const bool name_varies = run.name().find("${") != std::string::npos;
+        unsigned pass = 0;
+        for (const auto& entry : entries)
+        {
+            for (unsigned r = 0; r < run.repeat(); ++r)
+            {
+                ++pass;
+                auto& copy = *out.Add();
+                copy = run;
+                copy.clear_repeat();
+                copy.clear_for_each();
+                auto vars = entry;
+                vars["ITERATION"] = std::to_string(pass);
+                detail::walk_strings(copy, "", [&vars](std::string& s, const std::string&)
+                                     { s = detail::substitute(s, vars); });
+                if (total > 1 && !name_varies)
+                    copy.set_name((run.name().empty() ? "" : run.name() + " ") + "[" +
+                                  std::to_string(pass) + "/" + std::to_string(total) + "]");
+            }
+        }
+    }
+    test.mutable_run()->Swap(&out);
+}
+
+/// \brief Reports every ${NAME} in \p msg other than those in \p allowed (a "$${" escape is not
+/// a variable)
+inline void find_unresolved_variables(google::protobuf::Message& msg, const std::string& prefix,
+                                      std::vector<protobuf::PubSubTestIssue>& issues,
+                                      const std::set<std::string>& allowed = {})
+{
+    static const std::regex var("\\$\\{([A-Za-z_][A-Za-z0-9_]*)");
+    detail::walk_strings(
+        msg, prefix,
+        [&issues, &allowed](std::string& s, const std::string& path)
+        {
+            for (auto it = std::sregex_iterator(s.begin(), s.end(), var);
+                 it != std::sregex_iterator(); ++it)
+            {
+                if ((it->position() > 0 && s[it->position() - 1] == '$') ||
+                    allowed.count((*it)[1].str()))
+                    continue;
+                protobuf::PubSubTestIssue issue;
+                issue.set_location(path);
+                issue.set_message(
+                    "variable '" + (*it)[1].str() +
+                    "' is not set (use --define, the environment, a ${NAME:-default}, "
+                    "or a run's for_each)");
+                issues.push_back(issue);
+            }
+        });
+}
+
+/// \brief Turns each "$${" escape into a literal "${"
+inline void unescape_variables(google::protobuf::Message& msg)
+{
+    detail::walk_strings(msg, "",
+                         [](std::string& s, const std::string&)
+                         {
+                             std::string::size_type pos = 0;
+                             while ((pos = s.find("$${", pos)) != std::string::npos)
+                             {
+                                 s.erase(pos, 1);
+                                 pos += 2;
+                             }
+                         });
+}
+
 /// \brief Checks a PubSubTest without connecting to anything: structure, endpoint references,
 /// regexes, and (for types whose descriptors are loaded) publish values, match messages and
 /// condition field paths. Every problem is collected rather than stopping at the first.
@@ -766,7 +935,14 @@ class PubSubTestRunner
         std::stringstream ss;
         ss << std::fixed << std::setprecision(2);
         ss << "Test: " << report.name() << " ... " << result_name(report.result()) << " ("
-           << report.elapsed() << " s)\n";
+           << report.elapsed() << " s)";
+        if (report.pass_size() > 0)
+        {
+            int passed = 0;
+            for (const auto& p : report.pass()) passed += p.result() == protobuf::PASS;
+            ss << ", " << passed << " of " << report.pass_size() << " passes passed";
+        }
+        ss << "\n";
         if (report.has_error())
             ss << "  error: " << report.error() << "\n";
         for (const auto& issue : report.issue())
@@ -799,6 +975,19 @@ class PubSubTestRunner
 
         for (int i = 0; i < report.run_size(); ++i)
             render_run(ss, report.run(i), std::to_string(i + 1));
+
+        // details only for passes that didn't pass
+        for (const auto& p : report.pass())
+        {
+            ss << "  " << p.name() << " ... " << result_name(p.result()) << " (" << p.elapsed()
+               << " s)\n";
+            if (p.result() == protobuf::PASS)
+                continue;
+            std::stringstream detail(render_human(p));
+            std::string line;
+            std::getline(detail, line); // the pass's own heading, already written
+            while (std::getline(detail, line)) ss << "    " << line << "\n";
+        }
         return ss.str();
     }
 

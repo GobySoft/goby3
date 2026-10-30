@@ -21,10 +21,13 @@
 // You should have received a copy of the GNU General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
+#include <algorithm>
 #include <atomic>
 #include <csignal>
 #include <fstream>
 #include <iostream>
+
+#include <boost/units/systems/si.hpp>
 
 #include "goby/middleware/application/configuration_reader.h"
 #include "goby/middleware/application/interface.h"
@@ -123,6 +126,8 @@ prepare(const std::string& path, const google::protobuf::RepeatedPtrField<std::s
     auto loaded = load_test_file(path, values);
     loaded.issues.insert(loaded.issues.begin(), define_issues.begin(), define_issues.end());
     finalize_endpoints(loaded.file);
+    if (loaded.parsed)
+        expand_test_runs(loaded.file, values, loaded.issues);
     if (check && loaded.parsed)
     {
         load_test_libraries(loaded.file, loaded.issues);
@@ -261,7 +266,11 @@ void goby::apps::middleware::TestRunTool::run()
     auto loaded = prepare(cfg.test_file(), cfg.define(), true);
     report.set_name(loaded.file.test().has_name() ? loaded.file.test().name() : cfg.test_file());
 
-    if (!loaded.issues.empty())
+    if (cfg.repeat() < 1)
+    {
+        report.set_error("--repeat must be at least 1");
+    }
+    else if (!loaded.issues.empty())
     {
         report.set_error("the test file is invalid");
         for (const auto& issue : loaded.issues) *report.add_issue() = issue;
@@ -275,13 +284,35 @@ void goby::apps::middleware::TestRunTool::run()
             {
                 report.set_error(cancelled() ? "interrupted" : "a fixture did not become ready");
             }
-            else
+            else if (cfg.repeat() == 1)
             {
                 PubSubTestRunner runner(loaded.file.test(), make_endpoints(loaded.file, cfg));
                 runner.set_cancel_check(cancelled);
                 report = runner.run();
                 if (report.name().empty())
                     report.set_name(cfg.test_file());
+            }
+            else
+            {
+                report.set_result(goby::middleware::protobuf::PASS);
+                double elapsed = 0;
+                for (unsigned k = 1; k <= cfg.repeat() && !cancelled(); ++k)
+                {
+                    // fresh endpoints per pass so no subscription carries over
+                    PubSubTestRunner runner(loaded.file.test(), make_endpoints(loaded.file, cfg));
+                    runner.set_cancel_check(cancelled);
+                    auto& pass = *report.add_pass();
+                    pass = runner.run();
+                    pass.set_name("pass " + std::to_string(k) + "/" + std::to_string(cfg.repeat()));
+                    elapsed += pass.elapsed();
+                    report.set_result(std::max(report.result(), pass.result()));
+                }
+                if (cancelled())
+                {
+                    report.set_result(goby::middleware::protobuf::ERROR);
+                    report.set_error("interrupted");
+                }
+                report.set_elapsed_with_units(elapsed * boost::units::si::seconds);
             }
             fixtures.stop_all();
             fixtures.fill_reports(*report.mutable_fixture(),
