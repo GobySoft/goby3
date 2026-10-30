@@ -24,11 +24,14 @@
 #ifndef GOBY_ZENOH_TRANSPORT_INTERPROCESS_H
 #define GOBY_ZENOH_TRANSPORT_INTERPROCESS_H
 
+#include <atomic>
+#include <chrono>
 #include <deque>
 #include <memory>
 #include <mutex>
 #include <set>
 #include <string>
+#include <thread>
 #include <unordered_map>
 
 #include <zenoh.hxx>
@@ -115,6 +118,7 @@ class InterProcessPortalImplementation
             return;
         }
 
+        LocalDeliveryScope scope(local_delivery_thread_);
         ready_token_ =
             std::make_unique<::zenoh::LivelinessToken>(session_->liveliness_declare_token(
                 ::zenoh::KeyExpr(hold_root_ + "/" + detail::escape_chunk(cfg_.client_name()))));
@@ -168,12 +172,12 @@ class InterProcessPortalImplementation
             else
                 ready_clients_.erase(client);
         }
-        middleware::detail::notify_poller(*this->poll_mutex(), *this->cv());
+        _wake_poller();
     }
 
     // once released the hold is not reapplied: a client that later dies must not silently stop
     // the publications its peers are making
-    void _update_hold(std::unique_ptr<std::unique_lock<std::mutex>>& poll_lock)
+    void _update_hold()
     {
         std::set<std::string> ready;
         {
@@ -185,20 +189,15 @@ class InterProcessPortalImplementation
             if (!ready.count(client))
                 return;
 
+        // a client's token can reach this session ahead of its subscriber declarations, and a
+        // sample put in that gap is routed to no one
+        std::this_thread::sleep_for(std::chrono::duration<double>(cfg_.hold().settle_seconds()));
+
         goby::glog.is_debug1() && goby::glog << "Zenoh: hold released" << std::endl;
         hold_ = false;
 
-        // Zenoh delivers a sample to a subscriber in the publishing session on this thread, and
-        // that callback takes the poll mutex; the Poller requires it back before this poll returns
-        const bool relock = static_cast<bool>(poll_lock);
-        if (relock)
-            poll_lock->unlock();
-
         for (auto& queued : publish_queue_) _put(queued.first, queued.second);
         publish_queue_.clear();
-
-        if (relock)
-            poll_lock->lock();
     }
 
     void _do_publish(const std::string& identifier, const std::vector<char>& bytes)
@@ -225,6 +224,7 @@ class InterProcessPortalImplementation
                 : ::zenoh::CongestionControl::Z_CONGESTION_CONTROL_BLOCK;
         options.is_express = cfg_.express();
 
+        LocalDeliveryScope scope(local_delivery_thread_);
         session_->put(::zenoh::KeyExpr(key),
                       ::zenoh::Bytes(std::string(bytes.begin(), bytes.end())), std::move(options));
     }
@@ -294,13 +294,37 @@ class InterProcessPortalImplementation
             std::lock_guard<std::mutex> lock(rx_mutex_);
             rx_.push_back(std::move(identifier));
         }
+        _wake_poller();
+    }
+
+    // Zenoh runs a matching local subscriber's callback on the thread that put the sample or
+    // declared the token, before that call returns
+    class LocalDeliveryScope
+    {
+      public:
+        LocalDeliveryScope(std::atomic<std::thread::id>& thread) : thread_(thread)
+        {
+            thread_ = std::this_thread::get_id();
+        }
+        ~LocalDeliveryScope() { thread_ = std::thread::id(); }
+
+      private:
+        std::atomic<std::thread::id>& thread_;
+    };
+
+    void _wake_poller()
+    {
+        // a local delivery lands on the polling thread, which drains the queues before it waits
+        // and may already hold the poll mutex
+        if (std::this_thread::get_id() == local_delivery_thread_.load())
+            return;
         middleware::detail::notify_poller(*this->poll_mutex(), *this->cv());
     }
 
     int _poll(std::unique_ptr<std::unique_lock<std::mutex>>& lock)
     {
         if (hold_)
-            _update_hold(lock);
+            _update_hold();
 
         std::deque<std::string> received;
         {
@@ -332,6 +356,7 @@ class InterProcessPortalImplementation
     std::unique_ptr<::zenoh::LivelinessToken> ready_token_;
     std::unique_ptr<::zenoh::Subscriber<void>> liveliness_subscriber_;
     std::deque<std::pair<std::string, std::vector<char>>> publish_queue_;
+    std::atomic<std::thread::id> local_delivery_thread_{std::thread::id()};
 
     // written by Zenoh threads, drained by the main thread in _poll()
     std::mutex rx_mutex_;

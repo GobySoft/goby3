@@ -24,6 +24,7 @@
 #ifndef GOBY_MIDDLEWARE_TOOL_PUBLISH_SUBSCRIBE_TOOL_H
 #define GOBY_MIDDLEWARE_TOOL_PUBLISH_SUBSCRIBE_TOOL_H
 
+#include <chrono>
 #include <map>
 #include <memory>
 #include <regex>
@@ -247,23 +248,42 @@ class PublishToolApplication
 
   public:
     PublishToolApplication()
-        : Base(1.0 * boost::units::si::hertz),
-          middleware::ToolSharedLibraryLoader(this->app_cfg().load_shared_library())
+        : Base(10.0 * boost::units::si::hertz),
+          middleware::ToolSharedLibraryLoader(this->app_cfg().load_shared_library()),
+          publish_time_(std::chrono::steady_clock::now() +
+                        std::chrono::duration_cast<std::chrono::steady_clock::duration>(
+                            std::chrono::duration<double>(this->cfg().settle_seconds())))
     {
-        publish_tool_impl(this->interprocess(), this->cfg(),
-                          std::string("goby ") + Traits::name + " publish");
+        _publish_once_settled();
     }
     ~PublishToolApplication() override = default;
 
   private:
     void loop() override
     {
-        // quit on the second call, which gives the publish time to go through
-        if (++loop_count_ > 1)
+        if (!published_)
+            _publish_once_settled();
+        else if (std::chrono::steady_clock::now() >= quit_time_)
             this->quit(0);
     }
 
-    int loop_count_{0};
+    // a transport that routes only to the subscribers it has already discovered needs the settle
+    // time before the publish, and every transport needs a moment after it for the publish to go
+    // through
+    void _publish_once_settled()
+    {
+        if (std::chrono::steady_clock::now() < publish_time_)
+            return;
+
+        publish_tool_impl(this->interprocess(), this->cfg(),
+                          std::string("goby ") + Traits::name + " publish");
+        published_ = true;
+        quit_time_ = std::chrono::steady_clock::now() + std::chrono::seconds(1);
+    }
+
+    const std::chrono::steady_clock::time_point publish_time_;
+    std::chrono::steady_clock::time_point quit_time_;
+    bool published_{false};
 };
 
 /// \brief Application implementing "goby <impl> subscribe" for a given interprocess implementation.

@@ -38,16 +38,25 @@ namespace detail
 
 /// \brief Characters that cannot appear in a key expression chunk.
 ///
-/// Zenoh rejects '*', '?', '#' and '$' outright; '/' would silently introduce a new chunk. '%'
-/// joins them because it introduces an escape sequence here.
+/// Zenoh rejects '*', '?', '#' and '$' outright; '/' would silently introduce a new chunk. A chunk
+/// starting with '@' is verbatim, which '*' and '**' never match, so a wildcard subscription would
+/// miss it. '%' joins them because it introduces an escape sequence here.
 inline bool is_reserved(char c)
 {
-    return c == '*' || c == '?' || c == '#' || c == '$' || c == '/' || c == '%';
+    return c == '*' || c == '?' || c == '#' || c == '$' || c == '/' || c == '@' || c == '%';
 }
+
+/// \brief The chunk standing for an empty identifier component, which Zenoh would reject.
+///
+/// Every escape sequence carries two hex digits, so no non-empty component escapes to this.
+constexpr const char* empty_chunk = "%";
 
 /// \brief Percent-encode the characters a key expression chunk cannot carry.
 inline std::string escape_chunk(const std::string& chunk)
 {
+    if (chunk.empty())
+        return empty_chunk;
+
     static constexpr const char hex[] = "0123456789ABCDEF";
     std::string escaped;
     escaped.reserve(chunk.size());
@@ -70,6 +79,9 @@ inline std::string escape_chunk(const std::string& chunk)
 /// \brief Invert escape_chunk(). A trailing or malformed escape is passed through unchanged.
 inline std::string unescape_chunk(const std::string& chunk)
 {
+    if (chunk == empty_chunk)
+        return {};
+
     auto hex_value = [](char c) -> int
     {
         if (c >= '0' && c <= '9')
@@ -103,26 +115,36 @@ inline std::string unescape_chunk(const std::string& chunk)
 /// \brief Split a Goby interprocess identifier into its '/'-delimited components.
 ///
 /// Handles both the fully qualified form (group, scheme, type, process, thread) and the wildcard
-/// forms used to subscribe, which stop early. Anything from the end delimiter onward is ignored.
+/// forms used to subscribe, which stop early. The leading and trailing delimiters frame the
+/// components rather than separate them, so an empty component is kept. Anything from the end
+/// delimiter onward is ignored.
 inline std::vector<std::string> split_identifier(const std::string& identifier)
 {
     const char delimiter = middleware::InterProcessIdentifierManager::delimiter;
-    const auto end = identifier.find(middleware::InterProcessIdentifierManager::end_delimiter);
+    auto end = identifier.find(middleware::InterProcessIdentifierManager::end_delimiter);
+    if (end == std::string::npos)
+        end = identifier.size();
+
+    std::size_t start = 0;
+    if (start < end && identifier[start] == delimiter)
+        ++start;
+    const bool framed = end > start && identifier[end - 1] == delimiter;
+    if (framed)
+        --end;
 
     std::vector<std::string> components;
-    std::size_t start = 0;
-    while (start < end && start < identifier.size())
+    if (start == end && !framed)
+        return components;
+
+    while (true)
     {
-        if (identifier[start] == delimiter)
-        {
-            ++start;
-            continue;
-        }
         auto next = identifier.find(delimiter, start);
-        if (next > end)
+        if (next == std::string::npos || next > end)
             next = end;
         components.push_back(identifier.substr(start, next - start));
-        start = (next == std::string::npos) ? identifier.size() : next + 1;
+        if (next == end)
+            break;
+        start = next + 1;
     }
     return components;
 }

@@ -93,6 +93,13 @@ message InterProcessPortalConfig
             (goby.field).description =
                 "Do not publish until every client named here has declared itself ready"
         ];
+        optional double settle_seconds = 2 [
+            default = 1,
+            (goby.field).description =
+                "Seconds to wait after the last required client is ready before publishing, so "
+                "that its subscriptions have reached this session",
+            (goby.field).cfg = { action: ADVANCED }
+        ];
     }
     optional Hold hold = 40 [
         (goby.field).description =

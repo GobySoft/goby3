@@ -256,9 +256,6 @@ filter-template-master-only: &filter-template-master-only
     branches:
       only:
         - "3.0"
-        # exercises the Debian packaging for the Zenoh transport, which cannot be built from 3.0
-        # until it lands there; drop this line once it has
-        - "claude/zenoh-goby-middleware-ncjtfi"
 
 filter-template-non-master: &filter-template-non-master
   filters:

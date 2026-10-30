@@ -64,6 +64,8 @@ and a portal that subscribes to everything (as `goby_zenoh_tool subscribe` does)
 
 Zenoh rejects `*`, `?`, `#` and `$` in a chunk, and `/` would silently split one chunk into two. Goby group and type names may contain any of them, so each chunk is percent-encoded on the way out and decoded on the way back in; `%` is escaped as well, since it introduces the escape sequence. A group named `a/b` therefore appears in the key as `a%2Fb`.
 
+A chunk beginning with `@` is verbatim to Zenoh, which `*` and `**` never match, so `@` is escaped too: otherwise a wildcard subscription would miss a group named `@status` while an exact one received it. An empty component (an empty group, say) becomes the chunk `%`, since Zenoh forbids an empty chunk and no non-empty component escapes to a lone `%`.
+
 ## Hold
 
 Messages published before their subscriber exists are lost, since Zenoh has no broker to retain them. The `hold` configuration names the clients that must be up first:
@@ -84,6 +86,8 @@ While any of them is missing, `hold_state()` is true and publications are buffer
 ```
 
 Waiting processes subscribe to that space with `history` enabled, so a client that was ready before the waiter started is still seen. Because the token is held by the session, it disappears on its own if the process dies — nothing has to retract it.
+
+A client's token can reach the waiter ahead of that client's subscriber declarations, and a sample put in that gap is routed to no one. Once the last required client is ready the waiter therefore sleeps for `hold.settle_seconds` (1 by default) before flushing what it buffered, as the ZeroMQ portal does when `gobyd` releases its hold.
 
 Once released the hold is not reapplied: a client that later dies must not silently stop the publications its peers are making.
 
@@ -119,9 +123,11 @@ goby zenoh subscribe NavigationReport
 goby zenoh publish NavigationReport goby.middleware.frontseat.protobuf.NodeStatus 'name: "auv1"'
 ```
 
+Zenoh routes a publication only to the subscribers its session has already discovered, so `goby zenoh publish` waits `--settle_seconds` (1 by default) after opening its session before publishing, and quits a second after that.
+
 ## Implementation Details
 
-The portal owns one `zenoh::Session`. Zenoh runs its own threads and delivers samples through subscriber callbacks, so received messages are queued and drained by the main thread on the next `poll()`; the callback wakes a blocked `poll()` through the shared poller condition variable.
+The portal owns one `zenoh::Session`. Zenoh runs its own threads and delivers samples through subscriber callbacks, so received messages are queued and drained by the main thread on the next `poll()`; the callback wakes a blocked `poll()` through the shared poller condition variable. A sample that matches a subscriber in the publishing session is delivered on the publishing thread before `put()` returns; that callback queues the sample but does not take the poll mutex, which the publishing thread may already hold.
 
 ### Class Hierarchy
 
@@ -142,5 +148,5 @@ InterProcessPortalImplementation<InnerTransporter, PortalBase, ImplementationTag
 | `_do_publish(identifier, bytes)` | Buffers while holding, otherwise puts the sample |
 | `_do_portal_subscribe(identifier)` | Declares a subscriber, unless a wildcard subscriber already covers the key |
 | `_on_sample(sample)` | Rebuilds the Goby identifier from the key and queues the message (Zenoh thread) |
-| `_update_hold(lock)` | Releases the hold and flushes the buffered publications once every required client is ready |
+| `_update_hold()` | Releases the hold and flushes the buffered publications once every required client is ready and the settle time has passed |
 | `_poll(lock)` | Delivers the queued messages to subscribers |

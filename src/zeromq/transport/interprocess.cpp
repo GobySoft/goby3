@@ -377,6 +377,9 @@ void goby::zeromq::InterProcessPortalReadThread::send_manager_request(
 
 void goby::zeromq::InterProcessPortalReadThread::poll(long timeout_ms)
 {
+    if (poller_wakeup_pending_ && (timeout_ms < 0 || timeout_ms > poller_wakeup_retry_ms_))
+        timeout_ms = poller_wakeup_retry_ms_;
+
 #ifdef USE_OLD_CPPZMQ_POLL
     zmq::poll(&poll_items_[0], poll_items_.size(), timeout_ms);
 #else
@@ -405,6 +408,9 @@ void goby::zeromq::InterProcessPortalReadThread::poll(long timeout_ms)
             }
         }
     }
+
+    if (poller_wakeup_pending_)
+        wake_poller();
 }
 
 void goby::zeromq::InterProcessPortalReadThread::control_data(const zmq::message_t& zmq_msg)
@@ -519,7 +525,21 @@ void goby::zeromq::InterProcessPortalReadThread::send_control_msg(
     if (zmq_control_msg.data())
         GOBY_TSAN_RELEASE(zmq_control_msg.data());
     control_socket_.send(zmq_control_msg, zmq_send_flags_none);
-    middleware::detail::notify_poller(*poller_mutex_, *poller_cv_);
+    poller_wakeup_pending_ = true;
+    wake_poller();
+}
+
+// The main thread blocks on this thread's reply to its subscribe requests, possibly while holding
+// the poll mutex, so blocking on that mutex here (as notify_poller() does) could deadlock. Taking
+// it without blocking still rules out the window in which a signal would be lost; while the mutex
+// is held, poll() retries shortly.
+void goby::zeromq::InterProcessPortalReadThread::wake_poller()
+{
+    if (!poller_mutex_->try_lock())
+        return;
+    poller_mutex_->unlock();
+    poller_wakeup_pending_ = false;
+    poller_cv_->notify_all();
 }
 
 //

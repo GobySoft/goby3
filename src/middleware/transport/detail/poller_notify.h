@@ -39,6 +39,10 @@ namespace detail
 /// cv.wait() atomically releases it. Notifying without first taking poll_mutex can therefore signal
 /// into that window, where there is no waiter yet and the wakeup is lost; with no timeout on the
 /// wait, the data then sits unread until some other event notifies.
+///
+/// This blocks until poll_mutex is free, so the caller must not be a thread that the polling
+/// thread can wait on while holding poll_mutex (the polling thread itself included), or the two
+/// deadlock.
 inline void notify_poller(std::mutex& poll_mutex, std::condition_variable& cv)
 {
     {

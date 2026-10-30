@@ -51,6 +51,12 @@ void test_chunk_round_trip(const std::string& chunk)
     assert(escaped.find('$') == std::string::npos);
     assert(escaped.find('/') == std::string::npos);
 
+    // a chunk starting with '@' is verbatim to Zenoh, so no wildcard subscription would match it
+    assert(escaped.find('@') == std::string::npos);
+
+    // Zenoh forbids an empty chunk
+    assert(!escaped.empty());
+
     assert(unescape_chunk(escaped) == chunk);
 }
 
@@ -86,9 +92,15 @@ int main()
     assert(unescape_chunk(escape_chunk("%2F")) == "%2F");
 
     // a malformed escape is left alone rather than dropping characters
-    assert(unescape_chunk("%") == "%");
+    assert(unescape_chunk("a%") == "a%");
     assert(unescape_chunk("%2") == "%2");
     assert(unescape_chunk("%ZZ") == "%ZZ");
+
+    // an empty component becomes a chunk of its own, since Zenoh rejects an empty one, and a lone
+    // '%' cannot be the escape of anything else
+    assert(escape_chunk("") == "%");
+    assert(unescape_chunk("%").empty());
+    assert(escape_chunk("@admin") == "%40admin");
 
     const char d = goby::middleware::InterProcessIdentifierManager::delimiter;
     const std::string dt(1, d);
@@ -114,6 +126,29 @@ int main()
     {
         const std::string subscribe_id = dt + "g" + dt + "PROTOBUF" + dt + "T" + dt;
         assert(identifier_to_key(root, subscribe_id, true) == root + "/g/PROTOBUF/T/**");
+    }
+
+    // an empty group, type or thread still occupies its chunk, so the components that follow it
+    // are not shifted into its place on the way back
+    {
+        const std::string empty_group =
+            dt + dt + "PROTOBUF" + dt + "T" + dt + "123" + dt + "abc" + dt;
+        assert(identifier_to_key(root, empty_group, false) == root + "/%/PROTOBUF/T/123/abc");
+        test_identifier_round_trip(empty_group);
+
+        const std::string empty_type = dt + "g" + dt + "PROTOBUF" + dt + dt + "1" + dt + "a" + dt;
+        assert(identifier_to_key(root, empty_type, false) == root + "/g/PROTOBUF/%/1/a");
+        test_identifier_round_trip(empty_type);
+
+        const std::string empty_thread = dt + "g" + dt + "PROTOBUF" + dt + "T" + dt + "1" + dt + dt;
+        assert(identifier_to_key(root, empty_thread, false) == root + "/g/PROTOBUF/T/1/%");
+        test_identifier_round_trip(empty_thread);
+    }
+
+    // a group starting with '@' must not become a verbatim chunk, which "**" never matches
+    {
+        const std::string subscribe_id = dt + "@status" + dt + "PROTOBUF" + dt + "T" + dt;
+        assert(identifier_to_key(root, subscribe_id, true) == root + "/%40status/PROTOBUF/T/**");
     }
 
     // a key outside the root belongs to another platform or layer and must be rejected

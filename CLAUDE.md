@@ -21,6 +21,7 @@ Guidance for Claude when working in this repository.
 
 - Do not add dependencies to the minimal build: the apt package list of the `amd64-resolute-minimal-build` job in `.circleci/config.yml` is the floor, and everything must compile with only those packages.
 - A new third-party library is an optional feature: find it quietly, gate it behind an `enable_*` CMake option that defaults to ON only when it is found, define a `HAS_*` macro, and keep the code compiling and the tools usable without it.
+- A transport that forms its own library (`goby_zeromq`, `goby_moos`, `goby_zenoh`) is gated by a `build_*` option instead, as its siblings are, and needs no `HAS_*` macro: code that depends on it lives in that library.
 
 ## Branches
 

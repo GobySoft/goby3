@@ -179,6 +179,7 @@ class InterProcessPortalReadThread
     void manager_data(const zmq::message_t& zmq_msg);
     void send_control_msg(const protobuf::InprocControl& control);
     void send_manager_request(const protobuf::ManagerRequest& req);
+    void wake_poller();
 
   private:
     const protobuf::InterProcessPortalConfig& cfg_;
@@ -188,6 +189,8 @@ class InterProcessPortalReadThread
     std::atomic<bool>& alive_;
     std::shared_ptr<std::mutex> poller_mutex_;
     std::shared_ptr<std::condition_variable> poller_cv_;
+    bool poller_wakeup_pending_{false};
+    static constexpr long poller_wakeup_retry_ms_{1};
     std::vector<zmq::pollitem_t> poll_items_;
     enum
     {
