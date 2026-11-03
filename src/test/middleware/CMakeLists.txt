@@ -1,6 +1,8 @@
 add_subdirectory(middleware_interthread)
 add_subdirectory(middleware_intervehicle_metadata)
 
+add_subdirectory(dccl_load_library)
+
 add_subdirectory(log)
 
 if(enable_hdf5)

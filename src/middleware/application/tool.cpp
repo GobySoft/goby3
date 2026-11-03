@@ -33,6 +33,8 @@
 
 #include <dccl/dynamic_protobuf_manager.h>
 
+#include "goby/middleware/marshalling/detail/dccl_serializer_parser.h"
+
 #include "tool.h"
 
 bool goby::middleware::ToolHelper::help(int* action_for_help)
@@ -182,23 +184,12 @@ void goby::middleware::ToolHelper::exec_external(std::string app, std::vector<st
 
 void goby::middleware::ToolSharedLibraryLoader::load_lib(const std::string& lib)
 {
-    std::vector<std::string> libs;
-    // allow the environmental variable entry to contain multiple libraries separated by a common delimiter
-    boost::split(libs, lib, boost::is_any_of(";:,"));
-    for (const auto& l : libs)
+    try
     {
-        glog.is_debug2() && glog << "Loading library: " << l << std::endl;
-        // RTLD_NODELETE: keep the library mapped for the life of the process (even if
-        // dlclose() is called) as the protobuf descriptor pools may reference memory
-        // (e.g. custom options extensions) owned by this library at static destruction
-        void* lib_handle = dlopen(l.c_str(), RTLD_LAZY | RTLD_NODELETE);
-        if (!lib_handle)
-            glog.is_die() && glog << "Failed to open library: " << lib << std::endl;
-        dl_handles_.push_back(lib_handle);
+        detail::DCCLSerializerParserHelperBase::load_library(lib);
     }
-}
-
-goby::middleware::ToolSharedLibraryLoader::~ToolSharedLibraryLoader()
-{
-    for (void* handle : dl_handles_) dlclose(handle);
+    catch (const std::exception& e)
+    {
+        glog.is_die() && glog << e.what() << std::endl;
+    }
 }
