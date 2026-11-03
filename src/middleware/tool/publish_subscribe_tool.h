@@ -24,6 +24,7 @@
 #ifndef GOBY_MIDDLEWARE_TOOL_PUBLISH_SUBSCRIBE_TOOL_H
 #define GOBY_MIDDLEWARE_TOOL_PUBLISH_SUBSCRIBE_TOOL_H
 
+#include <chrono>
 #include <map>
 #include <memory>
 #include <regex>
@@ -46,6 +47,11 @@
 #include "goby/time/convert.h"
 #include "goby/util/debug_logger.h"
 #include "goby/util/debug_logger/flex_ostream.h"
+
+// after the marshalling headers: the transporters they pull in resolve scheme<Data>() at
+// template definition, so each scheme must already be declared
+#include "goby/middleware/application/single_thread.h"
+#include "goby/middleware/application/tool.h"
 
 namespace goby
 {
@@ -226,6 +232,84 @@ void subscribe_tool_impl(InterprocessType& interprocess, const SubscribeConfig& 
         },
         schemes, cfg.type_regex(), cfg.group_regex());
 }
+
+/// \brief Application implementing "goby <impl> publish" for a given interprocess implementation.
+///
+/// \tparam ImplementationTag Tag selecting the interprocess implementation
+///         (e.g. udpm::detail::InterProcessTag)
+/// \tparam PublishConfig Config type accepted by publish_tool_impl()
+template <typename ImplementationTag, typename PublishConfig>
+class PublishToolApplication
+    : public middleware::SingleThreadApplicationFor<PublishConfig, ImplementationTag>,
+      public middleware::ToolSharedLibraryLoader
+{
+    using Base = middleware::SingleThreadApplicationFor<PublishConfig, ImplementationTag>;
+    using Traits = middleware::detail::implementation_traits<ImplementationTag>;
+
+  public:
+    PublishToolApplication()
+        : Base(10.0 * boost::units::si::hertz),
+          middleware::ToolSharedLibraryLoader(this->app_cfg().load_shared_library()),
+          publish_time_(std::chrono::steady_clock::now() +
+                        std::chrono::duration_cast<std::chrono::steady_clock::duration>(
+                            std::chrono::duration<double>(this->cfg().settle_seconds())))
+    {
+        _publish_once_settled();
+    }
+    ~PublishToolApplication() override = default;
+
+  private:
+    void loop() override
+    {
+        if (!published_)
+            _publish_once_settled();
+        else if (std::chrono::steady_clock::now() >= quit_time_)
+            this->quit(0);
+    }
+
+    // a transport that routes only to the subscribers it has already discovered needs the settle
+    // time before the publish, and every transport needs a moment after it for the publish to go
+    // through
+    void _publish_once_settled()
+    {
+        if (std::chrono::steady_clock::now() < publish_time_)
+            return;
+
+        publish_tool_impl(this->interprocess(), this->cfg(),
+                          std::string("goby ") + Traits::name + " publish");
+        published_ = true;
+        quit_time_ = std::chrono::steady_clock::now() + std::chrono::seconds(1);
+    }
+
+    const std::chrono::steady_clock::time_point publish_time_;
+    std::chrono::steady_clock::time_point quit_time_;
+    bool published_{false};
+};
+
+/// \brief Application implementing "goby <impl> subscribe" for a given interprocess implementation.
+///
+/// \tparam ImplementationTag Tag selecting the interprocess implementation
+///         (e.g. udpm::detail::InterProcessTag)
+/// \tparam SubscribeConfig Config type accepted by subscribe_tool_impl()
+template <typename ImplementationTag, typename SubscribeConfig>
+class SubscribeToolApplication
+    : public middleware::SingleThreadApplicationFor<SubscribeConfig, ImplementationTag>,
+      public middleware::ToolSharedLibraryLoader
+{
+    using Traits = middleware::detail::implementation_traits<ImplementationTag>;
+
+  public:
+    SubscribeToolApplication()
+        : middleware::ToolSharedLibraryLoader(this->app_cfg().load_shared_library())
+    {
+        subscribe_tool_impl(this->interprocess(), this->cfg(), plugins_,
+                            std::string("goby::") + Traits::name + "::_internal.*");
+    }
+    ~SubscribeToolApplication() override = default;
+
+  private:
+    std::map<int, std::unique_ptr<goby::middleware::log::LogPlugin>> plugins_;
+};
 
 } // namespace tool
 } // namespace middleware
