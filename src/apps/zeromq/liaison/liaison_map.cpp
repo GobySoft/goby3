@@ -128,7 +128,11 @@ std::string format_number(const char* format, double value)
         return "-";
     char buffer[32];
     std::snprintf(buffer, sizeof(buffer), format, value);
-    return buffer;
+    std::string formatted(buffer);
+    // a surface vehicle's depth is often a tiny negative number, which would print as "-0.0"
+    if (formatted.front() == '-' && formatted.find_first_of("123456789") == std::string::npos)
+        formatted.erase(0, 1);
+    return formatted;
 }
 
 std::string format_heading(double heading)
