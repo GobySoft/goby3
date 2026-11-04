@@ -126,6 +126,28 @@ const std::string EXTERNAL_DATA_LOAD_TEXT = "load";
 const std::string STRIPE_ODD_CLASS = "odd";
 const std::string STRIPE_EVEN_CLASS = "even";
 
+#if DCCL_VERSION_MAJOR >= 4
+namespace
+{
+bool has_dynamic_conditions(const google::protobuf::Descriptor* desc,
+                            std::set<const google::protobuf::Descriptor*>& visited)
+{
+    if (!visited.insert(desc).second)
+        return false;
+    for (int i = 0, n = desc->field_count(); i < n; ++i)
+    {
+        const auto* field_desc = desc->field(i);
+        if (field_desc->options().GetExtension(dccl::field).has_dynamic_conditions())
+            return true;
+        if (field_desc->cpp_type() == google::protobuf::FieldDescriptor::CPPTYPE_MESSAGE &&
+            has_dynamic_conditions(field_desc->message_type(), visited))
+            return true;
+    }
+    return false;
+}
+} // namespace
+#endif
+
 goby::apps::zeromq::protobuf::ProtobufCommanderConfig::LoadProtobuf::GroupLayer
 to_group_layer(const std::string& group, const std::string& layer)
 {
@@ -1050,6 +1072,11 @@ goby::apps::zeromq::LiaisonCommander::ControlsContainer::CommandContainer::Comma
     load_groups(message_->GetDescriptor());
     load_external_data(message_->GetDescriptor());
 
+#if DCCL_VERSION_MAJOR >= 4
+    std::set<const google::protobuf::Descriptor*> visited;
+    has_dynamic_conditions_ = has_dynamic_conditions(message_->GetDescriptor(), visited);
+#endif
+
     generate_root();
 
 #if DCCL_VERSION_MAJOR >= 4
@@ -1239,6 +1266,8 @@ void goby::apps::zeromq::LiaisonCommander::ControlsContainer::CommandContainer::
 
     const google::protobuf::Descriptor* desc = message_->GetDescriptor();
 
+    form_widgets_.clear();
+
     // Create and set the root node
     auto root = std::make_unique<WTreeTableNode>(desc->name());
     //    root->setImagePack("resources/");
@@ -1255,7 +1284,102 @@ void goby::apps::zeromq::LiaisonCommander::ControlsContainer::CommandContainer::
     skip_dynamic_conditions_update_ = true;
     generate_tree(message_tree_table_->treeRoot(), message_.get());
     skip_dynamic_conditions_update_ = false;
+
+#if DCCL_VERSION_MAJOR >= 4
+    if (has_dynamic_conditions_)
+        dynamic_state_ = dynamic_state();
+#endif
 }
+
+void goby::apps::zeromq::LiaisonCommander::ControlsContainer::CommandContainer::check_dynamics(
+    const google::protobuf::Message* message, const google::protobuf::FieldDescriptor* field_desc,
+    int index)
+{
+#if DCCL_VERSION_MAJOR >= 4
+    // skipped while the form is being generated, as its widgets emit changes
+    if (!has_dynamic_conditions_ || skip_dynamic_conditions_update_)
+        return;
+
+    // regenerating destroys every widget, including the one the user is moving to, so only do
+    // it when a condition's result changed. Generating clears fields whose omit_if now holds,
+    // which can change other conditions in turn.
+    bool regenerated = false;
+    for (int pass = 0; pass < 3 && dynamic_state() != dynamic_state_; ++pass)
+    {
+        generate_root();
+        regenerated = true;
+    }
+
+    if (regenerated && field_desc)
+    {
+        auto it = form_widgets_.find(FieldKey(message, field_desc, index));
+        if (it != form_widgets_.end())
+            it->second->setFocus();
+    }
+#endif
+}
+
+#if DCCL_VERSION_MAJOR >= 4
+std::string
+goby::apps::zeromq::LiaisonCommander::ControlsContainer::CommandContainer::dynamic_state()
+{
+    std::string state;
+    dynamic_state(message_.get(), -1, state);
+    return state;
+}
+
+void goby::apps::zeromq::LiaisonCommander::ControlsContainer::CommandContainer::dynamic_state(
+    const google::protobuf::Message* message, int message_index, std::string& state)
+{
+    const google::protobuf::Descriptor* desc = message->GetDescriptor();
+    const google::protobuf::Reflection* refl = message->GetReflection();
+
+    for (int i = 0, n = desc->field_count(); i < n; ++i)
+    {
+        const google::protobuf::FieldDescriptor* field_desc = desc->field(i);
+        const bool is_message =
+            field_desc->cpp_type() == google::protobuf::FieldDescriptor::CPPTYPE_MESSAGE;
+
+        if (field_desc->options().GetExtension(dccl::field).has_dynamic_conditions())
+        {
+            // repeated values are evaluated per element, as their min and max can differ
+            const bool per_element = field_desc->is_repeated() && !is_message;
+            const int evaluations =
+                per_element ? std::max(1, refl->FieldSize(*message, field_desc)) : 1;
+            for (int j = 0; j < evaluations; ++j)
+            {
+                dccl_dycon_.regenerate(message, message_.get(), per_element ? j : message_index);
+                dccl_dycon_.set_field(field_desc);
+                state += std::to_string(field_desc->number()) + ":";
+                if (dccl_dycon_.has_omit_if())
+                    state += dccl_dycon_.omit() ? "o" : "-";
+                if (dccl_dycon_.has_required_if())
+                    state += dccl_dycon_.required() ? "r" : "-";
+                if (dccl_dycon_.has_min())
+                    state += "<" + std::to_string(dccl_dycon_.min());
+                if (dccl_dycon_.has_max())
+                    state += ">" + std::to_string(dccl_dycon_.max());
+                state += ";";
+            }
+        }
+
+        if (is_message)
+        {
+            state += "{";
+            if (field_desc->is_repeated())
+            {
+                for (int j = 0, size = refl->FieldSize(*message, field_desc); j < size; ++j)
+                    dynamic_state(&refl->GetRepeatedMessage(*message, field_desc, j), j, state);
+            }
+            else if (refl->HasField(*message, field_desc))
+            {
+                dynamic_state(&refl->GetMessage(*message, field_desc), -1, state);
+            }
+            state += "}";
+        }
+    }
+}
+#endif
 
 void goby::apps::zeromq::LiaisonCommander::ControlsContainer::CommandContainer::generate_tree(
     WTreeTableNode* parent, google::protobuf::Message* message, const std::string& parent_hierarchy,
@@ -1269,7 +1393,7 @@ void goby::apps::zeromq::LiaisonCommander::ControlsContainer::CommandContainer::
     const google::protobuf::Descriptor* desc = message->GetDescriptor();
 
     for (int i = 0, n = desc->field_count(); i < n; ++i)
-        generate_tree_row(parent, message, desc->field(i), parent_hierarchy);
+        generate_tree_row(parent, message, desc->field(i), parent_hierarchy, index);
 
     std::vector<const google::protobuf::FieldDescriptor*> extensions;
 #ifdef DCCL_VERSION_4_1_OR_NEWER
@@ -1280,16 +1404,32 @@ void goby::apps::zeromq::LiaisonCommander::ControlsContainer::CommandContainer::
 #endif
     google::protobuf::DescriptorPool::generated_pool()->FindAllExtensions(desc, &extensions);
     for (auto& extension : extensions)
-        generate_tree_row(parent, message, extension, parent_hierarchy);
+        generate_tree_row(parent, message, extension, parent_hierarchy, index);
 
     check_initialized();
 }
 
 void goby::apps::zeromq::LiaisonCommander::ControlsContainer::CommandContainer::generate_tree_row(
     WTreeTableNode* parent, google::protobuf::Message* message,
-    const google::protobuf::FieldDescriptor* field_desc, const std::string& parent_hierarchy)
+    const google::protobuf::FieldDescriptor* field_desc, const std::string& parent_hierarchy,
+    int message_index)
 {
     const google::protobuf::Reflection* refl = message->GetReflection();
+
+#if DCCL_VERSION_MAJOR >= 4
+    if (has_dynamic_conditions_)
+    {
+        // a sibling's subtree may have been generated since, so evaluate against this message
+        dccl_dycon_.regenerate(message, message_.get(), message_index);
+        dccl_dycon_.set_field(field_desc);
+        if (dccl_dycon_.has_omit_if() && dccl_dycon_.omit())
+        {
+            refl->ClearField(message, field_desc);
+            required_by_condition_.erase({message, field_desc});
+            return;
+        }
+    }
+#endif
 
     int index = parent->childNodes().size();
 
@@ -1341,17 +1481,20 @@ void goby::apps::zeromq::LiaisonCommander::ControlsContainer::CommandContainer::
             bool is_required = field_desc->is_required();
 
 #if DCCL_VERSION_MAJOR >= 4
-            dccl_dycon_.set_field(field_desc);
-            if (field_desc->options().GetExtension(dccl::field).has_dynamic_conditions())
-                has_dynamic_conditions_ = true;
-
-            if (dccl_dycon_.has_required_if() && dccl_dycon_.required())
-                is_required = true;
-#endif
-
-#if DCCL_VERSION_MAJOR >= 4
-            if (dccl_dycon_.has_omit_if() && dccl_dycon_.omit())
-                return;
+            if (has_dynamic_conditions_ && dccl_dycon_.has_required_if())
+            {
+                if (dccl_dycon_.required())
+                {
+                    required_by_condition_.insert({message, field_desc});
+                    is_required = true;
+                }
+                // it was only in the message because its condition required it, and a
+                // partly filled message left behind would stop the command being sent
+                else if (required_by_condition_.erase({message, field_desc}))
+                {
+                    refl->ClearField(message, field_desc);
+                }
+            }
 #endif
 
             if (is_required)
@@ -1419,6 +1562,7 @@ void goby::apps::zeromq::LiaisonCommander::ControlsContainer::CommandContainer::
 
     if (modify_field)
     {
+        form_widgets_[FieldKey(message, field_desc, modify_widget_index)] = modify_field.get();
         dccl_default_modify_field(modify_field, field_desc);
 
         generate_field_info_box(modify_field, field_desc);
@@ -1776,7 +1920,7 @@ void goby::apps::zeromq::LiaisonCommander::ControlsContainer::CommandContainer::
     }
     update_oneofs(message, field_desc, field);
     check_initialized();
-    check_dynamics();
+    check_dynamics(message, field_desc, index);
 }
 
 void goby::apps::zeromq::LiaisonCommander::ControlsContainer::CommandContainer::
@@ -1815,7 +1959,7 @@ void goby::apps::zeromq::LiaisonCommander::ControlsContainer::CommandContainer::
 
     update_oneofs(message, field_desc, field);
     check_initialized();
-    check_dynamics();
+    check_dynamics(message, field_desc, index);
 }
 
 std::unique_ptr<WLineEdit> goby::apps::zeromq::LiaisonCommander::ControlsContainer::
@@ -1827,6 +1971,7 @@ std::unique_ptr<WLineEdit> goby::apps::zeromq::LiaisonCommander::ControlsContain
     const google::protobuf::Reflection* refl = message->GetReflection();
 
     auto line_edit = std::make_unique<WLineEdit>();
+    form_widgets_[FieldKey(message, field_desc, index)] = line_edit.get();
 
     if (field_desc->has_default_value() || field_desc->is_repeated())
         line_edit->setPlaceholderText(default_value);
@@ -1866,6 +2011,7 @@ goby::apps::zeromq::LiaisonCommander::ControlsContainer::CommandContainer::gener
     const google::protobuf::Reflection* refl = message->GetReflection();
 
     auto combo_box = std::make_unique<WComboBox>();
+    form_widgets_[FieldKey(message, field_desc, index)] = combo_box.get();
     auto model = std::make_shared<WStringListModel>(strings);
 
     if (field_desc->has_default_value())
@@ -2007,14 +2153,6 @@ void goby::apps::zeromq::LiaisonCommander::ControlsContainer::CommandContainer::
 
 #if DCCL_VERSION_MAJOR >= 4
     dccl_dycon_.set_field(field_desc);
-    if (field_desc->options().GetExtension(dccl::field).has_dynamic_conditions())
-        has_dynamic_conditions_ = true;
-
-    if (dccl_dycon_.has_omit_if())
-    {
-        value_field->setHidden(dccl_dycon_.omit());
-    }
-
 #endif
 
     if (options.has_min() && options.has_max())
@@ -2177,7 +2315,7 @@ void goby::apps::zeromq::LiaisonCommander::ControlsContainer::CommandContainer::
     }
 
     check_initialized();
-    check_dynamics();
+    check_dynamics(message, field_desc, modify_widget_index);
 }
 
 void goby::apps::zeromq::LiaisonCommander::ControlsContainer::CommandContainer::
@@ -2210,7 +2348,7 @@ void goby::apps::zeromq::LiaisonCommander::ControlsContainer::CommandContainer::
     }
 
     check_initialized();
-    check_dynamics();
+    check_dynamics(message, field_desc, modify_widget_index);
 }
 
 void goby::apps::zeromq::LiaisonCommander::ControlsContainer::CommandContainer::
