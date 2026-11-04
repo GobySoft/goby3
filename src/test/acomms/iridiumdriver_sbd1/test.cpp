@@ -36,12 +36,16 @@
 //    is re-checked after a delay rather than polled continuously.
 //  - If clearing (+SBDD2) or writing (+SBDWB) the MO buffer fails, the session is
 //    abandoned without a +SBDIX.
+//  - When a session reports further MT messages queued at the gateway, they are
+//    retrieved straight away with mailbox checks.
+//  - Sessions started by the MAC are delayed by a random amount (sbd_session_jitter).
 //
 // The back-off values are shortened from the defaults so that the test runs quickly.
 
 #include <atomic>
 #include <cassert>
 #include <chrono>
+#include <deque>
 #include <iostream>
 #include <mutex>
 #include <string>
@@ -70,9 +74,12 @@ class MockISU
         thread_ = std::thread([this]() { run(); });
     }
 
-    // the reader thread exits once the driver closes the connection, so the
-    // socket is never closed from this thread while it is being read
+    // the reader thread exits once the driver closes the connection after stop_after_disconnect(),
+    // so the socket is never closed from this thread while it is being read
     ~MockISU() { thread_.join(); }
+
+    // otherwise the mock accepts a new connection (driver restart) after a disconnect
+    void stop_after_disconnect() { stop_ = true; }
 
     int port() const { return acceptor_.local_endpoint().port(); }
 
@@ -93,21 +100,33 @@ class MockISU
     std::atomic<int> sbdd2_result{0};
     std::atomic<int> sbdwb_result{0};
 
-    // delivered (MT status 1) on the next successful +SBDIX
-    void set_mt_message(const std::string& sbd_packet)
+    // delivered (MT status 1), one per successful +SBDIX, in order
+    void add_mt_message(const std::string& sbd_packet)
     {
         std::lock_guard<std::mutex> l(mt_mutex_);
-        mt_message_ = sbd_packet;
+        mt_messages_.push_back(sbd_packet);
     }
 
   private:
     void run()
     {
-        boost::system::error_code ec;
-        acceptor_.accept(socket_, ec);
-        if (ec)
-            return;
+        do {
+            boost::asio::ip::tcp::socket socket(io_);
+            boost::system::error_code ec;
+            acceptor_.accept(socket, ec);
+            if (ec)
+                return;
+            {
+                std::lock_guard<std::mutex> l(write_mutex_);
+                socket_ = std::move(socket);
+            }
+            serve();
+        } while (!stop_);
+    }
 
+    void serve()
+    {
+        boost::system::error_code ec;
         std::string buffer;
         std::size_t binary_remaining = 0;
         char data[256];
@@ -179,9 +198,12 @@ class MockISU
         else if (cmd == "+SBDIX" || cmd == "+SBDIXA")
         {
             std::lock_guard<std::mutex> l(mt_mutex_);
-            const bool mt = !mt_message_.empty() && sbdix_mo_status <= 4;
+            const bool mt = !mt_messages_.empty() && sbdix_mo_status <= 4;
+            const auto mt_length = mt ? mt_messages_.front().size() : 0;
+            const auto mt_queued = mt ? mt_messages_.size() - 1 : 0;
             write(cmd + ": " + std::to_string(sbdix_mo_status) + ", 1, " + (mt ? "1" : "0") +
-                  ", 0, " + std::to_string(mt_message_.size()) + ", 0\r\nOK\r\n");
+                  ", 0, " + std::to_string(mt_length) + ", " + std::to_string(mt_queued) +
+                  "\r\nOK\r\n");
             mt_pending_read_ = mt;
         }
         else if (cmd == "+SBDRB")
@@ -189,16 +211,17 @@ class MockISU
             std::lock_guard<std::mutex> l(mt_mutex_);
             if (mt_pending_read_)
             {
+                const std::string& mt_message = mt_messages_.front();
                 unsigned csum = 0;
-                for (char c : mt_message_) csum += c & 0xFF;
+                for (char c : mt_message) csum += c & 0xFF;
                 std::string out;
-                out += static_cast<char>((mt_message_.size() >> 8) & 0xFF);
-                out += static_cast<char>(mt_message_.size() & 0xFF);
-                out += mt_message_;
+                out += static_cast<char>((mt_message.size() >> 8) & 0xFF);
+                out += static_cast<char>(mt_message.size() & 0xFF);
+                out += mt_message;
                 out += static_cast<char>((csum >> 8) & 0xFF);
                 out += static_cast<char>(csum & 0xFF);
                 write(out + "\r\nOK\r\n");
-                mt_message_.clear();
+                mt_messages_.pop_front();
                 mt_pending_read_ = false;
                 if (csq_after_sbdrb >= 0)
                     csq = csq_after_sbdrb.exchange(-1);
@@ -226,8 +249,9 @@ class MockISU
     std::mutex log_mutex_;
     std::vector<std::string> commands_;
     std::mutex mt_mutex_;
-    std::string mt_message_;
+    std::deque<std::string> mt_messages_;
     bool mt_pending_read_{false};
+    std::atomic<bool> stop_{false};
 };
 
 std::unique_ptr<MockISU> isu;
@@ -269,6 +293,23 @@ int count(const std::string& cmd, std::size_t since)
 
 std::size_t mark() { return isu->commands().size(); }
 
+// SBD packet for a message from the shore (modem 2) to the vehicle (modem 1)
+std::string mt_packet(bool ack_requested)
+{
+    goby::acomms::protobuf::ModemTransmission mt;
+    mt.set_src(2);
+    mt.set_dest(1);
+    mt.set_rate(goby::acomms::RATE_SBD);
+    mt.set_type(goby::acomms::protobuf::ModemTransmission::DATA);
+    mt.set_ack_requested(ack_requested);
+    mt.set_frame_start(0);
+    mt.add_frame("hi");
+    std::string iridium_packet, sbd_packet;
+    goby::acomms::serialize_iridium_modem_message(&iridium_packet, mt);
+    goby::acomms::serialize_sbd_packet(iridium_packet, &sbd_packet);
+    return sbd_packet;
+}
+
 int main(int argc, char* argv[])
 {
     goby::glog.add_stream(goby::util::logger::DEBUG1, &std::clog);
@@ -297,6 +338,7 @@ int main(int argc, char* argv[])
     iridium_cfg->set_sbd_retry_backoff_initial(2);
     iridium_cfg->set_sbd_retry_backoff_max(4);
     iridium_cfg->set_sbd_retry_jitter_fraction(0);
+    iridium_cfg->set_sbd_session_jitter(0);
 
     // 1. Traffic management reported at startup blocks the first session
     {
@@ -432,18 +474,7 @@ int main(int argc, char* argv[])
     // 6. An ack for a received MT message waits for sufficient signal, re-checking
     // +CSQ after a delay rather than continuously
     {
-        goby::acomms::protobuf::ModemTransmission mt;
-        mt.set_src(2);
-        mt.set_dest(1);
-        mt.set_rate(goby::acomms::RATE_SBD);
-        mt.set_type(goby::acomms::protobuf::ModemTransmission::DATA);
-        mt.set_ack_requested(true);
-        mt.set_frame_start(0);
-        mt.add_frame("hi");
-        std::string iridium_packet, sbd_packet;
-        goby::acomms::serialize_iridium_modem_message(&iridium_packet, mt);
-        goby::acomms::serialize_sbd_packet(iridium_packet, &sbd_packet);
-        isu->set_mt_message(sbd_packet);
+        isu->add_mt_message(mt_packet(true));
         isu->csq_after_sbdrb = 1;
 
         auto m = mark();
@@ -495,6 +526,56 @@ int main(int argc, char* argv[])
         std::cout << "7. MO buffer errors: pass" << std::endl;
     }
 
+    // 8. MT messages still queued at the gateway are retrieved straight away
+    {
+        isu->add_mt_message(mt_packet(false));
+        isu->add_mt_message(mt_packet(false));
+
+        auto m = mark();
+        initiate();
+        run_for(3);
+        assert(count("+SBDIX", m) == 2);
+        assert(count("+SBDRB", m) == 2);
+        assert(count("+SBDWB=", m) == 1); // the follow-up is a mailbox check
+        assert(receives == 3);
+        assert(data_requests == 13);
+
+        run_for(2);
+        assert(count("+SBDIX", m) == 2); // nothing left queued
+        std::cout << "8. queued MT retrieved: pass" << std::endl;
+    }
+
+    // 9. MAC-initiated sessions are delayed by up to sbd_session_jitter
+    {
+        const double jitter = 2;
+        iridium_cfg->set_sbd_session_jitter(jitter);
+        driver->startup(cfg);
+
+        double max_delay = 0;
+        for (int i = 0; i < 5; ++i)
+        {
+            auto m = mark();
+            auto start = Clock::now();
+            initiate();
+            while (count("+CSQ", m) == 0 && Clock::now() < start + std::chrono::seconds(5))
+            {
+                driver->do_work();
+                std::this_thread::sleep_for(std::chrono::milliseconds(10));
+            }
+            double delay = std::chrono::duration<double>(Clock::now() - start).count();
+            std::cout << "session start delay: " << delay << " s" << std::endl;
+            assert(count("+CSQ", m) == 1);
+            assert(delay < jitter + 0.5);
+            max_delay = std::max(max_delay, delay);
+            run_for(1);
+            assert(count("+SBDIX", m) == 1);
+        }
+        // all five below 0.1 s has probability (0.1/2)^5, about 3e-7
+        assert(max_delay > 0.1);
+        std::cout << "9. session jitter: pass" << std::endl;
+    }
+
+    isu->stop_after_disconnect();
     driver->shutdown();
     driver.reset();
     isu.reset();

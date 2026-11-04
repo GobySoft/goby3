@@ -43,6 +43,9 @@ message Config
     optional int32 sbd_retry_backoff_max = 17 [default = 600];     // seconds
     // each back-off is extended by a random [0, fraction) of itself
     optional double sbd_retry_jitter_fraction = 18 [default = 0.25];
+    // delay each SBD session started by the MAC by a random [0, value) so that
+    // sessions don't land on the top of the second or minute
+    optional double sbd_session_jitter = 19 [default = 5];  // seconds
 }
 
 extend goby.acomms.protobuf.DriverConfig
