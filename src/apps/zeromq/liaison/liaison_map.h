@@ -102,6 +102,7 @@ class LiaisonMap : public goby::zeromq::LiaisonContainerWithComms<LiaisonMap, Ma
         Wt::WLeafletMap::WidgetMarker* marker{nullptr};
         Wt::WContainerWidget* marker_widget{nullptr};
         Wt::WText* arrow{nullptr};
+        Wt::WText* label{nullptr};
 
         Wt::WTableRow* row{nullptr};
         enum Column
@@ -120,7 +121,8 @@ class LiaisonMap : public goby::zeromq::LiaisonContainerWithComms<LiaisonMap, Ma
     void unfocus() override;
 
     void create_map();
-    void create_side_panel(Wt::WContainerWidget* parent);
+    void create_controls(Wt::WContainerWidget* parent);
+    void create_vehicle_list(Wt::WContainerWidget* parent);
     void add_tile_layers();
     void add_tile_layer(const protobuf::ProtobufMapConfig::TileLayer& layer);
 
@@ -129,6 +131,8 @@ class LiaisonMap : public goby::zeromq::LiaisonContainerWithComms<LiaisonMap, Ma
     void update_vehicle_ui(const std::string& name, Vehicle& vehicle, bool stale,
                            std::chrono::steady_clock::duration age);
     std::string row_style(const std::string& name, const Vehicle& vehicle) const;
+    std::string label_text(const std::string& name, const Vehicle& vehicle,
+                           std::chrono::steady_clock::duration age) const;
     std::string track_js(const std::string& name, Vehicle& vehicle);
     void run_map_js(const std::string& js);
     void update_timer();
@@ -138,6 +142,7 @@ class LiaisonMap : public goby::zeromq::LiaisonContainerWithComms<LiaisonMap, Ma
     void clear_tracks();
     void set_following(const std::string& name);
     void toggle_pause();
+    void set_trail_points(int points);
 
   private:
     const protobuf::ProtobufMapConfig map_cfg_;
@@ -146,6 +151,8 @@ class LiaisonMap : public goby::zeromq::LiaisonContainerWithComms<LiaisonMap, Ma
     bool focused_{false};
     bool paused_{false};
     bool fitted_{false};
+    bool show_age_;
+    int trail_points_;
     std::string followed_;
 
     Wt::WLeafletMap* map_{nullptr};
@@ -154,6 +161,7 @@ class LiaisonMap : public goby::zeromq::LiaisonContainerWithComms<LiaisonMap, Ma
     Wt::WText* waiting_text_{nullptr};
     Wt::WComboBox* follow_box_{nullptr};
     Wt::WPushButton* pause_button_{nullptr};
+    Wt::WText* trail_text_{nullptr};
 
     std::map<std::string, Vehicle> vehicles_;
 

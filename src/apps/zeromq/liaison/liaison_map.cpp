@@ -34,10 +34,12 @@
 #include <Wt/Json/Object.h>      // for Object
 #include <Wt/Json/Value.h>       // for Value
 #include <Wt/WApplication.h>     // for WApplication
+#include <Wt/WCheckBox.h>        // for WCheckBox
 #include <Wt/WComboBox.h>        // for WComboBox
 #include <Wt/WContainerWidget.h> // for WContainerWidget
 #include <Wt/WLength.h>          // for WLength
 #include <Wt/WPushButton.h>      // for WPushButton
+#include <Wt/WSlider.h>          // for WSlider
 #include <Wt/WString.h>          // for WString
 #include <Wt/WTable.h>           // for WTable
 #include <Wt/WTableCell.h>       // for WTableCell
@@ -167,6 +169,8 @@ goby::apps::zeromq::LiaisonMap::LiaisonMap(const protobuf::LiaisonConfig& cfg)
     : LiaisonContainerWithComms<LiaisonMap, MapCommsThread>(cfg),
       map_cfg_(cfg.pb_map_config()),
       update_freq_(cfg.update_freq()),
+      show_age_(map_cfg_.show_age()),
+      trail_points_(map_cfg_.track_length()),
       user_drag_(this, "userDrag")
 {
     set_name("Map");
@@ -240,6 +244,8 @@ void goby::apps::zeromq::LiaisonMap::create_map()
     auto* panel = addNew<Wt::WContainerWidget>();
     panel->setStyleClass("map-panel");
 
+    create_controls(panel);
+
     map_ = panel->addNew<Wt::WLeafletMap>();
     map_->setStyleClass("liaison-map");
     map_->resize(Wt::WLength::Auto, Wt::WLength(map_cfg_.map_height()));
@@ -249,39 +255,26 @@ void goby::apps::zeromq::LiaisonMap::create_map()
     map_->panTo(Wt::WLeafletMap::Coordinate(map_cfg_.initial_lat(), map_cfg_.initial_lon()));
     map_->setZoomLevel(map_cfg_.initial_zoom());
 
-    create_side_panel(panel);
+    create_vehicle_list(panel);
 
     // tracks are drawn with Leaflet directly: WLeafletMap polylines cannot be extended or removed
-    js_setup_ =
-        "if(!m.gobyTracks){m.gobyTracks={};"
-        "m.gobyTrack=function(n,c,p,N){var t=m.gobyTracks[n];"
-        "if(!t)t=m.gobyTracks[n]=L.polyline([],{color:c,weight:2,opacity:0.8,"
-        "interactive:false,className:'map-track'}).addTo(m);"
-        "var ll=t.getLatLngs().concat(p.map(function(q){return L.latLng(q[0],q[1]);}));"
-        "if(ll.length>N)ll=ll.slice(ll.length-N);t.setLatLngs(ll);};"
-        "m.gobyClearTracks=function(){for(var n in m.gobyTracks)m.gobyTracks[n].setLatLngs([]);};"
-        "m.on('dragstart',function(){" +
-        user_drag_.createCall({}) + "});}";
+    js_setup_ = "if(!m.gobyTracks){m.gobyTracks={};"
+                "m.gobyShow=function(t,K){t.setLatLngs(K>0?t.all.slice(-K):[]);};"
+                "m.gobyTrack=function(n,c,p,N,K){var t=m.gobyTracks[n];"
+                "if(!t){t=m.gobyTracks[n]=L.polyline([],{color:c,weight:2,opacity:0.8,"
+                "interactive:false,className:'map-track'}).addTo(m);t.all=[];}"
+                "t.all=t.all.concat(p.map(function(q){return L.latLng(q[0],q[1]);})).slice(-N);"
+                "m.gobyShow(t,K);};"
+                "m.gobyTrail=function(K){for(var n in m.gobyTracks)m.gobyShow(m.gobyTracks[n],K);};"
+                "m.gobyClearTracks=function(){for(var n in m.gobyTracks){"
+                "m.gobyTracks[n].all=[];m.gobyTracks[n].setLatLngs([]);}};"
+                "m.on('dragstart',function(){" +
+                user_drag_.createCall({}) + "});}";
 }
 
-void goby::apps::zeromq::LiaisonMap::create_side_panel(Wt::WContainerWidget* parent)
+void goby::apps::zeromq::LiaisonMap::create_controls(Wt::WContainerWidget* parent)
 {
-    auto* side = parent->addNew<Wt::WContainerWidget>();
-    side->setStyleClass("map-side");
-    side->resize(Wt::WLength(map_cfg_.vehicle_list_width_pixels()), Wt::WLength::Auto);
-
-    vehicle_table_ = side->addNew<Wt::WTable>();
-    vehicle_table_->setStyleClass("map-vehicles");
-    vehicle_table_->setHeaderCount(1);
-    const std::array<const char*, Vehicle::COLUMN_COUNT> headers{"Vehicle", "Hdg", "Spd (m/s)",
-                                                                 "Depth (m)", "Age"};
-    for (int column = 0; column < Vehicle::COLUMN_COUNT; ++column)
-        vehicle_table_->elementAt(0, column)->addNew<Wt::WText>(headers[column]);
-
-    waiting_text_ = side->addNew<Wt::WText>("Waiting for vehicle positions.");
-    waiting_text_->setStyleClass("map-waiting");
-
-    auto* controls = side->addNew<Wt::WContainerWidget>();
+    auto* controls = parent->addNew<Wt::WContainerWidget>();
     controls->setStyleClass("map-controls");
 
     controls->addNew<Wt::WText>("Follow:");
@@ -306,6 +299,48 @@ void goby::apps::zeromq::LiaisonMap::create_side_panel(Wt::WContainerWidget* par
     pause_button_ = controls->addNew<Wt::WPushButton>("Pause");
     pause_button_->addStyleClass("map-pause");
     pause_button_->clicked().connect([this]() { toggle_pause(); });
+
+    auto* age_box = controls->addNew<Wt::WCheckBox>("Show age");
+    age_box->addStyleClass("map-show-age");
+    age_box->setChecked(show_age_);
+    age_box->changed().connect(
+        [this, age_box]()
+        {
+            show_age_ = age_box->isChecked();
+            const auto now = std::chrono::steady_clock::now();
+            for (auto& [name, vehicle] : vehicles_)
+            {
+                if (vehicle.label)
+                    vehicle.label->setText(
+                        Wt::WString::fromUTF8(label_text(name, vehicle, now - vehicle.received)));
+            }
+        });
+
+    controls->addNew<Wt::WText>("Trail:");
+    auto* trail_slider = controls->addNew<Wt::WSlider>();
+    trail_slider->addStyleClass("map-trail");
+    trail_slider->setNativeControl(true);
+    trail_slider->setRange(0, map_cfg_.track_length());
+    trail_slider->setValue(trail_points_);
+    trail_slider->valueChanged().connect([this](int points) { set_trail_points(points); });
+    trail_slider->sliderMoved().connect([this](int points) { set_trail_points(points); });
+    trail_text_ = controls->addNew<Wt::WText>();
+    trail_text_->setStyleClass("map-trail-points");
+    set_trail_points(trail_points_);
+}
+
+void goby::apps::zeromq::LiaisonMap::create_vehicle_list(Wt::WContainerWidget* parent)
+{
+    vehicle_table_ = parent->addNew<Wt::WTable>();
+    vehicle_table_->setStyleClass("map-vehicles");
+    vehicle_table_->setHeaderCount(1);
+    const std::array<const char*, Vehicle::COLUMN_COUNT> headers{"Vehicle", "Hdg", "Spd (m/s)",
+                                                                 "Depth (m)", "Age"};
+    for (int column = 0; column < Vehicle::COLUMN_COUNT; ++column)
+        vehicle_table_->elementAt(0, column)->addNew<Wt::WText>(headers[column]);
+
+    waiting_text_ = parent->addNew<Wt::WText>("Waiting for vehicle positions.");
+    waiting_text_->setStyleClass("map-waiting");
 }
 
 void goby::apps::zeromq::LiaisonMap::add_tile_layers()
@@ -393,8 +428,8 @@ void goby::apps::zeromq::LiaisonMap::add_vehicle_ui(const std::string& name, Veh
     vehicle.arrow =
         widget->addNew<Wt::WText>(arrow_svg(vehicle.fix.heading, vehicle_colour(vehicle.fix.type)),
                                   Wt::TextFormat::UnsafeXHTML);
-    widget->addNew<Wt::WText>(Wt::WString::fromUTF8(name), Wt::TextFormat::Plain)
-        ->setStyleClass("map-vehicle-label");
+    vehicle.label = widget->addNew<Wt::WText>(Wt::WString::fromUTF8(name), Wt::TextFormat::Plain);
+    vehicle.label->setStyleClass("map-vehicle-label");
 
     auto marker = std::make_unique<Wt::WLeafletMap::WidgetMarker>(
         Wt::WLeafletMap::Coordinate(vehicle.fix.lat, vehicle.fix.lon), std::move(widget));
@@ -443,6 +478,14 @@ void goby::apps::zeromq::LiaisonMap::update_vehicle_ui(const std::string& name, 
         vehicle.fix_changed = false;
     }
     vehicle.cells[Vehicle::COLUMN_AGE]->setText(format_age(age));
+    vehicle.label->setText(Wt::WString::fromUTF8(label_text(name, vehicle, age)));
+}
+
+std::string
+goby::apps::zeromq::LiaisonMap::label_text(const std::string& name, const Vehicle& vehicle,
+                                           std::chrono::steady_clock::duration age) const
+{
+    return (show_age_ || vehicle.stale) ? name + " \u00b7 " + format_age(age) : name;
 }
 
 std::string goby::apps::zeromq::LiaisonMap::row_style(const std::string& name,
@@ -468,7 +511,7 @@ std::string goby::apps::zeromq::LiaisonMap::track_js(const std::string& name, Ve
     for (auto it = vehicle.unsent_track.begin(); it != vehicle.unsent_track.end(); ++it)
         js << (it == vehicle.unsent_track.begin() ? "" : ",") << "[" << it->first << ","
            << it->second << "]";
-    js << "]," << map_cfg_.track_length() << ");";
+    js << "]," << map_cfg_.track_length() << "," << trail_points_ << ");";
 
     vehicle.unsent_track.clear();
     return js.str();
@@ -572,6 +615,14 @@ void goby::apps::zeromq::LiaisonMap::toggle_pause()
     update_timer();
     if (!paused_)
         update_map();
+}
+
+void goby::apps::zeromq::LiaisonMap::set_trail_points(int points)
+{
+    trail_points_ = points;
+    trail_text_->setText(std::to_string(points) + " points");
+    if (map_)
+        run_map_js("m.gobyTrail(" + std::to_string(points) + ");");
 }
 
 goby::apps::zeromq::MapCommsThread::MapCommsThread(LiaisonMap* map,

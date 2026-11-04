@@ -297,7 +297,8 @@ message ProtobufMapConfig
 
     optional int32 track_length = 20 [
         default = 500,
-        (goby.field).description = "Track points kept per vehicle"
+        (goby.field).description =
+            "Track points kept per vehicle, and the most the Trail slider shows"
     ];
     optional double track_min_move_meters = 21 [
         default = 1.0,
@@ -309,9 +310,14 @@ message ProtobufMapConfig
         (goby.field).description =
             "Vehicles with no position for this long are shown as stale"
     ];
+    optional bool show_age = 23 [
+        default = false,
+        (goby.field).description =
+            "Show the time since each vehicle's last position beside its name "
+            "on the map, not only once it is stale. The Show age box toggles it"
+    ];
 
     optional int32 map_height = 30 [default = 600];
-    optional int32 vehicle_list_width_pixels = 31 [default = 320];
 }
 
 message NetworkAckSet
