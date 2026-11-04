@@ -49,6 +49,11 @@ class HealthMonitorThread : public SimpleThread<NullConfig, ImplementationTag>
         this->interprocess().template subscribe<groups::health_request, protobuf::HealthRequest>(
             [this](const protobuf::HealthRequest& request)
             {
+                // the pending response answers this request too; restarting the wait would
+                // starve a requester that asks more often than health_request_timeout_
+                if (waiting_for_responses_)
+                    return;
+
                 this->interthread().template publish<groups::health_request>(
                     protobuf::HealthRequest());
                 waiting_for_responses_ = true;
