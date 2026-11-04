@@ -1,0 +1,4 @@
+add_executable(goby_test_intervehicle_driver_startup_retry test.cpp)
+target_link_libraries(goby_test_intervehicle_driver_startup_retry goby goby_zeromq)
+
+add_test(goby_test_intervehicle_driver_startup_retry ${goby_BIN_DIR}/goby_test_intervehicle_driver_startup_retry)

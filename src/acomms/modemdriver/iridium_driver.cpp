@@ -497,6 +497,8 @@ void goby::acomms::IridiumDriver::do_work()
     std::string in;
     while (modem().active() && modem_read(&in))
     {
+        fsm_.set_modem_not_responding(false);
+
         iridium::fsm::EvRxSerial data_event;
         data_event.line = in;
 
@@ -687,9 +689,18 @@ void goby::acomms::IridiumDriver::report(goby::acomms::protobuf::ModemReport* re
         report->MutableExtension(goby::acomms::iridium::protobuf::report)
             ->set_rssi(static_cast<goby::acomms::iridium::protobuf::Report::RSSI>(rssi));
 
-    report->set_link_state(fsm_.ciev_data().service_available
-                               ? goby::acomms::protobuf::ModemReport::LINK_AVAILABLE
-                               : goby::acomms::protobuf::ModemReport::LINK_NOT_AVAILABLE);
+    // +CIEV service availability is stale once the modem stops answering
+    if (fsm_.modem_not_responding())
+    {
+        report->set_driver_status(protobuf::ModemDriverStatus::MODEM_NOT_RESPONDING);
+        report->set_link_state(protobuf::ModemReport::LINK_NOT_AVAILABLE);
+    }
+    else
+    {
+        report->set_link_state(fsm_.ciev_data().service_available
+                                   ? protobuf::ModemReport::LINK_AVAILABLE
+                                   : protobuf::ModemReport::LINK_NOT_AVAILABLE);
+    }
 
     using iridium::fsm::IridiumDriverFSM;
     using iridium::protobuf::Report;

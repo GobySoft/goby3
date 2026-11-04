@@ -96,6 +96,8 @@ The Portal implementation is goby::middleware::InterVehiclePortal, which allows 
 
 The InterVehiclePortal is configured using a goby::middleware::intervehicle::protobuf::PortalConfig Protobuf message. The contents of this message is described in the [User Manual](http://gobysoft.org/dl/goby3-user-manual.pdf) under the `gobyd` section.
 
+By default, a link whose modem driver fails to start up terminates the portal. If the link's `startup_retry_interval` is set, the portal keeps running its other links and retries the failed driver at that interval. Until it starts, the link publishes a `ModemReport` on `goby::middleware::intervehicle::groups::modem_report` with `link_state: LINK_NOT_AVAILABLE` and `driver_status` set to the reason (e.g. `STARTUP_FAILED`).
+
 Each link on the InterVehiclePortal has an 15-bit modem id (roughly similar to an IP address) and a 15-bit subnet mask. The logical AND of the modem id and the subnet mask provides the given subnet. Each link should be on its own logical subnet. The 0 address on a given subnet is used as broadcast.
 
 For example, using a subnet mask of 0xFFF0 provides subnets with 16 addresses each:
