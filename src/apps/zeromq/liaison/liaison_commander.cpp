@@ -193,7 +193,7 @@ void goby::apps::zeromq::LiaisonCommander::display_notify_subscription(
     {
         auto pb_msg = dccl::DynamicProtobufManager::new_protobuf_message<
             std::unique_ptr<google::protobuf::Message>>(type);
-        pb_msg->ParseFromArray(&data[0], data.size());
+        pb_msg->ParseFromArray(data.data(), data.size());
 
         glog.is(DEBUG1) && glog << "Received notify msg: " << pb_msg->ShortDebugString()
                                 << std::endl;
@@ -974,7 +974,7 @@ goby::apps::zeromq::LiaisonCommander::ControlsContainer::CommandContainer::Comma
     if (sent_model_->rowCount() > 0)
     {
         const Dbo::ptr<CommandEntry>& entry = sent_model_->resultRow(0);
-        message_->ParseFromArray(&entry->bytes[0], entry->bytes.size());
+        message_->ParseFromArray(entry->bytes.data(), entry->bytes.size());
 
         int group_index =
             group_selection_->findText(to_string(to_group_layer(entry->group, entry->layer)));
@@ -1108,7 +1108,7 @@ void goby::apps::zeromq::LiaisonCommander::ControlsContainer::CommandContainer::
     const Dbo::ptr<CommandEntry>& entry = sent_model_->resultRow(index.row());
 
     std::shared_ptr<google::protobuf::Message> message(message_->New());
-    message->ParseFromArray(&entry->bytes[0], entry->bytes.size());
+    message->ParseFromArray(entry->bytes.data(), entry->bytes.size());
     std::string group = entry->group;
     std::string layer = entry->layer;
 
@@ -1132,7 +1132,7 @@ void goby::apps::zeromq::LiaisonCommander::ControlsContainer::CommandContainer::
     message_div->addNew<WText>("<pre>" + message->DebugString() + "</pre>");
 
     protobuf::NetworkAckSet acks;
-    acks.ParseFromArray(&entry->acks[0], entry->acks.size());
+    acks.ParseFromArray(entry->acks.data(), entry->acks.size());
 
     auto acks_box = contents_div->addNew<WGroupBox>("Acks posted");
     auto acks_div = acks_box->addNew<WContainerWidget>();
@@ -2279,7 +2279,7 @@ void goby::apps::zeromq::LiaisonCommander::ControlsContainer::CommandContainer::
 
         message_to_load = dccl::DynamicProtobufManager::new_protobuf_message<
             std::shared_ptr<google::protobuf::Message>>(entry->protobuf_name);
-        message_to_load->ParseFromArray(&entry->bytes[0], entry->bytes.size());
+        message_to_load->ParseFromArray(entry->bytes.data(), entry->bytes.size());
 
         message_text->setText(std::string("<pre>") + message_to_load->DebugString() + "</pre>");
         ok->setDisabled(false);
