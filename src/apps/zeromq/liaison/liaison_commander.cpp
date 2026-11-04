@@ -126,6 +126,20 @@ const std::string EXTERNAL_DATA_LOAD_TEXT = "load";
 const std::string STRIPE_ODD_CLASS = "odd";
 const std::string STRIPE_EVEN_CLASS = "even";
 
+namespace
+{
+// WIntValidator holds an int, so a 64-bit field only gets one when its DCCL bounds fit
+std::shared_ptr<WIntValidator> int64_validator(const google::protobuf::FieldDescriptor* field_desc)
+{
+    const dccl::DCCLFieldOptions& options = field_desc->options().GetExtension(dccl::field);
+    if (options.has_min() && options.has_max() &&
+        options.min() >= std::numeric_limits<int>::min() &&
+        options.max() <= std::numeric_limits<int>::max())
+        return std::make_shared<WIntValidator>();
+    return nullptr;
+}
+} // namespace
+
 #if DCCL_VERSION_MAJOR >= 4
 namespace
 {
@@ -1595,7 +1609,7 @@ void goby::apps::zeromq::LiaisonCommander::ControlsContainer::CommandContainer::
 
         case google::protobuf::FieldDescriptor::CPPTYPE_INT32:
         {
-            std::shared_ptr<WIntValidator> validator;
+            auto validator = std::make_shared<WIntValidator>();
 
             if (field_desc->is_repeated() && refl->FieldSize(*message, field_desc) <= index)
                 refl->AddInt32(message, field_desc, field_desc->default_value_int32());
@@ -1612,7 +1626,7 @@ void goby::apps::zeromq::LiaisonCommander::ControlsContainer::CommandContainer::
 
         case google::protobuf::FieldDescriptor::CPPTYPE_INT64:
         {
-            std::shared_ptr<WIntValidator> validator;
+            auto validator = int64_validator(field_desc);
 
             if (field_desc->is_repeated() && refl->FieldSize(*message, field_desc) <= index)
                 refl->AddInt64(message, field_desc, field_desc->default_value_int64());
@@ -1647,7 +1661,9 @@ void goby::apps::zeromq::LiaisonCommander::ControlsContainer::CommandContainer::
 
         case google::protobuf::FieldDescriptor::CPPTYPE_UINT64:
         {
-            std::shared_ptr<WIntValidator> validator;
+            auto validator = int64_validator(field_desc);
+            if (validator)
+                validator->setBottom(0);
 
             if (field_desc->is_repeated() && refl->FieldSize(*message, field_desc) <= index)
                 refl->AddUInt64(message, field_desc, field_desc->default_value_uint64());
