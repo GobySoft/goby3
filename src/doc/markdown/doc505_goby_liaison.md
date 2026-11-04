@@ -107,9 +107,22 @@ The default configuration is usually sufficient, but you can customize many of t
 
 ## Map
 
-The `goby_liaison` Map shows a slippy map of the operating area. By default the base map is [OpenStreetMap](https://www.openstreetmap.org) with the [OpenSeaMap](https://www.openseamap.org) seamark overlay, both fetched by the browser from the public tile servers.
+The `goby_liaison` Map shows the vehicles reporting on the *interprocess* layer, each as an arrow pointing along its heading with a track of where it has been. By default the base map is [OpenStreetMap](https://www.openstreetmap.org) with the [OpenSeaMap](https://www.openseamap.org) seamark overlay, both fetched by the browser from the public tile servers.
+
+Positions come from `goby.middleware.frontseat.protobuf.NodeStatus` on `goby::middleware::frontseat::node_status`, as published by `goby_frontseat_interface`. Vehicles are named by `NodeStatus.name`. Positions received over the *intervehicle* layer must be republished on *interprocess* to be shown.
+
+The list beside the map shows each vehicle's heading, speed, depth and the age of its last position. Click a row to centre on that vehicle, or choose it under Follow to keep it centred (dragging the map stops following). Vehicles that have not reported for `stale_timeout_seconds` are faded. Tracks start when the browser opens the page.
 
 - pb_map_config
+	- source: Position sources, replacing the default NodeStatus source:
+		+ kind: NODE_STATUS (`NodeStatus`) or GPSD_TPV (`goby.middleware.protobuf.gpsd.TimePositionVelocity` from `goby_gps`).
+		+ group_regex: Defaults to `goby::middleware::frontseat::node_status` or `goby::middleware::groups::gpsd::tpv`.
+		+ name_override: Vehicle name for messages without one (always used for GPSD_TPV). Defaults to this platform's name.
+	- fit_on_first_fix: Zoom to the first vehicle position received. Defaults to true.
+	- track_length: Track points kept per vehicle. Defaults to 500.
+	- track_min_move_meters: Minimum movement before a new track point is added. Defaults to 1.
+	- stale_timeout_seconds: Defaults to 60.
+	- vehicle_list_width_pixels: Width of the vehicle list.
 	- tile_layer: One or more tile layers, replacing the default layers:
 		+ url_template: Leaflet URL template, e.g. `https://tile.openstreetmap.org/{z}/{x}/{y}.png`. Tiles placed under `tiles/` in the docroot can be referenced as `tiles/{z}/{x}/{y}.png`.
 		+ attribution: HTML attribution shown in the corner of the map.

@@ -21,22 +21,41 @@
 // You should have received a copy of the GNU General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-#include <string> // for string
-#include <vector> // for vector
+#include <algorithm> // for min, max
+#include <cmath>     // for isnan, lround, cos, sqrt
+#include <cstdio>    // for snprintf
+#include <iomanip>   // for setprecision
+#include <iterator>  // for distance
+#include <regex>     // for regex_replace
+#include <sstream>   // for ostringstream
+#include <string>    // for string
+#include <vector>    // for vector
 
-#include <Wt/Json/Object.h>  // for Object
-#include <Wt/Json/Value.h>   // for Value
-#include <Wt/WApplication.h> // for WApplication
-#include <Wt/WLeafletMap.h>  // for WLeafletMap
-#include <Wt/WLength.h>      // for WLength
-#include <Wt/WString.h>      // for WString
-#include <Wt/WText.h>        // for WText
+#include <Wt/Json/Object.h>      // for Object
+#include <Wt/Json/Value.h>       // for Value
+#include <Wt/WApplication.h>     // for WApplication
+#include <Wt/WComboBox.h>        // for WComboBox
+#include <Wt/WContainerWidget.h> // for WContainerWidget
+#include <Wt/WLength.h>          // for WLength
+#include <Wt/WPushButton.h>      // for WPushButton
+#include <Wt/WString.h>          // for WString
+#include <Wt/WTable.h>           // for WTable
+#include <Wt/WTableCell.h>       // for WTableCell
+#include <Wt/WTableRow.h>        // for WTableRow
+#include <Wt/WText.h>            // for WText
+#include <Wt/WWebWidget.h>       // for jsStringLiteral
 
-#include "goby/util/debug_logger/flex_ostream.h" // for glog
+#include "goby/middleware/frontseat/groups.h"      // for node_status
+#include "goby/middleware/gpsd/groups.h"           // for tpv
+#include "goby/middleware/marshalling/interface.h" // for MarshallingScheme
+#include "goby/middleware/protobuf/gpsd.pb.h"      // for TimePositionVelocity
+#include "goby/util/debug_logger/flex_ostream.h"   // for glog
 
 #include "liaison_map.h"
 
 using goby::glog;
+using goby::middleware::frontseat::protobuf::VehicleType;
+using Source = goby::apps::zeromq::protobuf::ProtobufMapConfig::Source;
 using TileLayer = goby::apps::zeromq::protobuf::ProtobufMapConfig::TileLayer;
 
 namespace
@@ -62,10 +81,89 @@ google::protobuf::RepeatedPtrField<TileLayer> default_tile_layers()
 
     return layers;
 }
+
+std::string exact_regex(const std::string& s)
+{
+    static const std::regex special_chars{R"([-[\]{}()*+?.,\^$|#\s])"};
+    return "^" + std::regex_replace(s, special_chars, R"(\$&)") + "$";
+}
+
+std::string vehicle_colour(VehicleType type)
+{
+    using namespace goby::middleware::frontseat::protobuf;
+    switch (type)
+    {
+        case AUV:
+        case GLIDER:
+        case ROV: return "#1c9fcb";
+        case USV:
+        case USV_POWERED:
+        case USV_SAILING: return "#e36034";
+        case SHIP: return "#4a5560";
+        case BUOY:
+        case MOORING:
+        case MOORING_SUBSURFACE:
+        case MOORING_SURFACE: return "#2f8f4e";
+        case TARGET: return "#b7322c";
+        default: return "#7a7f85";
+    }
+}
+
+std::string arrow_svg(double heading, const std::string& colour)
+{
+    std::ostringstream svg;
+    svg << "<svg width=\"24\" height=\"24\" viewBox=\"-12 -12 24 24\">";
+    if (std::isnan(heading))
+        svg << "<circle r=\"6\"";
+    else
+        svg << "<path transform=\"rotate(" << ((std::lround(heading) % 360) + 360) % 360
+            << ")\" d=\"M0,-10L7,8L0,4L-7,8Z\" stroke-linejoin=\"round\"";
+    svg << " fill=\"" << colour << "\" stroke=\"#fff\" stroke-width=\"1.5\"/></svg>";
+    return svg.str();
+}
+
+std::string format_number(const char* format, double value)
+{
+    if (std::isnan(value))
+        return "-";
+    char buffer[32];
+    std::snprintf(buffer, sizeof(buffer), format, value);
+    return buffer;
+}
+
+std::string format_heading(double heading)
+{
+    if (std::isnan(heading))
+        return "-";
+    char buffer[8];
+    std::snprintf(buffer, sizeof(buffer), "%03ld", ((std::lround(heading) % 360) + 360) % 360);
+    return buffer;
+}
+
+std::string format_age(std::chrono::steady_clock::duration age)
+{
+    const auto seconds = std::chrono::duration_cast<std::chrono::seconds>(age).count();
+    if (seconds < 120)
+        return std::to_string(seconds) + " s";
+    return std::to_string(seconds / 60) + " min";
+}
+
+// equirectangular approximation, ample for the metre-scale track threshold
+double distance_meters(const std::pair<double, double>& a, const std::pair<double, double>& b)
+{
+    const double earth_radius = 6371e3;
+    const double deg = M_PI / 180;
+    const double x = (b.second - a.second) * deg * std::cos((a.first + b.first) / 2 * deg);
+    const double y = (b.first - a.first) * deg;
+    return earth_radius * std::sqrt(x * x + y * y);
+}
 } // namespace
 
 goby::apps::zeromq::LiaisonMap::LiaisonMap(const protobuf::LiaisonConfig& cfg)
-    : LiaisonContainerWithComms<LiaisonMap, MapCommsThread>(cfg), map_cfg_(cfg.pb_map_config())
+    : LiaisonContainerWithComms<LiaisonMap, MapCommsThread>(cfg),
+      map_cfg_(cfg.pb_map_config()),
+      update_freq_(cfg.update_freq()),
+      user_drag_(this, "userDrag")
 {
     set_name("Map");
 
@@ -81,25 +179,64 @@ goby::apps::zeromq::LiaisonMap::LiaisonMap(const protobuf::LiaisonConfig& cfg)
         addNew<Wt::WText>("The map needs the Leaflet library. Set the <tt>leafletJSURL</tt> and "
                           "<tt>leafletCSSURL</tt> properties in <tt>wt_config.xml</tt>.");
     }
+
+    map_timer_.setInterval(std::chrono::milliseconds(static_cast<long>(1.0e3 / update_freq_)));
+    map_timer_.timeout().connect([this]() { update_map(); });
+
+    // panning programmatically also moves the map, so only a drag means the user took over
+    user_drag_.connect([this]() { set_following(""); });
+}
+
+void goby::apps::zeromq::LiaisonMap::handle_fix(const VehicleFix& fix)
+{
+    auto& vehicle = vehicles_[fix.name];
+    vehicle.fix = fix;
+    vehicle.received = std::chrono::steady_clock::now();
+    vehicle.fix_changed = true;
+
+    const LatLon point(fix.lat, fix.lon);
+    if (!vehicle.has_track_point ||
+        distance_meters(vehicle.last_track_point, point) >= map_cfg_.track_min_move_meters())
+    {
+        vehicle.unsent_track.push_back(point);
+        vehicle.last_track_point = point;
+        vehicle.has_track_point = true;
+        while (vehicle.unsent_track.size() > static_cast<std::size_t>(map_cfg_.track_length()))
+            vehicle.unsent_track.pop_front();
+    }
 }
 
 void goby::apps::zeromq::LiaisonMap::focus()
 {
+    focused_ = true;
+
     // created on first view: Wt treats a Leaflet script that fails to load (e.g. an unreachable
     // CDN) as fatal to the session, which must not break the other tabs
     if (leaflet_configured_ && !map_)
         create_map();
 
-    // Leaflet measures its container only when created or on window resize,
-    // either of which can happen while this tab is hidden
     if (map_)
-        Wt::WApplication::instance()->doJavaScript("{var m=" + map_->mapJsRef() +
-                                                   ";if(m)m.invalidateSize();}");
+    {
+        // Leaflet measures its container only when created or on window resize,
+        // either of which can happen while this tab is hidden
+        run_map_js("m.invalidateSize();");
+        update_map();
+    }
+    update_timer();
+}
+
+void goby::apps::zeromq::LiaisonMap::unfocus()
+{
+    focused_ = false;
+    update_timer();
 }
 
 void goby::apps::zeromq::LiaisonMap::create_map()
 {
-    map_ = addNew<Wt::WLeafletMap>();
+    auto* panel = addNew<Wt::WContainerWidget>();
+    panel->setStyleClass("map-panel");
+
+    map_ = panel->addNew<Wt::WLeafletMap>();
     map_->setStyleClass("liaison-map");
     map_->resize(Wt::WLength::Auto, Wt::WLength(map_cfg_.map_height()));
 
@@ -107,6 +244,64 @@ void goby::apps::zeromq::LiaisonMap::create_map()
 
     map_->panTo(Wt::WLeafletMap::Coordinate(map_cfg_.initial_lat(), map_cfg_.initial_lon()));
     map_->setZoomLevel(map_cfg_.initial_zoom());
+
+    create_side_panel(panel);
+
+    // tracks are drawn with Leaflet directly: WLeafletMap polylines cannot be extended or removed
+    js_setup_ =
+        "if(!m.gobyTracks){m.gobyTracks={};"
+        "m.gobyTrack=function(n,c,p,N){var t=m.gobyTracks[n];"
+        "if(!t)t=m.gobyTracks[n]=L.polyline([],{color:c,weight:2,opacity:0.8,"
+        "interactive:false,className:'map-track'}).addTo(m);"
+        "var ll=t.getLatLngs().concat(p.map(function(q){return L.latLng(q[0],q[1]);}));"
+        "if(ll.length>N)ll=ll.slice(ll.length-N);t.setLatLngs(ll);};"
+        "m.gobyClearTracks=function(){for(var n in m.gobyTracks)m.gobyTracks[n].setLatLngs([]);};"
+        "m.on('dragstart',function(){" +
+        user_drag_.createCall({}) + "});}";
+}
+
+void goby::apps::zeromq::LiaisonMap::create_side_panel(Wt::WContainerWidget* parent)
+{
+    auto* side = parent->addNew<Wt::WContainerWidget>();
+    side->setStyleClass("map-side");
+    side->resize(Wt::WLength(map_cfg_.vehicle_list_width_pixels()), Wt::WLength::Auto);
+
+    vehicle_table_ = side->addNew<Wt::WTable>();
+    vehicle_table_->setStyleClass("map-vehicles");
+    vehicle_table_->setHeaderCount(1);
+    const std::array<const char*, Vehicle::COLUMN_COUNT> headers{"Vehicle", "Hdg", "Spd (m/s)",
+                                                                 "Depth (m)", "Age"};
+    for (int column = 0; column < Vehicle::COLUMN_COUNT; ++column)
+        vehicle_table_->elementAt(0, column)->addNew<Wt::WText>(headers[column]);
+
+    waiting_text_ = side->addNew<Wt::WText>("Waiting for vehicle positions.");
+    waiting_text_->setStyleClass("map-waiting");
+
+    auto* controls = side->addNew<Wt::WContainerWidget>();
+    controls->setStyleClass("map-controls");
+
+    controls->addNew<Wt::WText>("Follow:");
+    follow_box_ = controls->addNew<Wt::WComboBox>();
+    follow_box_->addStyleClass("map-follow");
+    follow_box_->addItem("None");
+    follow_box_->changed().connect(
+        [this]()
+        {
+            set_following(follow_box_->currentIndex() == 0 ? ""
+                                                           : follow_box_->currentText().toUTF8());
+        });
+
+    auto* fit_button = controls->addNew<Wt::WPushButton>("Fit all");
+    fit_button->addStyleClass("map-fit");
+    fit_button->clicked().connect([this]() { fit_all(); });
+
+    auto* clear_button = controls->addNew<Wt::WPushButton>("Clear tracks");
+    clear_button->addStyleClass("map-clear");
+    clear_button->clicked().connect([this]() { clear_tracks(); });
+
+    pause_button_ = controls->addNew<Wt::WPushButton>("Pause");
+    pause_button_->addStyleClass("map-pause");
+    pause_button_->clicked().connect([this]() { toggle_pause(); });
 }
 
 void goby::apps::zeromq::LiaisonMap::add_tile_layers()
@@ -151,4 +346,306 @@ void goby::apps::zeromq::LiaisonMap::add_tile_layer(const TileLayer& layer)
     options["maxZoom"] = Wt::Json::Value(layer.max_zoom());
     options["opacity"] = Wt::Json::Value(layer.opacity());
     map_->addTileLayer(layer.url_template(), options);
+}
+
+void goby::apps::zeromq::LiaisonMap::update_map()
+{
+    if (!map_)
+        return;
+
+    const auto now = std::chrono::steady_clock::now();
+    const auto stale_timeout = std::chrono::duration_cast<std::chrono::steady_clock::duration>(
+        std::chrono::duration<double>(map_cfg_.stale_timeout_seconds()));
+
+    std::string tracks;
+    for (auto& [name, vehicle] : vehicles_)
+    {
+        if (!vehicle.marker)
+            add_vehicle_ui(name, vehicle);
+
+        if (name == followed_ && vehicle.fix_changed)
+            map_->panTo(Wt::WLeafletMap::Coordinate(vehicle.fix.lat, vehicle.fix.lon));
+
+        const auto age = now - vehicle.received;
+        update_vehicle_ui(name, vehicle, age > stale_timeout, age);
+        tracks += track_js(name, vehicle);
+    }
+
+    if (!fitted_ && map_cfg_.fit_on_first_fix() && !vehicles_.empty())
+    {
+        fitted_ = true;
+        fit_all();
+    }
+
+    if (!tracks.empty())
+        run_map_js(tracks);
+}
+
+void goby::apps::zeromq::LiaisonMap::add_vehicle_ui(const std::string& name, Vehicle& vehicle)
+{
+    auto widget = std::make_unique<Wt::WContainerWidget>();
+    widget->setStyleClass("map-vehicle");
+    vehicle.marker_widget = widget.get();
+    vehicle.arrow =
+        widget->addNew<Wt::WText>(arrow_svg(vehicle.fix.heading, vehicle_colour(vehicle.fix.type)),
+                                  Wt::TextFormat::UnsafeXHTML);
+    widget->addNew<Wt::WText>(Wt::WString::fromUTF8(name), Wt::TextFormat::Plain)
+        ->setStyleClass("map-vehicle-label");
+
+    auto marker = std::make_unique<Wt::WLeafletMap::WidgetMarker>(
+        Wt::WLeafletMap::Coordinate(vehicle.fix.lat, vehicle.fix.lon), std::move(widget));
+    marker->setAnchorPoint(12, 12);
+    vehicle.marker = map_->addMarker(std::move(marker));
+
+    // every vehicle sorted before this one already has a row
+    const int index = std::distance(vehicles_.begin(), vehicles_.find(name));
+    vehicle.row = vehicle_table_->insertRow(index + vehicle_table_->headerCount());
+    for (int column = 0; column < Vehicle::COLUMN_COUNT; ++column)
+    {
+        auto* cell = vehicle.row->elementAt(column);
+        vehicle.cells[column] = cell->addNew<Wt::WText>();
+        cell->clicked().connect([this, name]() { centre_on(name); });
+    }
+    vehicle.cells[Vehicle::COLUMN_NAME]->setText(Wt::WString::fromUTF8(name));
+    vehicle.row->setStyleClass(row_style(name, vehicle));
+
+    follow_box_->insertItem(index + 1, Wt::WString::fromUTF8(name));
+    waiting_text_->hide();
+    vehicle.fix_changed = true;
+}
+
+void goby::apps::zeromq::LiaisonMap::update_vehicle_ui(const std::string& name, Vehicle& vehicle,
+                                                       bool stale,
+                                                       std::chrono::steady_clock::duration age)
+{
+    if (vehicle.fix_changed || stale != vehicle.stale)
+    {
+        const auto& fix = vehicle.fix;
+        vehicle.stale = stale;
+
+        if (vehicle.fix_changed)
+            vehicle.marker->move(Wt::WLeafletMap::Coordinate(fix.lat, fix.lon));
+        vehicle.arrow->setText(arrow_svg(fix.heading, vehicle_colour(fix.type)));
+        vehicle.marker_widget->toggleStyleClass("stale", stale);
+        vehicle.row->setStyleClass(row_style(name, vehicle));
+
+        vehicle.cells[Vehicle::COLUMN_HEADING]->setText(format_heading(fix.heading));
+        vehicle.cells[Vehicle::COLUMN_SPEED]->setText(format_number("%.1f", fix.speed));
+        vehicle.cells[Vehicle::COLUMN_DEPTH]->setText(format_number("%.1f", fix.depth));
+        vehicle.cells[Vehicle::COLUMN_NAME]->setToolTip(Wt::WString::fromUTF8(
+            goby::middleware::frontseat::protobuf::VehicleType_Name(fix.type) + " " +
+            format_number("%.6f", fix.lat) + ", " + format_number("%.6f", fix.lon)));
+
+        vehicle.fix_changed = false;
+    }
+    vehicle.cells[Vehicle::COLUMN_AGE]->setText(format_age(age));
+}
+
+std::string goby::apps::zeromq::LiaisonMap::row_style(const std::string& name,
+                                                      const Vehicle& vehicle) const
+{
+    std::string style = "map-vehicle-row";
+    if (vehicle.stale)
+        style += " stale";
+    if (name == followed_)
+        style += " followed";
+    return style;
+}
+
+std::string goby::apps::zeromq::LiaisonMap::track_js(const std::string& name, Vehicle& vehicle)
+{
+    if (vehicle.unsent_track.empty())
+        return "";
+
+    std::ostringstream js;
+    js << std::fixed << std::setprecision(7) << "m.gobyTrack("
+       << Wt::WWebWidget::jsStringLiteral(name) << ",'" << vehicle_colour(vehicle.fix.type)
+       << "',[";
+    for (auto it = vehicle.unsent_track.begin(); it != vehicle.unsent_track.end(); ++it)
+        js << (it == vehicle.unsent_track.begin() ? "" : ",") << "[" << it->first << ","
+           << it->second << "]";
+    js << "]," << map_cfg_.track_length() << ");";
+
+    vehicle.unsent_track.clear();
+    return js.str();
+}
+
+void goby::apps::zeromq::LiaisonMap::run_map_js(const std::string& js)
+{
+    // the Leaflet map object can be recreated by Wt, so the helpers are installed on demand
+    Wt::WApplication::instance()->doJavaScript("{var m=" + map_->mapJsRef() + ";if(m){" +
+                                               js_setup_ + js + "}}");
+}
+
+void goby::apps::zeromq::LiaisonMap::update_timer()
+{
+    if (map_ && focused_ && !paused_)
+    {
+        if (!map_timer_.isActive())
+            map_timer_.start();
+    }
+    else
+    {
+        map_timer_.stop();
+    }
+}
+
+void goby::apps::zeromq::LiaisonMap::centre_on(const std::string& name)
+{
+    auto it = vehicles_.find(name);
+    if (!map_ || it == vehicles_.end())
+        return;
+
+    if (!followed_.empty() && followed_ != name)
+        set_following("");
+    map_->panTo(Wt::WLeafletMap::Coordinate(it->second.fix.lat, it->second.fix.lon));
+}
+
+void goby::apps::zeromq::LiaisonMap::fit_all()
+{
+    if (!map_ || vehicles_.empty())
+        return;
+
+    const bool all_stale = std::all_of(vehicles_.begin(), vehicles_.end(),
+                                       [](const auto& v) { return v.second.stale; });
+
+    double south = 90, north = -90, west = 180, east = -180;
+    for (const auto& [name, vehicle] : vehicles_)
+    {
+        if (vehicle.stale && !all_stale)
+            continue;
+        south = std::min(south, vehicle.fix.lat);
+        north = std::max(north, vehicle.fix.lat);
+        west = std::min(west, vehicle.fix.lon);
+        east = std::max(east, vehicle.fix.lon);
+    }
+
+    set_following("");
+
+    std::ostringstream js;
+    js << std::fixed << std::setprecision(7) << "m.fitBounds([[" << south << "," << west << "],["
+       << north << "," << east << "]],{padding:[40,40],maxZoom:16});";
+    run_map_js(js.str());
+}
+
+void goby::apps::zeromq::LiaisonMap::clear_tracks()
+{
+    for (auto& [name, vehicle] : vehicles_)
+    {
+        vehicle.unsent_track.clear();
+        vehicle.has_track_point = false;
+    }
+    if (map_)
+        run_map_js("m.gobyClearTracks();");
+}
+
+void goby::apps::zeromq::LiaisonMap::set_following(const std::string& name)
+{
+    followed_ = name;
+
+    if (follow_box_)
+    {
+        const int index = name.empty() ? 0 : follow_box_->findText(Wt::WString::fromUTF8(name));
+        if (index >= 0 && follow_box_->currentIndex() != index)
+            follow_box_->setCurrentIndex(index);
+    }
+
+    for (auto& [vehicle_name, vehicle] : vehicles_)
+    {
+        if (vehicle.row)
+            vehicle.row->setStyleClass(row_style(vehicle_name, vehicle));
+    }
+
+    auto it = vehicles_.find(name);
+    if (map_ && it != vehicles_.end())
+        map_->panTo(Wt::WLeafletMap::Coordinate(it->second.fix.lat, it->second.fix.lon));
+}
+
+void goby::apps::zeromq::LiaisonMap::toggle_pause()
+{
+    paused_ = !paused_;
+    pause_button_->setText(paused_ ? "Resume" : "Pause");
+    update_timer();
+    if (!paused_)
+        update_map();
+}
+
+goby::apps::zeromq::MapCommsThread::MapCommsThread(LiaisonMap* map,
+                                                   const protobuf::LiaisonConfig& config, int index)
+    : LiaisonCommsThread<LiaisonMap>(map, config, index), map_(map)
+{
+    if (config.pb_map_config().source_size() == 0)
+    {
+        Source node_status;
+        node_status.set_kind(Source::NODE_STATUS);
+        subscribe(node_status);
+    }
+    for (const auto& source : config.pb_map_config().source()) subscribe(source);
+}
+
+void goby::apps::zeromq::MapCommsThread::subscribe(const Source& source)
+{
+    using goby::middleware::frontseat::protobuf::NodeStatus;
+    using goby::middleware::protobuf::gpsd::TimePositionVelocity;
+
+    const std::string default_name =
+        source.has_name_override() ? source.name_override() : cfg().interprocess().platform();
+
+    auto post = [map = map_](const VehicleFix& fix)
+    { map->post_to_wt([map, fix]() { map->handle_fix(fix); }); };
+
+    std::string type, group;
+    std::function<void(const std::vector<unsigned char>&)> parse;
+    switch (source.kind())
+    {
+        case Source::NODE_STATUS:
+            type = NodeStatus::descriptor()->full_name();
+            group = std::string(goby::middleware::frontseat::groups::node_status);
+            parse = [post, default_name](const std::vector<unsigned char>& data)
+            {
+                NodeStatus status;
+                if (!status.ParseFromArray(data.data(), data.size()))
+                    return;
+
+                VehicleFix fix;
+                fix.name = status.name().empty() ? default_name : status.name();
+                fix.lat = status.global_fix().lat();
+                fix.lon = status.global_fix().lon();
+                fix.depth = status.global_fix().depth();
+                if (status.pose().has_heading())
+                    fix.heading = status.pose().heading();
+                fix.speed = status.speed().over_ground();
+                fix.type = status.type();
+                post(fix);
+            };
+            break;
+
+        case Source::GPSD_TPV:
+            type = TimePositionVelocity::descriptor()->full_name();
+            group = std::string(goby::middleware::groups::gpsd::tpv);
+            parse = [post, default_name](const std::vector<unsigned char>& data)
+            {
+                TimePositionVelocity tpv;
+                if (!tpv.ParseFromArray(data.data(), data.size()) || !tpv.has_location() ||
+                    (tpv.has_mode() && tpv.mode() < TimePositionVelocity::Mode2D))
+                    return;
+
+                VehicleFix fix;
+                fix.name = default_name;
+                fix.lat = tpv.location().lat();
+                fix.lon = tpv.location().lon();
+                if (tpv.has_track())
+                    fix.heading = tpv.track();
+                if (tpv.has_speed())
+                    fix.speed = tpv.speed();
+                post(fix);
+            };
+            break;
+    }
+
+    subscriptions_.push_back(interprocess().subscribe_regex(
+        [parse](const std::vector<unsigned char>& data, int /*scheme*/, const std::string& /*type*/,
+                const goby::middleware::Group& /*group*/) { parse(data); },
+        {goby::middleware::MarshallingScheme::PROTOBUF}, exact_regex(type),
+        source.has_group_regex() ? source.group_regex() : exact_regex(group)));
 }

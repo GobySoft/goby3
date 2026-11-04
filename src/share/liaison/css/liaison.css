@@ -189,3 +189,39 @@ li.odd
 .Wt-progressbar .Wt-pgb-bar {
     background: #1C9FCB
 }
+
+/* map tab */
+div.map-panel { display: flex; gap: 10px; align-items: flex-start; }
+div.map-panel .liaison-map { flex: 1 1 auto; min-width: 0; }
+div.map-side { flex: 0 0 auto; font-size: 85%; }
+
+table.map-vehicles { border-collapse: collapse; width: 100%; font-variant-numeric: tabular-nums; }
+table.map-vehicles th, table.map-vehicles td
+{
+    padding: 3px 4px;
+    text-align: right;
+    border-bottom: 1px solid #ddd;
+    white-space: nowrap;
+}
+table.map-vehicles th { font-weight: normal; color: #666; }
+table.map-vehicles th:first-child, table.map-vehicles td:first-child { text-align: left; }
+tr.map-vehicle-row { cursor: pointer; }
+tr.map-vehicle-row:hover { background-color: #eee; }
+tr.map-vehicle-row.followed { background-color: #d6eef6; }
+tr.map-vehicle-row.stale { color: gray; }
+
+span.map-waiting { display: block; padding: 6px 4px; color: gray; }
+div.map-controls { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; margin-top: 8px; }
+
+div.map-vehicle { position: relative; width: 24px; height: 24px; }
+div.map-vehicle.stale { opacity: 0.4; }
+span.map-vehicle-label
+{
+    position: absolute;
+    top: 22px;
+    left: 50%;
+    transform: translateX(-50%);
+    white-space: nowrap;
+    font-size: 11px;
+    text-shadow: 0 0 2px #fff, 0 0 2px #fff, 0 0 2px #fff;
+}

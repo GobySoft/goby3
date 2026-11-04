@@ -268,8 +268,50 @@ message ProtobufMapConfig
     optional double initial_lat = 2 [default = 0];
     optional double initial_lon = 3 [default = 0];
     optional int32 initial_zoom = 4 [default = 2];
+    optional bool fit_on_first_fix = 5 [
+        default = true,
+        (goby.field).description =
+            "Zoom to the first vehicle position received"
+    ];
+
+    message Source
+    {
+        enum Kind
+        {
+            NODE_STATUS = 1;  // goby.middleware.frontseat.protobuf.NodeStatus
+            GPSD_TPV = 2;     // goby.middleware.protobuf.gpsd.TimePositionVelocity
+        }
+        required Kind kind = 1;
+        optional string group_regex = 2
+            [(goby.field).description =
+                 "Defaults to the standard group for this kind"];
+        optional string name_override = 3
+            [(goby.field).description =
+                 "Vehicle name when the message has none. Defaults to this "
+                 "platform's name"];
+    }
+    repeated Source source = 10
+        [(goby.field).description =
+             "Vehicle position sources. If empty, NodeStatus on "
+             "goby::middleware::frontseat::node_status"];
+
+    optional int32 track_length = 20 [
+        default = 500,
+        (goby.field).description = "Track points kept per vehicle"
+    ];
+    optional double track_min_move_meters = 21 [
+        default = 1.0,
+        (goby.field).description =
+            "Minimum movement before a new track point is added"
+    ];
+    optional double stale_timeout_seconds = 22 [
+        default = 60,
+        (goby.field).description =
+            "Vehicles with no position for this long are shown as stale"
+    ];
 
     optional int32 map_height = 30 [default = 600];
+    optional int32 vehicle_list_width_pixels = 31 [default = 320];
 }
 
 message NetworkAckSet
