@@ -17,8 +17,8 @@ set(zenoh_built @build_zenoh@)
 if(zenoh_built AND "zenoh" IN_LIST GOBY_FIND_COMPONENTS
     AND EXISTS ${CMAKE_CURRENT_LIST_DIR}/goby_zenoh-config.cmake)
   # goby_zenoh links Zenoh's imported targets, which must exist before the export file that
-  # references them is included below. Not find_dependency(), as that fails all of Goby, so a
-  # project that asked for zenoh as optional could not configure without Zenoh.
+  # references them is included below. Not find_dependency(): it would fail all of Goby even when
+  # zenoh is only an optional component.
   find_package(zenohc QUIET)
   find_package(zenohcxx QUIET)
   if(NOT (zenohc_FOUND AND zenohcxx_FOUND))
