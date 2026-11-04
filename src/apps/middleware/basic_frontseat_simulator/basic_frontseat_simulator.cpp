@@ -254,15 +254,13 @@ void compute_state()
     else
         vehicle_.z = desired_.z;
 
-    if ((vehicle_.hdg - desired_.hdg) >= 180)
-        desired_.hdg += 360;
-    if ((vehicle_.hdg - desired_.hdg) < -180)
-        desired_.hdg -= 360;
-
-    if (std::abs(vehicle_.hdg - desired_.hdg) > vcfg_.hdg_rate * dt)
-        vehicle_.hdg += (vehicle_.hdg < desired_.hdg) ? vcfg_.hdg_rate * dt : -vcfg_.hdg_rate * dt;
+    // shortest turn, in [-180, 180]
+    const double hdg_error = std::remainder(desired_.hdg - vehicle_.hdg, 360.0);
+    if (std::abs(hdg_error) > vcfg_.hdg_rate * dt)
+        vehicle_.hdg += std::copysign(vcfg_.hdg_rate * dt, hdg_error);
     else
-        vehicle_.hdg = desired_.hdg;
+        vehicle_.hdg += hdg_error;
+    vehicle_.hdg = std::fmod(std::fmod(vehicle_.hdg, 360.0) + 360.0, 360.0);
 
     if (std::abs(vehicle_.v - desired_.v) > vcfg_.a * dt)
         vehicle_.v += (vehicle_.v < desired_.v) ? vcfg_.a * dt : -vcfg_.a * dt;
