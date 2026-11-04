@@ -14,12 +14,20 @@ if(zeromq_built)
 endif()
 
 set(zenoh_built @build_zenoh@)
-if(zenoh_built AND "zenoh" IN_LIST GOBY_FIND_COMPONENTS)
-  include(CMakeFindDependencyMacro)
+if(zenoh_built AND "zenoh" IN_LIST GOBY_FIND_COMPONENTS
+    AND EXISTS ${CMAKE_CURRENT_LIST_DIR}/goby_zenoh-config.cmake)
   # goby_zenoh links Zenoh's imported targets, which must exist before the export file that
-  # references them is included below
-  find_dependency(zenohc)
-  find_dependency(zenohcxx)
+  # references them is included below. Not find_dependency(): it would fail all of Goby even when
+  # zenoh is only an optional component.
+  find_package(zenohc QUIET)
+  find_package(zenohcxx QUIET)
+  if(NOT (zenohc_FOUND AND zenohcxx_FOUND))
+    if(GOBY_FIND_REQUIRED_zenoh)
+      message(FATAL_ERROR "goby_zenoh requires Zenoh (zenohc and zenohcxx), which was not found.")
+    endif()
+    list(REMOVE_ITEM GOBY_FIND_COMPONENTS zenoh)
+    set(GOBY_zenoh_FOUND 0)
+  endif()
 endif()
 
 foreach(component ${GOBY_FIND_COMPONENTS})
