@@ -6,6 +6,7 @@ add_library(goby_liaison_core SHARED
   liaison_wt_thread.cpp
   liaison_commander.cpp
   liaison_scope.cpp
+  liaison_map.cpp
 )
 
 target_link_libraries(goby_liaison_core

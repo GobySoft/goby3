@@ -1,0 +1,9 @@
+<server>
+    <application-settings location="*">
+        <log-config>* -debug</log-config>
+        <properties>
+            <property name="leafletJSURL">leaflet/1.9.4/leaflet.js</property>
+            <property name="leafletCSSURL">leaflet/1.9.4/leaflet.css</property>
+        </properties>
+    </application-settings>
+</server>

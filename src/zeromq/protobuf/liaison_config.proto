@@ -59,9 +59,11 @@ message LiaisonConfig
     optional bool add_home_tab = 21 [default = true];
     optional bool add_scope_tab = 22 [default = true];
     optional bool add_commander_tab = 23 [default = true];
-    
+    optional bool add_map_tab = 24 [default = true];
+
     optional ProtobufCommanderConfig pb_commander_config = 900;
     optional ProtobufScopeConfig pb_scope_config = 901;
+    optional ProtobufMapConfig pb_map_config = 902;
 
     // MOOS - 1000 to 1099
     // DRC -  1100
@@ -230,6 +232,44 @@ message ProtobufScopeConfig
     
     optional int32 max_message_size_bytes = 20 [default = 2048];
 
+}
+
+message ProtobufMapConfig
+{
+    message TileLayer
+    {
+        optional string url_template = 1
+            [default = "https://tile.openstreetmap.org/{z}/{x}/{y}.png"];
+        optional string attribution = 2 [
+            default =
+                "&copy; <a href=\"https://www.openstreetmap.org/copyright\">OpenStreetMap</a> contributors"
+        ];
+        optional int32 max_zoom = 3 [default = 19];
+        optional int32 min_zoom = 4 [default = 0];
+        optional bool overlay = 5 [
+            default = false,
+            (goby.field).description =
+                "Transparent layer drawn above the base layer"
+        ];
+        optional double opacity = 6 [default = 1.0];
+    }
+    repeated TileLayer tile_layer = 1 [
+        (goby.field).description =
+            "The first non-overlay layer is the base map; overlays are "
+            "drawn above it in order. If empty, OpenStreetMap with the "
+            "OpenSeaMap seamark overlay is used"
+    ];
+    optional bool blank_background = 6 [
+        default = false,
+        (goby.field).description =
+            "Draw no tiles (e.g. offline use); overrides tile_layer"
+    ];
+
+    optional double initial_lat = 2 [default = 0];
+    optional double initial_lon = 3 [default = 0];
+    optional int32 initial_zoom = 4 [default = 2];
+
+    optional int32 map_height = 30 [default = 600];
 }
 
 message NetworkAckSet

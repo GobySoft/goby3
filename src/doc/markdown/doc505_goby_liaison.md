@@ -6,6 +6,7 @@ The built-in tabs include:
 
 1. Commander: A form for allowing users to publish any Protobuf message on the *intervehicle* or *interprocess* layer. This is typically used for sending commands from an operator to one or more vehicles over the *intervehicle* layer.
 2. Scope: A live table showing the latest of all groups containing Protobuf messages  published in the *interprocess* layer, and the ability to show a streaming history of any group. This is a helpful debugging tool, and can be thought of as the GUI equivalent of `goby zeromq subscribe`.
+3. Map: A map of the operating area, drawn with [Leaflet](https://leafletjs.com).
 
 ## Common Configuration
 
@@ -18,6 +19,7 @@ Several configuration values can be set regardless of the tabs in use:
 - `add_home_tab`: Defaults to true - set false to omit the Home tab.
 - `add_scope_tab`: Defaults to true - set false to omit the Scope tab.
 - `add_commander_tab`: Defaults to true - set false to omit the Commander tab.
+- `add_map_tab`: Defaults to true - set false to omit the Map tab.
 
 To access `goby_liaison` from the client side, open a web browser to `http://<http_address>:<http_port>`
 
@@ -102,6 +104,23 @@ The default configuration is usually sufficient, but you can customize many of t
 	- max_history_items: Max number of history items show (circular buffer): Defaults to 100.
 	- max_message_size_bytes: Messages larger than this size are omitted to reduce CPU load. Defaults to 2048B.
 
+
+## Map
+
+The `goby_liaison` Map shows a slippy map of the operating area. By default the base map is [OpenStreetMap](https://www.openstreetmap.org) with the [OpenSeaMap](https://www.openseamap.org) seamark overlay, both fetched by the browser from the public tile servers.
+
+- pb_map_config
+	- tile_layer: One or more tile layers, replacing the default layers:
+		+ url_template: Leaflet URL template, e.g. `https://tile.openstreetmap.org/{z}/{x}/{y}.png`. Tiles placed under `tiles/` in the docroot can be referenced as `tiles/{z}/{x}/{y}.png`.
+		+ attribution: HTML attribution shown in the corner of the map.
+		+ min_zoom, max_zoom: Zoom range the layer provides.
+		+ overlay: Set true for a transparent layer drawn above the base layer. Only the first non-overlay layer is shown.
+		+ opacity: 0 to 1.
+	- blank_background: Set true to draw no tiles, e.g. without network access.
+	- initial_lat, initial_lon, initial_zoom: Initial view.
+	- map_height: in pixels
+
+Leaflet itself is served from the docroot so the map works without network access. `goby_liaison` passes the docroot's `wt_config.xml` to Wt, which sets the `leafletJSURL` and `leafletCSSURL` properties. If you set `WT_CONFIG_XML` or pass `--config` in `additional_wt_http_params`, that file is used instead and must set these two properties for the map to load. If these point at a CDN that the browser cannot reach, opening the Map tab stops that browser's Liaison session (reload to recover).
 
 ## Writing your own tab
 
