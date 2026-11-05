@@ -24,6 +24,7 @@
 syntax = "proto2";
 import "dccl/option_extensions.proto";
 import "goby/protobuf/option_extensions.proto";
+import "goby/middleware/protobuf/intervehicle_transporter_config.proto";
 
 package goby.middleware.protobuf;
 
@@ -68,7 +69,10 @@ message PubSubTestPublish
 
     optional string endpoint = 1
         [(goby.field).description = "Endpoint name. Defaults to the first declared endpoint"];
-    required string group = 2;
+    required string group = 2
+        [(goby.field).description =
+             "Group name. On intervehicle endpoints, the numeric group "
+             "(e.g. \"7\"; \"0\" is broadcast)"];
     required string type = 3 [(goby.field).description =
                                   "Scheme and type as for 'goby zeromq publish', e.g. "
                                   "'PROTOBUF/NavigationReport', 'DCCL/NavigationReport', "
@@ -83,6 +87,21 @@ message PubSubTestPublish
         (goby.field).description = "Wait this long after arming the run's expectations "
                                    "before publishing"
     ];
+
+    // intervehicle endpoints only
+    optional string group_field = 20 [
+        (goby.field).description =
+            "Intervehicle endpoints: top-level integer field of the message that carries the "
+            "numeric group. Required unless the group is 0 (broadcast)"
+    ];
+    optional goby.middleware.intervehicle.protobuf.TransporterConfig
+        intervehicle = 21 [
+        (goby.field).description =
+            "Intervehicle endpoints: the publication's settings (buffer, broadcast, "
+            "clear_pending). With buffer { ack_required: true }, acks and expiries are reported "
+            "on this endpoint in the publication's group as "
+            "PROTOBUF/goby.middleware.intervehicle.protobuf.AckData and ExpireData"
+    ];
 }
 
 message PubSubTestExpect
@@ -91,7 +110,11 @@ message PubSubTestExpect
 
     optional string endpoint = 1
         [(goby.field).description = "Endpoint name. Defaults to the first declared endpoint"];
-    optional string group = 2 [default = ".*", (goby.field).description = "Group regex"];
+    optional string group = 2 [
+        default = ".*",
+        (goby.field).description =
+            "Group regex. On intervehicle endpoints, the numeric group to subscribe to (e.g. \"7\")"
+    ];
     optional string type = 3 [
         default = ".*",
         (goby.field).description =
@@ -124,6 +147,20 @@ message PubSubTestExpect
              "must equal the received value. Messages that do not match are counted as rejected "
              "rather than received."];
     repeated PubSubTestCondition condition = 21;
+
+    // intervehicle endpoints only
+    optional string group_field = 30 [
+        (goby.field).description =
+            "Intervehicle endpoints: top-level integer field of the message that carries the "
+            "numeric group. Required unless the group is 0 (broadcast)"
+    ];
+    optional goby.middleware.intervehicle.protobuf.TransporterConfig
+        intervehicle = 31 [
+        (goby.field).description =
+            "Intervehicle endpoints: the subscription's settings (publisher_id, buffer, "
+            "broadcast). Subscriptions are made once require_app has passed, before the first "
+            "run, so publishes need a delay that lets them cross the link"
+    ];
 }
 
 message PubSubTestStep

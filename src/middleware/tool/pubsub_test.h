@@ -57,6 +57,7 @@
 #include "goby/middleware/protobuf/coroner.pb.h"
 #include "goby/middleware/protobuf/pubsub_test.pb.h"
 #include "goby/middleware/tool/publish_subscribe_tool.h"
+#include "goby/middleware/transport/intervehicle.h"
 #include "goby/util/debug_logger.h"
 
 namespace goby
@@ -85,9 +86,13 @@ class PubSubTestEndpoint
     virtual ~PubSubTestEndpoint() = default;
 
     virtual const std::string& name() const = 0;
+    virtual bool intervehicle() const { return false; }
     virtual void publish(const protobuf::PubSubTestPublish& pub) = 0;
     virtual void publish_health_request() = 0;
     virtual void subscribe_all(MessageHandler handler) = 0;
+    /// \brief Called for each expectation on this endpoint once require_app has passed, before the
+    /// runs start (for layers that subscribe per type and group)
+    virtual void arm(const protobuf::PubSubTestExpect&) {}
     virtual void ready() = 0;
     virtual bool hold_state() = 0;
     virtual void poll(std::chrono::milliseconds wait) = 0;
@@ -132,6 +137,77 @@ class PubSubTestPortalEndpoint : public PubSubTestEndpoint
     std::string tool_name_;
     Portal portal_;
 };
+
+namespace detail
+{
+/// Parses an intervehicle group ("7"); false if it isn't a uint32
+inline bool parse_intervehicle_group(const std::string& s, std::uint32_t& group)
+{
+    static const std::regex number("[0-9]+");
+    if (!std::regex_match(s, number))
+        return false;
+    try
+    {
+        const auto value = std::stoull(s);
+        if (value >= Group::invalid_numeric_group)
+            return false;
+        group = static_cast<std::uint32_t>(value);
+        return true;
+    }
+    catch (const std::exception&)
+    {
+        return false;
+    }
+}
+
+/// The top-level, non-repeated integer field named \p name, or nullptr
+inline const google::protobuf::FieldDescriptor*
+group_field_descriptor(const google::protobuf::Descriptor* desc, const std::string& name)
+{
+    using google::protobuf::FieldDescriptor;
+    const auto* field = desc->FindFieldByName(name);
+    if (!field || field->is_repeated())
+        return nullptr;
+    switch (field->cpp_type())
+    {
+        case FieldDescriptor::CPPTYPE_INT32:
+        case FieldDescriptor::CPPTYPE_INT64:
+        case FieldDescriptor::CPPTYPE_UINT32:
+        case FieldDescriptor::CPPTYPE_UINT64: return field;
+        default: return nullptr;
+    }
+}
+
+inline void set_group_field(google::protobuf::Message& msg,
+                            const google::protobuf::FieldDescriptor* field, std::uint32_t group)
+{
+    using google::protobuf::FieldDescriptor;
+    const auto* refl = msg.GetReflection();
+    switch (field->cpp_type())
+    {
+        case FieldDescriptor::CPPTYPE_INT32: refl->SetInt32(&msg, field, group); break;
+        case FieldDescriptor::CPPTYPE_INT64: refl->SetInt64(&msg, field, group); break;
+        case FieldDescriptor::CPPTYPE_UINT32: refl->SetUInt32(&msg, field, group); break;
+        case FieldDescriptor::CPPTYPE_UINT64: refl->SetUInt64(&msg, field, group); break;
+        default: break;
+    }
+}
+
+inline std::uint32_t get_group_field(const google::protobuf::Message& msg,
+                                     const google::protobuf::FieldDescriptor* field)
+{
+    using google::protobuf::FieldDescriptor;
+    const auto* refl = msg.GetReflection();
+    switch (field->cpp_type())
+    {
+        case FieldDescriptor::CPPTYPE_INT32: return refl->GetInt32(msg, field);
+        case FieldDescriptor::CPPTYPE_INT64: return refl->GetInt64(msg, field);
+        case FieldDescriptor::CPPTYPE_UINT32: return refl->GetUInt32(msg, field);
+        case FieldDescriptor::CPPTYPE_UINT64: return refl->GetUInt64(msg, field);
+        default: return Group::invalid_numeric_group;
+    }
+}
+} // namespace detail
 
 namespace detail
 {
@@ -373,7 +449,186 @@ inline void parse_type_spec(const protobuf::PubSubTestExpect& expect, std::set<i
         type_regex = spec;
     }
 }
+
+/// True for an intervehicle expectation of the acks or expiries of the endpoint's own
+/// publications, which are reported rather than subscribed to
+inline bool is_intervehicle_report(const protobuf::PubSubTestExpect& expect)
+{
+    std::set<int> schemes;
+    std::string type;
+    parse_type_spec(expect, schemes, type);
+    return schemes == std::set<int>{MarshallingScheme::PROTOBUF} &&
+           (type == intervehicle::protobuf::AckData::descriptor()->full_name() ||
+            type == intervehicle::protobuf::ExpireData::descriptor()->full_name());
+}
 } // namespace detail
+
+/// \brief PubSubTestEndpoint on the intervehicle layer: an InterVehicleForwarder over an
+/// interprocess portal, so traffic goes through that portal's gobyd and its intervehicle links, as
+/// an application's would.
+///
+/// Received messages are reported with scheme DCCL and the numeric group as the group name. Acks
+/// and expiries of this endpoint's publications are reported as PROTOBUF AckData and ExpireData in
+/// the publication's group.
+template <typename Portal, typename PortalConfig>
+class PubSubTestInterVehicleEndpoint : public PubSubTestEndpoint
+{
+  public:
+    PubSubTestInterVehicleEndpoint(std::string name, const PortalConfig& cfg)
+        : name_(std::move(name)), portal_(cfg), intervehicle_(portal_)
+    {
+    }
+
+    const std::string& name() const override { return name_; }
+    bool intervehicle() const override { return true; }
+
+    void publish(const protobuf::PubSubTestPublish& pub) override
+    {
+        int scheme = 0;
+        std::string type;
+        parse_publish_type(pub.type(), scheme, type);
+        if (scheme != MarshallingScheme::DCCL)
+            throw goby::Exception("intervehicle endpoint '" + name_ +
+                                  "' only publishes DCCL types (DCCL/<type>)");
+
+        std::shared_ptr<google::protobuf::Message> msg =
+            dccl::DynamicProtobufManager::new_protobuf_message<
+                std::shared_ptr<google::protobuf::Message>>(type);
+        if (!google::protobuf::TextFormat::ParseFromString(pub.value(), msg.get()))
+            throw goby::Exception("value does not parse as " + type);
+
+        const auto group = numeric_group(pub.group());
+        const auto* field = group_field(msg->GetDescriptor(), pub.group_field(), group);
+
+        goby::middleware::protobuf::TransporterConfig cfg;
+        *cfg.mutable_intervehicle() = pub.intervehicle();
+
+        using PublisherType = Publisher<google::protobuf::Message>;
+        PublisherType::set_group_func_type set_group;
+        if (field)
+            set_group = [field](google::protobuf::Message& m, const Group& g)
+            { detail::set_group_field(m, field, g.numeric()); };
+
+        auto report = [this, group_name = pub.group()](const google::protobuf::Message& md)
+        {
+            if (!handler_)
+                return;
+            const std::string bytes = md.SerializeAsString();
+            handler_({name_, std::vector<unsigned char>(bytes.begin(), bytes.end()),
+                      MarshallingScheme::PROTOBUF, md.GetDescriptor()->full_name(), group_name});
+        };
+        PublisherType::acked_func_type acked;
+        // an acked_func makes the Publisher require acks, so set one only when asked to
+        if (pub.intervehicle().buffer().ack_required())
+            acked = [report](const google::protobuf::Message&,
+                             const intervehicle::protobuf::AckData& ack) { report(ack); };
+        PublisherType::expired_func_type expired =
+            [report](const google::protobuf::Message&,
+                     const intervehicle::protobuf::ExpireData& expire) { report(expire); };
+
+        intervehicle_.template publish_dynamic<google::protobuf::Message, MarshallingScheme::DCCL>(
+            std::shared_ptr<const google::protobuf::Message>(msg), DynamicGroup(pub.group(), group),
+            PublisherType(cfg, set_group, acked, expired));
+    }
+
+    void publish_health_request() override
+    {
+        portal_.template publish<groups::health_request>(protobuf::HealthRequest());
+    }
+
+    // only health traffic is taken from the portal: everything else on this endpoint arrives over
+    // the intervehicle layer
+    void subscribe_all(MessageHandler handler) override
+    {
+        handler_ = handler;
+        const std::string health_groups = "^(" + std::string(groups::health_response) + "|" +
+                                          std::string(groups::health_report) + ")$";
+        portal_.subscribe_regex([this](const std::vector<unsigned char>& bytes, int scheme,
+                                       const std::string& type, const Group& group)
+                                { handler_({name_, bytes, scheme, type, std::string(group)}); },
+                                {MarshallingScheme::PROTOBUF}, ".*", health_groups);
+    }
+
+    void arm(const protobuf::PubSubTestExpect& exp) override
+    {
+        if (detail::is_intervehicle_report(exp))
+            return;
+
+        std::set<int> schemes;
+        std::string type;
+        detail::parse_type_spec(exp, schemes, type);
+        const auto* desc = dccl::DynamicProtobufManager::find_descriptor(type);
+        if (!desc)
+            throw goby::Exception("intervehicle endpoint '" + name_ + "': unknown type '" + type +
+                                  "'");
+
+        const auto group = numeric_group(exp.group());
+        const auto* field = group_field(desc, exp.group_field(), group);
+
+        // an identical subscription is already in place; repeating it would re-forward it
+        const std::string key = type + "/" + std::to_string(group) + "/" + exp.group_field() + "/" +
+                                exp.intervehicle().SerializeAsString();
+        if (!armed_.insert(key).second)
+            return;
+
+        goby::middleware::protobuf::TransporterConfig cfg;
+        *cfg.mutable_intervehicle() = exp.intervehicle();
+        Subscriber<google::protobuf::Message>::group_func_type group_func;
+        if (field)
+            group_func = [field](const google::protobuf::Message& m)
+            { return Group(detail::get_group_field(m, field)); };
+
+        intervehicle_.subscribe_dynamic(
+            [this, type, group](std::shared_ptr<const google::protobuf::Message> msg)
+            {
+                if (!handler_)
+                    return;
+                const auto bytes = SerializerParserHelper<google::protobuf::Message,
+                                                          MarshallingScheme::DCCL>::serialize(*msg);
+                handler_({name_, std::vector<unsigned char>(bytes.begin(), bytes.end()),
+                          MarshallingScheme::DCCL, type, std::to_string(group)});
+            },
+            desc, DynamicGroup(group), Subscriber<google::protobuf::Message>(cfg, group_func));
+    }
+
+    void ready() override { portal_.ready(); }
+    bool hold_state() override { return portal_.hold_state(); }
+    void poll(std::chrono::milliseconds wait) override { intervehicle_.poll(wait); }
+
+  private:
+    std::uint32_t numeric_group(const std::string& s) const
+    {
+        std::uint32_t group;
+        if (!detail::parse_intervehicle_group(s, group))
+            throw goby::Exception("intervehicle endpoint '" + name_ + "': group '" + s +
+                                  "' is not a numeric group");
+        return group;
+    }
+
+    const google::protobuf::FieldDescriptor* group_field(const google::protobuf::Descriptor* desc,
+                                                         const std::string& name,
+                                                         std::uint32_t group) const
+    {
+        if (name.empty())
+        {
+            if (group != Group::broadcast_group)
+                throw goby::Exception("intervehicle endpoint '" + name_ + "': group " +
+                                      std::to_string(group) + " needs a group_field");
+            return nullptr;
+        }
+        const auto* field = detail::group_field_descriptor(desc, name);
+        if (!field)
+            throw goby::Exception("intervehicle endpoint '" + name_ + "': '" + name +
+                                  "' is not a top-level integer field of " + desc->full_name());
+        return field;
+    }
+
+    std::string name_;
+    Portal portal_;
+    InterVehicleForwarder<Portal> intervehicle_;
+    MessageHandler handler_;
+    std::set<std::string> armed_;
+};
 
 namespace detail
 {
@@ -556,6 +811,16 @@ class PubSubTestValidator
                         std::string prefix = "test")
         : test_(test), endpoints_(std::move(endpoint_names)), prefix_(std::move(prefix))
     {
+    }
+
+    /// \brief Names the intervehicle endpoints, and the endpoint used when none is named, so that
+    /// intervehicle rules (numeric groups, DCCL types, group_field) can be checked
+    PubSubTestValidator& set_intervehicle_endpoints(std::set<std::string> names,
+                                                    std::string default_endpoint)
+    {
+        intervehicle_endpoints_ = std::move(names);
+        default_endpoint_ = std::move(default_endpoint);
+        return *this;
     }
 
     Issues validate()
@@ -761,12 +1026,13 @@ class PubSubTestValidator
             return;
         }
 
+        const google::protobuf::Descriptor* desc = nullptr;
         switch (scheme)
         {
             case MarshallingScheme::PROTOBUF:
             case MarshallingScheme::DCCL:
             {
-                const auto* desc = find_descriptor(type);
+                desc = find_descriptor(type);
                 if (!desc)
                     add(loc + ".type",
                         "unknown type '" + type + "' (is the library that defines it loaded?)");
@@ -780,6 +1046,55 @@ class PubSubTestValidator
                                        "' does not name a supported scheme; use PROTOBUF/<type>, "
                                        "DCCL/<type>, JSON/<type> or JSON");
         }
+
+        if (is_intervehicle(pub.endpoint()))
+        {
+            if (scheme != MarshallingScheme::DCCL)
+                add(loc + ".type", "intervehicle endpoints publish DCCL types only (DCCL/<type>)");
+            check_intervehicle_group(loc, pub.group(), pub.group_field(), desc);
+        }
+        else
+        {
+            check_not_intervehicle(loc, pub.has_group_field(), pub.has_intervehicle());
+        }
+    }
+
+    bool is_intervehicle(const std::string& endpoint) const
+    {
+        return intervehicle_endpoints_.count(endpoint.empty() ? default_endpoint_ : endpoint);
+    }
+
+    void check_intervehicle_group(const std::string& loc, const std::string& group,
+                                  const std::string& group_field,
+                                  const google::protobuf::Descriptor* desc)
+    {
+        std::uint32_t numeric;
+        if (!detail::parse_intervehicle_group(group, numeric))
+        {
+            add(loc + ".group", "'" + group +
+                                    "' is not a numeric group, which intervehicle "
+                                    "endpoints require (e.g. \"7\")");
+            return;
+        }
+        if (group_field.empty())
+        {
+            if (numeric != Group::broadcast_group)
+                add(loc + ".group_field", "is required for intervehicle group " + group +
+                                              " (only group 0, broadcast, needs none)");
+        }
+        else if (desc && !detail::group_field_descriptor(desc, group_field))
+        {
+            add(loc + ".group_field",
+                "'" + group_field + "' is not a top-level integer field of " + desc->full_name());
+        }
+    }
+
+    void check_not_intervehicle(const std::string& loc, bool has_group_field, bool has_intervehicle)
+    {
+        if (has_group_field)
+            add(loc + ".group_field", "applies only to intervehicle endpoints");
+        if (has_intervehicle)
+            add(loc + ".intervehicle", "applies only to intervehicle endpoints");
     }
 
     void check_expect(const std::string& loc, const protobuf::PubSubTestExpect& exp)
@@ -827,6 +1142,33 @@ class PubSubTestValidator
                 parse_json(loc + ".match", exp.match());
         }
 
+        if (is_intervehicle(exp.endpoint()) && detail::is_intervehicle_report(exp))
+        {
+            if (exp.has_group_field() || exp.has_intervehicle())
+                add(loc, "group_field and intervehicle do not apply to acks and expiries, which "
+                         "report on this endpoint's own publications");
+        }
+        else if (is_intervehicle(exp.endpoint()))
+        {
+            if (!any && !schemes.count(MarshallingScheme::DCCL))
+                add(loc + ".type",
+                    "intervehicle endpoints receive DCCL types only (or PROTOBUF/"
+                    "goby.middleware.intervehicle.protobuf.AckData or ExpireData for the acks and "
+                    "expiries of their own publications)");
+            if (!desc)
+                add(loc + ".type", "intervehicle endpoints subscribe to one type, so '" +
+                                       type_regex + "' must name a loaded DCCL type");
+            check_intervehicle_group(loc, exp.group(), exp.group_field(), desc);
+            if (exp.intervehicle().publisher_id_size() == 0)
+                add(loc + ".intervehicle.publisher_id",
+                    "at least one is required: a subscription is forwarded only to these modem "
+                    "ids");
+        }
+        else
+        {
+            check_not_intervehicle(loc, exp.has_group_field(), exp.has_intervehicle());
+        }
+
         for (int i = 0, n = exp.condition_size(); i < n; ++i)
         {
             const auto& cond = exp.condition(i);
@@ -862,6 +1204,8 @@ class PubSubTestValidator
     const protobuf::PubSubTest& test_;
     std::set<std::string> endpoints_;
     std::string prefix_;
+    std::set<std::string> intervehicle_endpoints_;
+    std::string default_endpoint_;
     Issues issues_;
     google::protobuf::DynamicMessageFactory dynamic_factory_;
 };
@@ -879,14 +1223,19 @@ class PubSubTestRunner
         if (endpoints_.empty())
             throw goby::Exception("at least one endpoint is required");
 
-        std::set<std::string> names;
+        std::set<std::string> names, intervehicle_names;
         for (auto& ep : endpoints_)
         {
             if (!endpoint_index_.insert({ep->name(), ep.get()}).second)
                 throw goby::Exception("duplicate endpoint name: " + ep->name());
             names.insert(ep->name());
+            if (ep->intervehicle())
+                intervehicle_names.insert(ep->name());
         }
-        auto issues = PubSubTestValidator(test_, names).validate();
+        auto issues =
+            PubSubTestValidator(test_, names)
+                .set_intervehicle_endpoints(intervehicle_names, endpoints_.front()->name())
+                .validate();
         if (!issues.empty())
             throw goby::Exception(issues.front().location() + ": " + issues.front().message());
     }
@@ -917,6 +1266,9 @@ class PubSubTestRunner
             }
             else
             {
+                // after require_app: a daemon that answers health requests is ready to forward
+                // subscriptions
+                arm_all();
                 run_all(report);
             }
         }
@@ -1060,6 +1412,16 @@ class PubSubTestRunner
         if (it == endpoint_index_.end())
             throw goby::Exception("unknown endpoint '" + name + "'");
         return it->second;
+    }
+
+    void arm_all()
+    {
+        for (const auto& run : test_.run())
+        {
+            for (const auto& exp : run.expect()) endpoint(exp.endpoint())->arm(exp);
+            for (const auto& step : run.step())
+                for (const auto& exp : step.expect()) endpoint(exp.endpoint())->arm(exp);
+        }
     }
 
     void poll_all()

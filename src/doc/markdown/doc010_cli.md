@@ -97,12 +97,39 @@ test:
 
 ![](images/goby-test-plan.png)
 
-- `endpoint`: named connections, each with `zeromq` settings (one `gobyd`) or `udpm` settings (one multicast group), on the interprocess (`LAYER_INTERPROCESS`, the default) or intermodule (`LAYER_INTERMODULE`) layer. A test may mix transports. An endpoint with neither uses zeromq when Goby was built with it, otherwise udpm; with no endpoints, one named `default` is created. Endpoint settings are layered over `run`'s `--zeromq` (also `GOBY_INTERPROCESS`) and `--udpm` settings.
+- `endpoint`: named connections, each with `zeromq` settings (one `gobyd`) or `udpm` settings (one multicast group), on the interprocess (`LAYER_INTERPROCESS`, the default), intermodule (`LAYER_INTERMODULE`) or intervehicle (`LAYER_INTERVEHICLE`, see below) layer. A test may mix transports. An endpoint with neither uses zeromq when Goby was built with it, otherwise udpm; with no endpoints, one named `default` is created. Endpoint settings are layered over `run`'s `--zeromq` (also `GOBY_INTERPROCESS`) and `--udpm` settings.
 - `fixture`: commands (run with `/bin/sh -c`, in `cwd`, each in its own process group) started in order before the test, each waiting until it is `ready`: every `output_regex` (one or more) has matched a line of output within `timeout`, in any order, then an optional `delay`. After the test they are stopped in reverse order with `stop.signal` (default `SIGINT`), escalating to `SIGTERM` and `SIGKILL` after `stop.grace` seconds. On Linux, `goby test` also stops descendants that left the process group (such as detached `screen` sessions). Each fixture's output is written to a log in `--log_dir` (a new temporary directory by default); a failed test's report includes the log path and its last lines.
 - `test.require_app`: application names that must answer the coroner health request before the runs start; a running `goby_coroner`'s report is used instead once seen.
 - `test.run`: runs execute `SEQUENTIAL` (default) or `PARALLEL` as given by `test.mode`. A run holds `publish`, `expect` and `wait` entries directly, or a list of `step` entries executed by its own `mode`. A `wait` keeps a run or step open for at least that long; on its own it is a pause.
 
 Within a run or step the expectations are subscribed first, then the publications are sent (after `delay`), then the tool waits until every expectation is satisfied or times out. An expectation names an endpoint, a `group` regex and a `type` regex (optionally prefixed by a scheme, such as `DCCL/`), and passes when the number of matching messages satisfies `min_count` (default 1, done as soon as it is reached) or `count` (exact; the step lasts its whole timeout so that extra messages are seen, and `count: 0` asserts nothing arrives). A message matches when it satisfies `match`, a partial message in the same syntax as `publish` (TextFormat for Protobuf and DCCL, JSON for JSON), and every `condition` (a `field` path such as `pos.lat` or `waypoint[0].id`, an `op` of `EQ`, `NE`, `LT`, `LE`, `GT`, `GE`, `REGEX`, `EXISTS` or `ABSENT`, and a `value`). Messages that fail to match are counted as rejected and the reason for the last rejection is reported. Durations are in seconds.
+
+### Intervehicle endpoints
+
+A `LAYER_INTERVEHICLE` endpoint publishes and subscribes through its `gobyd`'s intervehicle links, as an application does, so a test with one endpoint per vehicle (each with its own `gobyd` fixture) checks traffic across the link.
+
+- Types are DCCL only, and groups are numeric (`group: "7"`; `"0"` is broadcast). Any other group is carried in the message: `group_field` names the top-level integer field that holds it.
+- An expectation is also a subscription, made once `require_app` has passed and before the first run. `intervehicle { publisher_id: 1 }` lists the modem ids it is forwarded to, and a publish needs a `delay` that lets it cross the link.
+- A publish's `intervehicle` sets its buffer (`ttl`, `max_queue`, `ack_required`, ...), `broadcast` and `clear_pending`. With `ack_required: true`, its acks and expiries are reported on the publishing endpoint, in its group, as `PROTOBUF/goby.middleware.intervehicle.protobuf.AckData` and `ExpireData`.
+
+```yaml
+endpoint:
+  - { name: auv, layer: LAYER_INTERVEHICLE, zeromq: { platform: auv } }
+  - { name: topside, layer: LAYER_INTERVEHICLE, zeromq: { platform: topside } }
+test:
+  run:
+    - publish:
+        - endpoint: auv
+          group: "7"
+          group_field: group
+          type: DCCL/NavigationReport
+          value: "x: 10 y: 20"
+          intervehicle: { buffer: { ack_required: true } }
+          delay: 3
+      expect:
+        - { endpoint: topside, group: "7", group_field: group, type: NavigationReport, intervehicle: { publisher_id: [1] } }
+        - { endpoint: auv, group: "7", type: PROTOBUF/goby.middleware.intervehicle.protobuf.AckData }
+```
 
 ### Repeating runs
 

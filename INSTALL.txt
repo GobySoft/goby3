@@ -8,9 +8,15 @@ satisfy the third party dependencies in DEPENDENCIES:
 configure and build using cmake and install locally (goby/bin, goby/include, goby/lib)
 > ./build.sh
 
-(optional) build & run unit tests
+(optional) build & run the tests: unit tests (src/test/unit, single test programs, including the
+tests of 'goby test' itself) and component tests (src/test/component, 'goby test' files run
+against real daemons)
 > GOBY_CMAKE_FLAGS="-Denable_testing=ON" ./build.sh
 > ./build.sh test
+
+or just one kind, from the build directory
+> ctest -L unit
+> ctest -L component
 
 to install to system (/usr/local/* by default)
 > ./build.sh install
