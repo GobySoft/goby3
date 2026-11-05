@@ -1,0 +1,64 @@
+vars: { d2-config: { layout-engine: elk } }
+direction: right
+classes: {
+  platform: { style.stroke: "#006400"; style.font-color: "#006400"; style.stroke-width: 2; style.fill: transparent }
+  module: { style.stroke: "#cd8500"; style.font-color: "#cd8500"; style.stroke-width: 2; style.fill: transparent }
+  application: { style.stroke: "#104e8b"; style.font-color: "#104e8b"; style.stroke-width: 2; style.fill: transparent }
+  thread: { style.stroke: "#551a8b"; style.font-color: "#551a8b" }
+  placeholder: { shape: text; style.font-color: "#888888" }
+  interthread: { style.stroke: "#551a8b"; style.font-size: 10 }
+  interprocess: { style.stroke: "#104e8b"; style.font-size: 10 }
+  intermodule: { style.stroke: "#cd8500"; style.font-size: 10 }
+  intervehicle: { style.stroke: "#006400"; style.font-size: 10 }
+  required: { style.stroke-width: 3 }
+  recommended: { style.stroke-dash: 6 }
+  regex: { style.stroke-dash: 2 }
+  dynamic: { style.stroke-dash: 4 }
+  unmet: { style.stroke: red; style.stroke-width: 3 }
+}
+auv: {
+  class: platform
+  controller: {
+    class: application
+    Controller: { class: thread; tooltip: "P6: nav::command | PROTOBUF | nav::protobuf::Command" }
+    no_publisher: { class: placeholder; label: "no publisher" }
+  }
+  nav_backup: {
+    class: application
+    Driver: { class: thread; label: "nav::Driver"; tooltip: "T2: nav::raw_out | CXX_OBJECT | std::string\nP3: nav::fix | PROTOBUF | nav::protobuf::Fix\nV1: nav::status;1 | DCCL | nav::protobuf::Status" }
+    SerialThread: { class: thread; label: "nav::SerialThread"; tooltip: "T3: nav::raw_in | CXX_OBJECT | std::string" }
+  }
+  nav_primary: {
+    class: application
+    Driver: { class: thread; label: "nav::Driver"; tooltip: "T0: nav::raw_out | CXX_OBJECT | std::string\nP0: nav::fix | PROTOBUF | nav::protobuf::Fix\nV0: nav::status;1 | DCCL | nav::protobuf::Status" }
+    SerialThread: { class: thread; label: "nav::SerialThread"; tooltip: "T1: nav::raw_in | CXX_OBJECT | std::string" }
+  }
+}
+topside: {
+  class: platform
+  payload: {
+    class: application
+    Payload: { class: thread; tooltip: "P8: nav::depth | PROTOBUF | nav::protobuf::Depth\nM0: payload::science | PROTOBUF | payload::protobuf::Science" }
+    no_subscriber: { class: placeholder; label: "no subscriber" }
+  }
+  topside_display: {
+    class: application
+    Display: { class: thread }
+    no_publisher: { class: placeholder; label: "no publisher" }
+  }
+}
+auv.controller.Controller -> auv.nav_backup.Driver: "P6 [command]" { class: [interprocess; recommended]; tooltip: "P6: nav::command | PROTOBUF | nav::protobuf::Command" }
+auv.controller.Controller -> auv.nav_primary.Driver: "P6 [command]" { class: [interprocess; recommended]; tooltip: "P6: nav::command | PROTOBUF | nav::protobuf::Command" }
+auv.nav_backup.Driver -> auv.nav_backup.SerialThread: "T2 [raw_out]" { class: interthread; tooltip: "T2: nav::raw_out | CXX_OBJECT | std::string" }
+auv.nav_backup.SerialThread -> auv.nav_backup.Driver: "T3 [raw_in]" { class: interthread; tooltip: "T3: nav::raw_in | CXX_OBJECT | std::string" }
+auv.nav_backup.Driver -> auv.controller.Controller: "P3 [fix]" { class: [interprocess; required]; tooltip: "P3: nav::fix | PROTOBUF | nav::protobuf::Fix" }
+auv.nav_backup.Driver -> topside.topside_display.Display: "V1 [status;1]" { class: [intervehicle; required]; tooltip: "V1: nav::status;1 | DCCL | nav::protobuf::Status" }
+auv.nav_primary.Driver -> auv.nav_primary.SerialThread: "T0 [raw_out]" { class: interthread; tooltip: "T0: nav::raw_out | CXX_OBJECT | std::string" }
+auv.nav_primary.SerialThread -> auv.nav_primary.Driver: "T1 [raw_in]" { class: interthread; tooltip: "T1: nav::raw_in | CXX_OBJECT | std::string" }
+auv.nav_primary.Driver -> auv.controller.Controller: "P0 [fix]" { class: [interprocess; required]; tooltip: "P0: nav::fix | PROTOBUF | nav::protobuf::Fix" }
+auv.nav_primary.Driver -> topside.topside_display.Display: "V0 [status;1]" { class: [intervehicle; required]; tooltip: "V0: nav::status;1 | DCCL | nav::protobuf::Status" }
+topside.payload.Payload -> topside.payload.no_subscriber: "P8 [depth]" { class: interprocess; tooltip: "P8: nav::depth | PROTOBUF | nav::protobuf::Depth" }
+topside.payload.Payload -> topside.payload.no_subscriber: "M0 [science]" { class: intermodule; tooltip: "M0: payload::science | PROTOBUF | payload::protobuf::Science" }
+auv.controller.no_publisher -> auv.controller.Controller: "P9 [depth]" { class: [interprocess; required; unmet]; tooltip: "P9: nav::depth | PROTOBUF | nav::protobuf::Depth" }
+auv.controller.no_publisher -> auv.controller.Controller: "M1 [science]" { class: intermodule; tooltip: "M1: payload::science | PROTOBUF | payload::protobuf::Science" }
+topside.topside_display.no_publisher -> topside.topside_display.Display: "P10 [fix]" { class: [interprocess; recommended]; tooltip: "P10: nav::fix | PROTOBUF | nav::protobuf::Fix" }

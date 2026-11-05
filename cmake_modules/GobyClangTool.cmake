@@ -65,14 +65,23 @@ function(GOBY_EXPORT_INTERFACE TARGET YML_OUT_DIR STUB_OUT_DIR YML)
     
 endfunction()
 
-# usage: goby_visualize_interfaces(YML_DIR DEPLOYMENT_YAML IMAGE_OUT PARAMETERS DEPENDENCY1 DEPENDENCY2 ... )
-# generates PDF graphviz graph from deployment yaml file
+# usage: goby_visualize_interfaces(YML_DIR DEPLOYMENT_YAML IMAGE_OUT PARAMETERS [FORMAT DOT|D2] DEPENDENCY1 DEPENDENCY2 ... )
+# draws a deployment yaml file with Graphviz (FORMAT DOT, the default, rendered by dot) or
+# D2 (FORMAT D2, rendered by d2, https://d2lang.com)
 # YML_DIR: directory to YML interface files
 # DEPLOYMENT_YAML: deployment file
-# IMAGE_OUT: output image path
+# IMAGE_OUT: output image path; its extension (.pdf, .svg, .png) sets the image type
 # parameters: extra parameters for goby_clang_tool
 # DEPENDENCY1..N: YML dependencies (list of targets from GOBY_EXPORT_INTERFACE())
 function(GOBY_VISUALIZE_INTERFACES YML_DIR DEPLOYMENT_YAML IMAGE_OUT PARAMETERS)
+  cmake_parse_arguments(VIZ "" "FORMAT" "" ${ARGN})
+  if(NOT VIZ_FORMAT)
+    set(VIZ_FORMAT DOT)
+  endif()
+  string(TOLOWER ${VIZ_FORMAT} GRAPH_FORMAT)
+  if(NOT GRAPH_FORMAT STREQUAL "dot" AND NOT GRAPH_FORMAT STREQUAL "d2")
+    message(FATAL_ERROR "goby_visualize_interfaces: FORMAT must be DOT or D2, not ${VIZ_FORMAT}")
+  endif()
 
   get_filename_component(ABS_IMAGE_OUT ${IMAGE_OUT} ABSOLUTE)
   get_filename_component(OUT_DIR ${ABS_IMAGE_OUT} DIRECTORY)
@@ -90,25 +99,34 @@ function(GOBY_VISUALIZE_INTERFACES YML_DIR DEPLOYMENT_YAML IMAGE_OUT PARAMETERS)
   
   file(MAKE_DIRECTORY ${OUT_DIR})
   get_filename_component(DEPLOYMENT_NAME_FROM_FILENAME ${ABS_DEPLOYMENT_YAML} NAME_WE)
-  set(DOT_OUT_FILE "${DEPLOYMENT_NAME_FROM_FILENAME}${PARAMETERS_SUFFIX}.dot")
-  set(ABS_DOT_OUT "${OUT_DIR}/${DOT_OUT_FILE}")
+  set(GRAPH_OUT_FILE "${DEPLOYMENT_NAME_FROM_FILENAME}${PARAMETERS_SUFFIX}.${GRAPH_FORMAT}")
+  set(ABS_GRAPH_OUT "${OUT_DIR}/${GRAPH_OUT_FILE}")
   
   add_custom_command(
-    OUTPUT ${ABS_DOT_OUT}
+    OUTPUT ${ABS_GRAPH_OUT}
     COMMAND goby_clang_tool
-    ARGS -viz -outdir ${OUT_DIR} -o ${DOT_OUT_FILE} -p ${CMAKE_BINARY_DIR} ${ABS_DEPLOYMENT_YAML} ${PARAMETERS}
-    DEPENDS ${ARGN} ${ABS_DEPLOYMENT_YAML}
+    ARGS -viz -format=${GRAPH_FORMAT} -outdir ${OUT_DIR} -o ${GRAPH_OUT_FILE} -p ${CMAKE_BINARY_DIR} ${ABS_DEPLOYMENT_YAML} ${PARAMETERS}
+    DEPENDS ${VIZ_UNPARSED_ARGUMENTS} ${ABS_DEPLOYMENT_YAML}
     WORKING_DIRECTORY ${YML_DIR}
     )
 
-  set_source_files_properties(${ABS_DOT_OUT} PROPERTIES GENERATED TRUE)
+  set_source_files_properties(${ABS_GRAPH_OUT} PROPERTIES GENERATED TRUE)
 
-  add_custom_command(
-    OUTPUT ${ABS_IMAGE_OUT}
-    COMMAND dot
-    ARGS -T${IMAGE_TYPE} -o ${ABS_IMAGE_OUT} ${ABS_DOT_OUT} 
-    DEPENDS ${ABS_DOT_OUT}
-    )
+  if(GRAPH_FORMAT STREQUAL "d2")
+    add_custom_command(
+      OUTPUT ${ABS_IMAGE_OUT}
+      COMMAND d2
+      ARGS ${ABS_GRAPH_OUT} ${ABS_IMAGE_OUT}
+      DEPENDS ${ABS_GRAPH_OUT}
+      )
+  else()
+    add_custom_command(
+      OUTPUT ${ABS_IMAGE_OUT}
+      COMMAND dot
+      ARGS -T${IMAGE_TYPE} -o ${ABS_IMAGE_OUT} ${ABS_GRAPH_OUT}
+      DEPENDS ${ABS_GRAPH_OUT}
+      )
+  endif()
 
   set_source_files_properties(${ABS_IMAGE_OUT} PROPERTIES GENERATED TRUE)
   
