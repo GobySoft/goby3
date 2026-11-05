@@ -163,12 +163,28 @@ Works with the publish/subscribe interface files that `goby_clang_tool -gen` wri
 
 ```
 goby interface validate <deployment.yml> [-D NAME=value] [-I <dir>] [-o HUMAN|JSON] [--output_file <path>] [--strict] [--report_unused] [--assume_dynamic] [--omit_group_regex <regex>] [--omit_node_regex <regex>]
+goby interface list <deployment.yml> [applications|platforms|groups] [-D NAME=value] [-I <dir>] [-o HUMAN|JSON] [--output_file <path>]
+goby interface explain <deployment.yml> <group regex> [--type_regex <regex>] [-D NAME=value] [-I <dir>] [-o HUMAN|JSON] [--output_file <path>]
+goby interface diff <a.yml> [<b.yml>] [--interface_dir_a <dir>] [--interface_dir_b <dir>] [-D NAME=value] [-I <dir>] [-o HUMAN|JSON] [--output_file <path>]
+goby interface init <directory> [--platform <name>] [--deployment_name <name>] [--output_file <path>]
 goby interface visualize <deployment.yml> [-D NAME=value] [-I <dir>] [--format DOT|D2] [--output_file <file>] [--expand_instances] [--no_disconnected] [--omit_interthread] [--omit_group_regex <regex>] [--omit_node_regex <regex>] [--include_terminate] [--include_coroner] [--include_all] [--splines <setting>]
 ```
 
 - `validate` checks that every `required` subscription has a publisher in its scope (`required-unmet`, an error) and every `recommended` one (`recommended-unmet`, a warning), along with problems reading the files. It exits 0 when the deployment is valid, 1 on an error (or a warning, with `--strict`) and 2 when the deployment file cannot be read. `-o JSON` writes the `InterfaceValidation` message in `goby/apps/middleware/interface_tool/interface_tool_config.proto`.
 - `visualize` writes the deployment as a Graphviz graph, e.g. `goby interface visualize fleet.yml | dot -Tsvg -o fleet.svg`, or with `--format D2` as a [D2](https://d2lang.com) diagram, e.g. `goby interface visualize fleet.yml --format D2 > fleet.d2 && d2 fleet.d2 fleet.svg`. Both use the same colors and edge styles: bold for required, tapered (dashed in D2) for recommended, dotted for regex and dashed for dynamic groups, with full group, scheme and type in each tooltip. The D2 output sets the ELK layout, which handles connections between nested containers better than D2's default. `goby_clang_tool -viz` (`-format=dot|d2`) draws the same graph, and `goby_visualize_interfaces(... FORMAT D2 ...)` renders it in CMake.
-- Either takes a single interface file as a one-platform deployment.
+- `list` prints each application with its thread count and publications/subscriptions per layer, each platform with its applications and modules, or each group with its publishers and subscribers.
+- `explain` shows, for every publication and subscription whose group contains a match for the regex, who it reaches, and for a subscription with no publisher, why: a publisher on another layer, out of its layer's scope (interprocess in another module, intervehicle on the same platform), of another type or scheme, with other numerics, only a dynamic one with its numeric set at run time, or one whose group goby_clang_tool could not determine. It exits 1 when nothing matches.
+- `diff` compares two deployments, or one deployment against two sets of interface files (`--interface_dir_a` and `--interface_dir_b`, e.g. two builds), and lists applications and connections added or removed and required subscriptions newly unmet or newly met. As `diff` does, it exits 0 when they are the same, 1 when they differ and 2 when a file cannot be read.
+- `init` writes a starting deployment file that runs every application declared in a directory of interface files on one platform.
+- Each takes a single interface file as a one-platform deployment.
+
+```
+$ goby interface explain modules.yml depth
+subscription  auv/vehicle/controller (Controller) [interprocess] nav::depth PROTOBUF nav::protobuf::Depth, required: NOT MET
+    auv/payload/payload (Payload) publishes it on interprocess in module payload, but interprocess stops at its module (one gobyd); it needs intermodule
+publication   auv/payload/payload (Payload) [interprocess] nav::depth PROTOBUF nav::protobuf::Depth
+    no subscriber in its scope
+```
 
 ```yaml
 deployment: fleet

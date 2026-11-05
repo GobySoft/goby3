@@ -21,13 +21,10 @@
 // You should have received a copy of the GNU General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-#include <filesystem>
-#include <fstream>
 #include <iomanip>
 #include <iostream>
+#include <regex>
 #include <sstream>
-
-#include <google/protobuf/util/json_util.h>
 
 #include "goby/middleware/application/configuration_reader.h"
 #include "goby/middleware/application/interface.h"
@@ -38,7 +35,8 @@
 
 #include "goby/apps/middleware/interface_tool/interface_tool_config.pb.h"
 
-namespace interface = goby::middleware::tool::interface;
+#include "common.h"
+#include "inspect.h"
 
 namespace goby
 {
@@ -83,51 +81,35 @@ class InterfaceValidateTool
     void run() override;
 };
 
+class InterfaceListTool : public goby::middleware::Application<protobuf::InterfaceListConfig>
+{
+  private:
+    void run() override;
+};
+
+class InterfaceExplainTool : public goby::middleware::Application<protobuf::InterfaceExplainConfig>
+{
+  private:
+    void run() override;
+};
+
+class InterfaceDiffTool : public goby::middleware::Application<protobuf::InterfaceDiffConfig>
+{
+  private:
+    void run() override;
+};
+
+class InterfaceInitTool : public goby::middleware::Application<protobuf::InterfaceInitConfig>
+{
+  private:
+    void run() override;
+};
+
 } // namespace middleware
 } // namespace apps
 } // namespace goby
 
-namespace
-{
-// share/goby/interfaces beside the bin/ this tool runs from, in a build tree or an installation
-std::string goby_interfaces_dir()
-{
-    std::error_code ec;
-    auto exe = std::filesystem::read_symlink("/proc/self/exe", ec);
-    if (ec)
-        return "";
-    return (exe.parent_path().parent_path() / "share" / "goby" / "interfaces").string();
-}
-
-template <typename Config> interface::LoadParams load_params(const Config& cfg)
-{
-    interface::LoadParams params;
-    params.interface_dirs.assign(cfg.interface_dir().begin(), cfg.interface_dir().end());
-    params.goby_interfaces_dir = goby_interfaces_dir();
-    for (const auto& define : cfg.define())
-    {
-        auto eq = define.find('=');
-        if (eq == std::string::npos)
-            params.defines[define] = "";
-        else
-            params.defines[define.substr(0, eq)] = define.substr(eq + 1);
-    }
-    return params;
-}
-
-void write_output(const std::string& out, const std::string& output_file)
-{
-    if (output_file.empty())
-    {
-        std::cout << out << std::flush;
-    }
-    else
-    {
-        std::ofstream fout(output_file);
-        fout << out;
-    }
-}
-} // namespace
+using namespace goby::apps::middleware::interface_tool;
 
 int main(int argc, char* argv[])
 {
@@ -158,6 +140,18 @@ goby::apps::middleware::InterfaceTool::InterfaceTool()
                         case Config::validate:
                             tool_helper.help<InterfaceValidateTool>(action_for_help);
                             break;
+                        case Config::list:
+                            tool_helper.help<InterfaceListTool>(action_for_help);
+                            break;
+                        case Config::explain:
+                            tool_helper.help<InterfaceExplainTool>(action_for_help);
+                            break;
+                        case Config::diff:
+                            tool_helper.help<InterfaceDiffTool>(action_for_help);
+                            break;
+                        case Config::init:
+                            tool_helper.help<InterfaceInitTool>(action_for_help);
+                            break;
                         default:
                             throw(goby::Exception(
                                 "Help was expected to be handled by external tool"));
@@ -170,6 +164,12 @@ goby::apps::middleware::InterfaceTool::InterfaceTool()
             case Config::validate:
                 exit_code = tool_helper.run_subtool<InterfaceValidateTool>();
                 break;
+            case Config::list: exit_code = tool_helper.run_subtool<InterfaceListTool>(); break;
+            case Config::explain:
+                exit_code = tool_helper.run_subtool<InterfaceExplainTool>();
+                break;
+            case Config::diff: exit_code = tool_helper.run_subtool<InterfaceDiffTool>(); break;
+            case Config::init: exit_code = tool_helper.run_subtool<InterfaceInitTool>(); break;
             default: throw(goby::Exception("Action was expected to be handled by external tool"));
         }
     }
@@ -183,12 +183,8 @@ void goby::apps::middleware::InterfaceVisualizeTool::run()
     auto params_for_load = load_params(cfg);
     params_for_load.expand_instances = cfg.expand_instances();
     interface::Issues issues;
-    auto deployment = interface::load_deployment(cfg.deployment_file(), issues, params_for_load);
-    for (const auto& issue : issues)
-    {
-        if (issue.severity != interface::Issue::Severity::INFO)
-            std::cerr << issue << std::endl;
-    }
+    interface::Deployment deployment;
+    load(cfg.deployment_file(), params_for_load, deployment, issues);
     if (interface::has_errors(issues))
     {
         quit(1);
@@ -228,42 +224,6 @@ namespace
 {
 using goby::apps::middleware::protobuf::InterfaceIssue;
 using goby::apps::middleware::protobuf::InterfaceValidation;
-
-InterfaceIssue::Severity to_proto(interface::Issue::Severity severity)
-{
-    switch (severity)
-    {
-        case interface::Issue::Severity::ERROR: return InterfaceIssue::ERROR;
-        case interface::Issue::Severity::WARNING: return InterfaceIssue::WARNING;
-        case interface::Issue::Severity::INFO: break;
-    }
-    return InterfaceIssue::INFO;
-}
-
-void to_proto(const interface::Issue& issue, InterfaceIssue& pb)
-{
-    pb.set_severity(to_proto(issue.severity));
-    pb.set_code(issue.code);
-    pb.set_message(issue.message);
-    if (!issue.location.empty())
-        pb.set_location(issue.location);
-
-    const auto& s = issue.subject;
-    if (s.application.empty())
-        return;
-    auto& subject = *pb.mutable_subject();
-    subject.set_platform(s.platform);
-    if (!s.module.empty())
-        subject.set_module(s.module);
-    subject.set_application(s.application);
-    subject.set_thread(s.thread);
-    subject.set_layer(s.layer);
-    subject.set_group(s.group);
-    subject.set_scheme(s.scheme);
-    subject.set_type(s.type);
-    if (!s.necessity.empty())
-        subject.set_necessity(s.necessity);
-}
 
 std::string severity_name(InterfaceIssue::Severity severity)
 {
@@ -320,15 +280,6 @@ std::string render_human(const InterfaceValidation& validation)
     return ss.str();
 }
 
-std::string render_json(const InterfaceValidation& validation)
-{
-    std::string out;
-    google::protobuf::util::JsonPrintOptions opts;
-    opts.add_whitespace = true;
-    opts.preserve_proto_field_names = true;
-    google::protobuf::util::MessageToJsonString(validation, &out, opts);
-    return out;
-}
 } // namespace
 
 void goby::apps::middleware::InterfaceValidateTool::run()
@@ -372,4 +323,105 @@ void goby::apps::middleware::InterfaceValidateTool::run()
                  cfg.output_file());
 
     quit(unreadable ? 2 : (valid ? 0 : 1));
+}
+
+void goby::apps::middleware::InterfaceListTool::run()
+{
+    const auto& cfg = app_cfg();
+    interface::Issues issues;
+    interface::Deployment deployment;
+    if (!load(cfg.deployment_file(), load_params(cfg), deployment, issues))
+    {
+        quit(2);
+        return;
+    }
+
+    auto result = interface_tool::list(cfg.deployment_file(), deployment);
+    write_output(cfg.output_format() == protobuf::InterfaceValidateConfig::JSON
+                     ? render_json(result)
+                     : render_human(result, cfg.what()),
+                 cfg.output_file());
+    quit(0);
+}
+
+void goby::apps::middleware::InterfaceExplainTool::run()
+{
+    const auto& cfg = app_cfg();
+    interface::Issues issues;
+    interface::Deployment deployment;
+    if (!load(cfg.deployment_file(), load_params(cfg), deployment, issues))
+    {
+        quit(2);
+        return;
+    }
+
+    protobuf::InterfaceExplanation result;
+    try
+    {
+        result = interface_tool::explain(cfg.deployment_file(), deployment,
+                                         interface::resolve(deployment), cfg.group_regex(),
+                                         cfg.type_regex());
+    }
+    catch (const std::regex_error& e)
+    {
+        std::cerr << "invalid regex: " << e.what() << std::endl;
+        quit(2);
+        return;
+    }
+    write_output(cfg.output_format() == protobuf::InterfaceValidateConfig::JSON
+                     ? render_json(result)
+                     : render_human(result),
+                 cfg.output_file());
+    // so that a script can tell a pattern that matched nothing
+    quit(result.subscription_size() || result.publication_size() ? 0 : 1);
+}
+
+void goby::apps::middleware::InterfaceDiffTool::run()
+{
+    const auto& cfg = app_cfg();
+    auto dirs = [&](const google::protobuf::RepeatedPtrField<std::string>& own)
+    {
+        std::vector<std::string> all(own.begin(), own.end());
+        all.insert(all.end(), cfg.interface_dir().begin(), cfg.interface_dir().end());
+        return all;
+    };
+    const auto& file_b =
+        cfg.has_deployment_file_b() ? cfg.deployment_file_b() : cfg.deployment_file();
+
+    interface::Issues issues_a, issues_b;
+    interface::Deployment a, b;
+    bool readable_a = load(cfg.deployment_file(),
+                           load_params(cfg.define(), dirs(cfg.interface_dir_a())), a, issues_a);
+    bool readable_b =
+        load(file_b, load_params(cfg.define(), dirs(cfg.interface_dir_b())), b, issues_b);
+    if (!readable_a || !readable_b)
+    {
+        quit(2);
+        return;
+    }
+
+    auto result = interface_tool::diff(cfg.deployment_file(), a, file_b, b);
+    write_output(cfg.output_format() == protobuf::InterfaceValidateConfig::JSON
+                     ? render_json(result)
+                     : render_human(result),
+                 cfg.output_file());
+    // as diff(1): 0 when the same, 1 when different
+    quit(has_differences(result) ? 1 : 0);
+}
+
+void goby::apps::middleware::InterfaceInitTool::run()
+{
+    const auto& cfg = app_cfg();
+    int applications = 0;
+    auto deployment =
+        interface_tool::init(cfg.directory(), cfg.platform(), cfg.deployment_name(), applications);
+    if (applications == 0)
+    {
+        std::cerr << "no interface files (with an application: name) found in " << cfg.directory()
+                  << std::endl;
+        quit(1);
+        return;
+    }
+    write_output(deployment, cfg.output_file());
+    quit(0);
 }
