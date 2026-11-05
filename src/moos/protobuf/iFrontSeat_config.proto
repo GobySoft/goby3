@@ -84,9 +84,10 @@ message iFrontSeatConfig
             default = true,
             (goby.field).description =
                 "Publish NAV_X, NAV_Y, NAV_LAT, NAV_LONG, NAV_Z, NAV_DEPTH, "
-                "NAV_YAW, NAV_HEADING, NAV_SPEED, NAV_PITCH, NAV_ROLL and "
-                "NAV_ALTITUDE from the NodeStatus message within "
-                "FrontSeatInterfaceData"
+                "NAV_YAW, NAV_HEADING, NAV_HEADING_OVER_GROUND, NAV_SPEED "
+                "(speed through water if known, otherwise over ground), "
+                "NAV_SPEED_OVER_GROUND, NAV_PITCH, NAV_ROLL and NAV_ALTITUDE "
+                "from the NodeStatus message within FrontSeatInterfaceData"
         ];
 
         optional bool publish_fs_bs_ready = 11 [
