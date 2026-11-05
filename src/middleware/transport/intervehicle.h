@@ -296,14 +296,16 @@ class InterVehicleTransporterBase
     std::shared_ptr<goby::middleware::protobuf::SerializerTransporterMessage>
     _set_up_publish(const Data& d, const Group& group, const Publisher<Data>& publisher)
     {
-        if (group.numeric() != Group::broadcast_group && !publisher.has_set_group_func())
+        if (group.numeric() != Group::broadcast_group && !publisher.has_set_group_func() &&
+            publisher.group_in_message())
         {
             std::stringstream ss;
             ss << "Error: Publisher must have set_group_func in order to publish to a "
                   "non-broadcast Group ("
                << group
                << "). The set_group_func modifies the contents of the outgoing message to store "
-                  "the group information.";
+                  "the group information. If the message doesn't store the group, set "
+                  "group_in_message to false in the Publisher's Options instead.";
             throw(InvalidPublication(ss.str()));
         }
 
@@ -356,14 +358,16 @@ class InterVehicleTransporterBase
         {
             case SubscriptionAction::SUBSCRIBE:
             {
-                if (group.numeric() != Group::broadcast_group && !subscriber.has_group_func())
+                if (group.numeric() != Group::broadcast_group && !subscriber.has_group_func() &&
+                    subscriber.group_in_message())
                 {
                     std::stringstream ss;
                     ss << "Error: Subscriber must have group_func in order to subscribe to "
                           "non-broadcast Group ("
                        << group
                        << "). The group_func returns the appropriate Group based on the contents "
-                          "of the incoming message.";
+                          "of the incoming message. If the message doesn't store the group, set "
+                          "group_in_message to false in the Subscriber's Options instead.";
                     throw(InvalidSubscription(ss.str()));
                 }
 
@@ -836,7 +840,7 @@ class InterVehiclePortal
         // then re-publish to driver threads
         {
             using intervehicle::protobuf::Subscription;
-            auto subscribe_lambda = [=](std::shared_ptr<const Subscription> d)
+            auto subscribe_lambda = [this](std::shared_ptr<const Subscription> d)
             {
                 this->innermost()
                     .template publish<intervehicle::groups::modem_subscription_forward_rx,
