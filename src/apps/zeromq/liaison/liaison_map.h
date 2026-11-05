@@ -147,7 +147,7 @@ class LiaisonMap : public goby::zeromq::LiaisonContainerWithComms<LiaisonMap, Ma
     void create_map();
     void create_controls(Wt::WContainerWidget* parent);
     void create_vehicle_list(Wt::WContainerWidget* parent);
-    std::string depth_units_js() const;
+    std::string layer_control_js() const;
     std::string tile_layers_js() const;
     std::string enc_js() const;
     void add_enc_cell(const enc::Cell& cell);

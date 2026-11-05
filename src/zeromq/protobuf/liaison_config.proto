@@ -296,8 +296,8 @@ message ProtobufMapConfig
         (goby.field).description =
             "Base layers (the first starts selected) and overlays, drawn above "
             "the base in order, offered in the map's layer control. If empty: "
-            "GEBCO bathymetry, OpenStreetMap and Esri Ocean bases, with the NOAA chart and "
-            "OpenSeaMap seamark overlays"
+            "GEBCO bathymetry, OpenStreetMap and Esri Ocean bases, with NOAA "
+            "depths, the NOAA chart and OpenSeaMap seamark overlays"
     ];
     optional bool blank_background = 6 [
         default = false,

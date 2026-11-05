@@ -97,19 +97,32 @@ google::protobuf::RepeatedPtrField<TileLayer> default_tile_layers()
                           "National Geographic, DeLorme, NAVTEQ, and Esri");
     esri->set_max_native_zoom(16);
 
+    // NOAA's soundings share a layer with its depth areas and contours, so depths and the rest
+    // of the chart are separate overlays
+    const std::string noaa_url = "https://gis.charttools.noaa.gov/arcgis/rest/services/MCS/"
+                                 "NOAAChartDisplay/MapServer/exts/MaritimeChartService/WMSServer";
+    const std::string noaa_attribution =
+        "Chart: <a href=\"https://nauticalcharts.noaa.gov\">NOAA Office of Coast Survey</a>, "
+        "not for navigation";
+
+    auto* noaa_depths = layers.Add();
+    noaa_depths->set_name("NOAA depths");
+    noaa_depths->set_url_template(noaa_url);
+    noaa_depths->mutable_wms()->set_layers("2");
+    noaa_depths->set_tile_size(512);
+    noaa_depths->set_depth_units("feet");
+    noaa_depths->set_overlay(true);
+    noaa_depths->set_attribution(noaa_attribution);
+
     auto* noaa = layers.Add();
     noaa->set_name("NOAA chart");
-    noaa->set_url_template("https://gis.charttools.noaa.gov/arcgis/rest/services/MCS/"
-                           "NOAAChartDisplay/MapServer/exts/MaritimeChartService/WMSServer");
-    // the chart without its data quality, low accuracy, additional information, shallow water
-    // pattern and overscale layers, which hatch most of a coastal display
-    noaa->mutable_wms()->set_layers("0,1,2,3,4,5,6,7");
+    noaa->set_url_template(noaa_url);
+    // without data quality, low accuracy, additional information, shallow water pattern and
+    // overscale, which hatch most of a coastal display
+    noaa->mutable_wms()->set_layers("0,1,3,4,5,6,7");
     noaa->set_tile_size(512);
-    noaa->set_depth_units("feet");
     noaa->set_overlay(true);
-    noaa->set_attribution(
-        "Chart: <a href=\"https://nauticalcharts.noaa.gov\">NOAA Office of Coast Survey</a>, "
-        "not for navigation");
+    noaa->set_attribution(noaa_attribution);
 
     auto* seamarks = layers.Add();
     seamarks->set_name("OpenSeaMap seamarks");
@@ -384,7 +397,7 @@ void goby::apps::zeromq::LiaisonMap::create_map()
     // tracks are drawn with Leaflet directly: WLeafletMap polylines cannot be extended or removed
     // each point carries the browser time it was received, from the age Liaison sends with it,
     // so the server's and browser's clocks need not agree. S is the trail in seconds (<0: all).
-    js_setup_ = depth_units_js() + tile_layers_js() +
+    js_setup_ = layer_control_js() + tile_layers_js() +
                 "if(!m.gobyTracks){m.gobyTracks={};"
                 "m.gobyShow=function(t,S,force){var i=0;"
                 "if(S>=0){var c=Date.now()-1e3*S;while(i<t.all.length&&t.all[i].t<c)++i;}"
@@ -441,20 +454,20 @@ std::string goby::apps::zeromq::LiaisonMap::enc_js() const
            "onEachFeature:function(f,l){var p=f.properties,"
            "t=p.OBJNAM||hazard[k]||(k==='LIGHTS'?'Light':k);"
            "if(p.VALSOU!=null)t+=' '+p.VALSOU+' m';l.bindTooltip(t);}});};"
-           "m.gobyAddEnc=function(n,urls,units){var "
-           "g=L.layerGroup(),sounding=null,old=m.gobyEnc[n];"
-           "if(!m.gobyLayers||m.gobyLayers===1)m.gobyLayers=L.control.layers({},{}).addTo(m);"
-           "if(old){m.removeLayer(old);m.gobyLayers.removeLayer(old);m.gobyUnitLayers="
-           "m.gobyUnitLayers.filter(function(e){return e[0]!==old;});}m.gobyEnc[n]=g;"
-           "if(units)m.gobyUnitLayers.push([g,n+' in '+units]);"
+           "m.gobyAddEnc=function(n,urls,units){var g=L.layerGroup(),old=(m.gobyEncSound||{})[n];"
+           "m.gobyAddOverlay(g,n,true);"
+           "if(!m.gobyEncSoundings){m.gobyEncSoundings=L.layerGroup();m.gobyEncSound={};"
+           "m.on('zoomend',function(){for(var c in m.gobyEncSound){var s=m.gobyEncSound[c];"
+           "if(!s)continue;if(m.getZoom()>=15)m.gobyEncSoundings.addLayer(s);"
+           "else m.gobyEncSoundings.removeLayer(s);}});"
+           "m.gobyAddOverlay(m.gobyEncSoundings,'ENC soundings',true);}"
+           "if(old){m.gobyEncSoundings.removeLayer(old);m.gobyUnitLayers=m.gobyUnitLayers.filter("
+           "function(e){return e[0]!==old;});}m.gobyEncSound[n]=null;"
            "Object.keys(urls).forEach(function(k){fetch(urls[k]).then(function(r){"
-           "return r.json();}).then(function(d){var l=make(k,d);if(k==='SOUNDG'){sounding=l;"
-           "if(m.getZoom()<15)return;}g.addLayer(l);});});"
-           "m.on('zoomend',function(){if(sounding){if(m.getZoom()>=15)g.addLayer(sounding);"
-           "else g.removeLayer(sounding);}});"
-           "m.gobyLayers.addOverlay(g,n);var on=true;try{var s=JSON.parse("
-           "localStorage.getItem('goby-liaison-map-layers')||'{}');"
-           "if(s.overlays&&n in s.overlays)on=s.overlays[n];}catch(e){}if(on)g.addTo(m);};}";
+           "return r.json();}).then(function(d){var l=make(k,d);if(k==='SOUNDG'){"
+           "m.gobyEncSound[n]=l;if(units)m.gobyUnitLayers.push([l,n+' soundings in '+units]);"
+           "if(m.getZoom()>=15)m.gobyEncSoundings.addLayer(l);m.gobyShowUnits();return;}"
+           "g.addLayer(l);});});};}";
 }
 
 void goby::apps::zeromq::LiaisonMap::add_enc_cell(const enc::Cell& cell)
@@ -616,11 +629,26 @@ void goby::apps::zeromq::LiaisonMap::create_vehicle_list(Wt::WContainerWidget* p
     waiting_text_->setStyleClass("map-waiting");
 }
 
-std::string goby::apps::zeromq::LiaisonMap::depth_units_js() const
+std::string goby::apps::zeromq::LiaisonMap::layer_control_js() const
 {
-    // charts label depths in their own units (NOAA's in feet, most ENCs in metres), so the
-    // corner names them for each shown layer that labels depths
-    return "if(!m.gobyUnitLayers){m.gobyUnitLayers=[];var U=L.control({position:'bottomleft'});"
+    // Every overlay (tile layers, ENC charts and soundings) registers here, so the viewer's
+    // choices are kept in the browser for all of them; layers registered later still find their
+    // saved state. Charts label depths in their own units (NOAA's in feet, most ENCs in metres),
+    // so the corner names them for each shown layer that labels depths.
+    return "if(!m.gobyOverlays){m.gobyOverlays={};m.gobyBases={};m.gobyUnitLayers=[];"
+           "var key='goby-liaison-map-layers';m.gobySaved={overlays:{}};"
+           "try{m.gobySaved=JSON.parse(localStorage.getItem(key))||m.gobySaved;"
+           "m.gobySaved.overlays=m.gobySaved.overlays||{};}catch(e){}"
+           "m.gobyControl=function(){if(!m.gobyLayers)m.gobyLayers=L.control.layers("
+           "Object.keys(m.gobyBases).length>1?m.gobyBases:{},{}).addTo(m);return m.gobyLayers;};"
+           "m.gobyAddOverlay=function(l,n,shown){var o=m.gobyOverlays[n];if(o){m.removeLayer(o);"
+           "m.gobyControl().removeLayer(o);}m.gobyOverlays[n]=l;m.gobyControl().addOverlay(l,n);"
+           "if(n in m.gobySaved.overlays?m.gobySaved.overlays[n]:shown)l.addTo(m);};"
+           "m.on('baselayerchange overlayadd overlayremove',function(){var st=m.gobySaved;"
+           "for(var n in m.gobyBases)if(m.hasLayer(m.gobyBases[n]))st.base=n;"
+           "for(var n in m.gobyOverlays)st.overlays[n]=m.hasLayer(m.gobyOverlays[n]);"
+           "try{localStorage.setItem(key,JSON.stringify(st));}catch(e){}});"
+           "var U=L.control({position:'bottomleft'});"
            "U.onAdd=function(){return L.DomUtil.create('div','map-depth-units');};U.addTo(m);"
            "m.gobyShowUnits=function(){var t=m.gobyUnitLayers.filter(function(e){"
            "return m.hasLayer(e[0]);}).map(function(e){return e[1];}),d=U.getContainer();"
@@ -668,22 +696,20 @@ std::string goby::apps::zeromq::LiaisonMap::tile_layers_js() const
     }
 
     // Wt's own tile layers cannot be removed, so the layers and Leaflet's layer control are made
-    // here. The viewer's choice is kept in the browser, as it is a per-viewer preference.
-    return "if(!m.gobyLayers){var S=" + Wt::Json::serialize(specs, 0) +
-           ",B={},O={},first=null,saved={},key='goby-liaison-map-layers';"
-           "try{saved=JSON.parse(localStorage.getItem(key)||'{}');}catch(e){}"
+    // here
+    return "if(!m.gobyTileLayers){m.gobyTileLayers=1;var S=" + Wt::Json::serialize(specs, 0) +
+           ",first=null;"
            "S.forEach(function(s,i){var o=s.options;o.zIndex=s.overlay?10+i:1;"
            "var l=s.wms?L.tileLayer.wms(s.url,o):L.tileLayer(s.url,o);"
            "if(s.depthUnits)m.gobyUnitLayers.push([l,s.name+' in '+s.depthUnits]);"
-           "if(s.overlay){O[s.name]=l;var on=saved.overlays&&s.name in saved.overlays?"
-           "saved.overlays[s.name]:s.shown;if(on)l.addTo(m);}"
-           "else{B[s.name]=l;if(first===null)first=s.name;}});"
-           "var b=saved.base in B?saved.base:first;if(b!==null)B[b].addTo(m);"
-           "m.on('baselayerchange overlayadd overlayremove',function(){"
-           "var st={overlays:{}};for(var n in B)if(m.hasLayer(B[n]))st.base=n;"
-           "for(var n in O)st.overlays[n]=m.hasLayer(O[n]);"
-           "try{localStorage.setItem(key,JSON.stringify(st));}catch(e){}});"
-           "if(S.length>1)m.gobyLayers=L.control.layers(B,O).addTo(m);else m.gobyLayers=1;"
+           "if(!s.overlay){m.gobyBases[s.name]=l;if(first===null)first=s.name;}});"
+           "if(Object.keys(m.gobyBases).length>1)m.gobyControl();"
+           "var b=m.gobySaved.base in m.gobyBases?m.gobySaved.base:first;"
+           "if(b!==null)m.gobyBases[b].addTo(m);"
+           "S.forEach(function(s,i){if(s.overlay){var o=s.options;o.zIndex=10+i;"
+           "var l=s.wms?L.tileLayer.wms(s.url,o):L.tileLayer(s.url,o);"
+           "if(s.depthUnits)m.gobyUnitLayers.push([l,s.name+' in '+s.depthUnits]);"
+           "m.gobyAddOverlay(l,s.name,s.shown);}});"
            "m.gobyShowUnits();}";
 }
 
