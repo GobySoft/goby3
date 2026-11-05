@@ -56,6 +56,8 @@ struct Connection
     Endpoint pub_at;
     PubSubEntry sub;
     Endpoint sub_at;
+    // made only by assuming an unbound dynamic group's run-time numeric matches
+    bool loose{false};
 };
 
 struct Unmatched
@@ -90,10 +92,10 @@ inline bool in_scope(Layer layer, const Endpoint& pub, const Endpoint& sub)
     return false;
 }
 
-/// \brief Match every publication to the subscriptions it reaches
-inline Resolution resolve(const Deployment& deployment)
+/// \brief Every publication and subscription in a deployment, with where it is made
+inline void collect_entries(const Deployment& deployment, std::vector<Unmatched>& pubs,
+                            std::vector<Unmatched>& subs)
 {
-    std::vector<Unmatched> pubs, subs;
     for (const auto& platform : deployment.platforms)
     {
         for (const auto& module : platform.modules)
@@ -119,6 +121,13 @@ inline Resolution resolve(const Deployment& deployment)
             }
         }
     }
+}
+
+/// \brief Match every publication to the subscriptions it reaches
+inline Resolution resolve(const Deployment& deployment)
+{
+    std::vector<Unmatched> pubs, subs;
+    collect_entries(deployment, pubs, subs);
 
     Resolution resolution;
     std::vector<bool> sub_matched(subs.size(), false);
@@ -128,10 +137,13 @@ inline Resolution resolve(const Deployment& deployment)
         for (std::size_t i = 0, n = subs.size(); i < n; ++i)
         {
             const auto& sub = subs[i];
-            if (sub.entry.layer == pub.entry.layer && in_scope(pub.entry.layer, pub.at, sub.at) &&
-                connects(pub.entry, sub.entry))
+            if (sub.entry.layer != pub.entry.layer || !in_scope(pub.entry.layer, pub.at, sub.at))
+                continue;
+            auto match = connection(pub.entry, sub.entry);
+            if (match != GroupMatch::NONE)
             {
-                resolution.connections.push_back({pub.entry, pub.at, sub.entry, sub.at});
+                resolution.connections.push_back(
+                    {pub.entry, pub.at, sub.entry, sub.at, match == GroupMatch::LOOSE});
                 pub_matched = true;
                 sub_matched[i] = true;
             }

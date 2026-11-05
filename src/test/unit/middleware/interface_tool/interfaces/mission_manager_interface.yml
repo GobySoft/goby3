@@ -1,0 +1,11 @@
+# subscribes to its own bot's commands; the code leaves the subscription optional
+application: mission_manager
+intervehicle:
+  subscribes:
+    - group: fleet::hub_command
+      scheme: DCCL
+      type: fleet::protobuf::Command
+      necessity: optional
+      thread: MissionManager
+      dynamic: true
+      numeric: runtime

@@ -179,8 +179,10 @@ void goby::apps::middleware::InterfaceVisualizeTool::run()
 {
     const auto& cfg = app_cfg();
 
+    auto params_for_load = load_params(cfg);
+    params_for_load.expand_instances = cfg.expand_instances();
     interface::Issues issues;
-    auto deployment = interface::load_deployment(cfg.deployment_file(), issues, load_params(cfg));
+    auto deployment = interface::load_deployment(cfg.deployment_file(), issues, params_for_load);
     for (const auto& issue : issues)
     {
         if (issue.severity != interface::Issue::Severity::INFO)
@@ -329,6 +331,7 @@ void goby::apps::middleware::InterfaceValidateTool::run()
     params.filter.omit_group_regex = cfg.omit_group_regex();
     params.filter.omit_node_regex = cfg.omit_node_regex();
     params.report_unused = cfg.report_unused();
+    params.assume_dynamic = cfg.assume_dynamic();
     auto summary = interface::validate(deployment, interface::resolve(deployment), params, issues);
 
     InterfaceValidation validation;

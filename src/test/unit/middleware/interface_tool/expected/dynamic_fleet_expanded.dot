@@ -1,0 +1,80 @@
+digraph dynamic_fleet { 
+	splines=ortho
+	newrank=true
+	subgraph cluster_0 {
+		label=<<b>bot1</b>>
+		fontcolor="#006400"
+		penwidth=2
+		pencolor="#00640020"
+		subgraph cluster_1 {
+			label=<<b>mission_manager</b>>
+			fontcolor="#104e8b"
+			penwidth=2
+			pencolor="#104e8b20"
+			bot1_nomodule_mission_manager_MissionManager[penwidth=2,color="#551a8b20"]
+		}
+	}
+	subgraph cluster_2 {
+		label=<<b>bot2</b>>
+		fontcolor="#006400"
+		penwidth=2
+		pencolor="#00640020"
+		subgraph cluster_3 {
+			label=<<b>mission_manager</b>>
+			fontcolor="#104e8b"
+			penwidth=2
+			pencolor="#104e8b20"
+			bot2_nomodule_mission_manager_MissionManager[penwidth=2,color="#551a8b20"]
+		}
+	}
+	subgraph cluster_4 {
+		label=<<b>bot3</b>>
+		fontcolor="#006400"
+		penwidth=2
+		pencolor="#00640020"
+		subgraph cluster_5 {
+			label=<<b>mission_manager</b>>
+			fontcolor="#104e8b"
+			penwidth=2
+			pencolor="#104e8b20"
+			bot3_nomodule_mission_manager_MissionManager[penwidth=2,color="#551a8b20"]
+		}
+	}
+	subgraph cluster_6 {
+		label=<<b>hub</b>>
+		fontcolor="#006400"
+		penwidth=2
+		pencolor="#00640020"
+		subgraph cluster_7 {
+			label=<<b>engineering_display</b>>
+			fontcolor="#104e8b"
+			penwidth=2
+			pencolor="#104e8b20"
+			hub_nomodule_engineering_display_Display[penwidth=2,color="#551a8b20"]
+		}
+		subgraph cluster_8 {
+			label=<<b>hub_manager</b>>
+			fontcolor="#104e8b"
+			penwidth=2
+			pencolor="#104e8b20"
+			hub_nomodule_hub_manager_HubManager[penwidth=2,color="#551a8b20"]
+		}
+		hub_nomodule_hub_manager_HubManager->hub_nomodule_engineering_display_Display[fontsize=7,headlabel="P0",taillabel="P0",xlabel=<P0[engineering]>,color="#104e8b",style="bold,dashed",tooltip="P0: fleet::engineering | PROTOBUF | fleet::protobuf::Engineering [dynamic]",labeltooltip="P0: fleet::engineering | PROTOBUF | fleet::protobuf::Engineering [dynamic]",headtooltip="P0: fleet::engineering | PROTOBUF | fleet::protobuf::Engineering [dynamic]",penwidth=0.5,arrowhead=vee,arrowsize=0.3]
+	}
+	hub_nomodule_hub_manager_HubManager->bot1_nomodule_mission_manager_MissionManager[fontsize=7,headlabel="V0",taillabel="V0",xlabel=<V0[hub_command;151-152]>,color="#006400",style="bold,dashed",tooltip="V0: fleet::hub_command;151-152 | DCCL | fleet::protobuf::Command [dynamic]",labeltooltip="V0: fleet::hub_command;151-152 | DCCL | fleet::protobuf::Command [dynamic]",headtooltip="V0: fleet::hub_command;151-152 | DCCL | fleet::protobuf::Command [dynamic]",penwidth=0.5,arrowhead=vee,arrowsize=0.3]
+	hub_nomodule_hub_manager_HubManager->bot2_nomodule_mission_manager_MissionManager[fontsize=7,headlabel="V0",taillabel="V0",xlabel=<V0[hub_command;151-152]>,color="#006400",style="bold,dashed",tooltip="V0: fleet::hub_command;151-152 | DCCL | fleet::protobuf::Command [dynamic]",labeltooltip="V0: fleet::hub_command;151-152 | DCCL | fleet::protobuf::Command [dynamic]",headtooltip="V0: fleet::hub_command;151-152 | DCCL | fleet::protobuf::Command [dynamic]",penwidth=0.5,arrowhead=vee,arrowsize=0.3]
+	bot3_nomodule_mission_manager_MissionManager_no_publishers_red  
+bot3_nomodule_mission_manager_MissionManager_no_publishers_red->bot3_nomodule_mission_manager_MissionManager[fontsize=7,headlabel="V1",taillabel="V1",xlabel=<V1[hub_command;153]>,color="red",style="bold,dashed",tooltip="V1: fleet::hub_command;153 | DCCL | fleet::protobuf::Command [dynamic]",labeltooltip="V1: fleet::hub_command;153 | DCCL | fleet::protobuf::Command [dynamic]",headtooltip="V1: fleet::hub_command;153 | DCCL | fleet::protobuf::Command [dynamic]",penwidth=0.5,arrowhead=vee,arrowsize=0.3]
+	bot1_nomodule_mission_manager_MissionManager
+ [label=<<font color="#551a8b">MissionManager</font><br/>>,shape=box,style=solid]
+	bot2_nomodule_mission_manager_MissionManager
+ [label=<<font color="#551a8b">MissionManager</font><br/>>,shape=box,style=solid]
+	bot3_nomodule_mission_manager_MissionManager
+ [label=<<font color="#551a8b">MissionManager</font><br/>>,shape=box,style=solid]
+	bot3_nomodule_mission_manager_MissionManager_no_publishers_red
+ [label=<<font color="#006400" point-size="10">V1: </font><b><font point-size="10">fleet::hub_command;153</font></b><br/><font point-size="6">DCCL</font><br/><font point-size="8">fleet::protobuf::Command</font><br/>>,penwidth=0]
+	hub_nomodule_engineering_display_Display
+ [label=<<font color="#551a8b">Display</font><br/>>,shape=box,style=solid]
+	hub_nomodule_hub_manager_HubManager
+ [label=<<font color="#551a8b">HubManager</font><br/><font color="#104e8b" point-size="10">P0: </font><b><font point-size="10">fleet::engineering</font></b><br/><font point-size="6">PROTOBUF</font><br/><font point-size="8">fleet::protobuf::Engineering</font><br/><font color="#006400" point-size="10">V0: </font><b><font point-size="10">fleet::hub_command;151-152</font></b><br/><font point-size="6">DCCL</font><br/><font point-size="8">fleet::protobuf::Command</font><br/>>,shape=box,style=solid]
+}

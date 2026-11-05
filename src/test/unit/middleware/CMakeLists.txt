@@ -18,3 +18,4 @@ add_subdirectory(pubsub_test)
 
 add_subdirectory(pubsub_test_tool)
 add_subdirectory(interface_tool)
+add_subdirectory(clang_tool_gen)

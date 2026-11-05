@@ -170,34 +170,43 @@ class DotWriter
 
     std::string edge(const PubSubEntry& pub, const std::string& pub_node,
                      const std::string& sub_node, const std::string& color,
-                     goby::middleware::Necessity necessity, bool is_regex)
+                     goby::middleware::Necessity necessity, bool is_regex, bool dynamic)
     {
         pubs_in_use_[pub_node][pub.layer].emplace(pub.publish_index, pub);
 
         std::string edge_style;
         switch (necessity)
         {
-            case goby::middleware::Necessity::REQUIRED: edge_style = "bold"; break;
-            case goby::middleware::Necessity::RECOMMENDED: edge_style = "tapered"; break;
-            case goby::middleware::Necessity::OPTIONAL: edge_style = "solid"; break;
+            case goby::middleware::Necessity::REQUIRED:
+                edge_style = dynamic ? "\"bold,dashed\"" : "bold";
+                break;
+            case goby::middleware::Necessity::RECOMMENDED:
+                edge_style = dynamic ? "dashed" : "tapered";
+                break;
+            case goby::middleware::Necessity::OPTIONAL:
+                edge_style = dynamic ? "dashed" : "solid";
+                break;
         }
         if (is_regex)
             edge_style = "dotted";
 
         auto label = pub.publish_index_str();
-        auto tooltip = dot_quoted(label + ": " + pub.group + " | " + pub.scheme + " | " + pub.type);
+        auto tooltip = dot_quoted(label + ": " + pub.display_group() + " | " + pub.scheme + " | " +
+                                  pub.type + (dynamic ? " [dynamic]" : ""));
         return pub_node + "->" + sub_node + "[fontsize=7,headlabel=\"" + label + "\",taillabel=\"" +
                label + "\",xlabel=<" + label + "[" +
-               html_escaped(short_group(pub.group), false, false) + "]>,color=\"" + color +
-               "\",style=" + edge_style + ",tooltip=\"" + tooltip + "\",labeltooltip=\"" + tooltip +
-               "\",headtooltip=\"" + tooltip + "\",penwidth=0.5,arrowhead=vee,arrowsize=0.3]\n";
+               html_escaped(short_group(pub.display_group()), false, false) + "]>,color=\"" +
+               color + "\",style=" + edge_style + ",tooltip=\"" + tooltip + "\",labeltooltip=\"" +
+               tooltip + "\",headtooltip=\"" + tooltip +
+               "\",penwidth=0.5,arrowhead=vee,arrowsize=0.3]\n";
     }
 
     void connection(const std::string& indent, const Connection& c)
     {
         os_ << indent
             << edge(c.pub, node_name(c.pub_at, c.pub.thread), node_name(c.sub_at, c.sub.thread),
-                    style::layer_color(c.pub.layer), c.sub.necessity, c.sub.is_regex);
+                    style::layer_color(c.pub.layer), c.sub.necessity, c.sub.is_regex,
+                    c.pub.dynamic || c.sub.dynamic || c.loose);
     }
 
     void unsubscribed(const std::string& indent, const Unmatched& u)
@@ -208,8 +217,8 @@ class DotWriter
         auto node = node_name(u.at, u.entry.thread);
         auto placeholder = node + "_no_subscribers_" + dot_id(color);
         os_ << indent << placeholder << " [label=\"\",style=invis] \n"
-            << edge(u.entry, node, placeholder, color, goby::middleware::Necessity::OPTIONAL,
-                    false);
+            << edge(u.entry, node, placeholder, color, goby::middleware::Necessity::OPTIONAL, false,
+                    u.entry.dynamic);
     }
 
     void unpublished(const std::string& indent, const Unmatched& u)
@@ -227,7 +236,8 @@ class DotWriter
         fake_pub.publish_index = indexer_.next(fake_pub.layer);
 
         os_ << indent << placeholder << "  \n"
-            << edge(fake_pub, placeholder, node, color, u.entry.necessity, u.entry.is_regex);
+            << edge(fake_pub, placeholder, node, color, u.entry.necessity, u.entry.is_regex,
+                    u.entry.dynamic);
     }
 
     void connections_from(const std::string& indent, Layer layer,
@@ -376,12 +386,12 @@ inline void DotWriter::write_node_labels()
             for (const auto& index_pub_p : layer_p.second)
             {
                 const auto& pub = index_pub_p.second;
-                pub_key += "<font color=\"" + style::layer_color(layer_p.first) +
-                           "\" point-size=\"10\">" + pub.publish_index_str() +
-                           ": </font><b><font point-size=\"10\">" + html_escaped(pub.group) +
-                           "</font></b><br/><font point-size=\"6\">" + html_escaped(pub.scheme) +
-                           "</font><br/><font point-size=\"8\">" +
-                           html_escaped(pub.type, false, false) + "</font><br/>";
+                pub_key +=
+                    "<font color=\"" + style::layer_color(layer_p.first) + "\" point-size=\"10\">" +
+                    pub.publish_index_str() + ": </font><b><font point-size=\"10\">" +
+                    html_escaped(pub.display_group()) + "</font></b><br/><font point-size=\"6\">" +
+                    html_escaped(pub.scheme) + "</font><br/><font point-size=\"8\">" +
+                    html_escaped(pub.type, false, false) + "</font><br/>";
             }
         }
 
