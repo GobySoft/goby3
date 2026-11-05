@@ -79,6 +79,15 @@ message InterProcessPortalConfig
         (goby.field).cfg = { action: ADVANCED }
     ];
 
+    optional uint32 hold_release_timeout_seconds = 12 [
+        default = 10,
+        (goby.field).description =
+            "Once the Manager (gobyd) releases the hold, how long to wait "
+            "for the subscriptions of all required clients to reach this "
+            "process before publishing anyway (with a warning)",
+        (goby.field).cfg = { action: ADVANCED }
+    ];
+
     optional string client_name = 20 [
         (goby.field).description =
             "Unique name for InterProcessPortal. Defaults to app.name",

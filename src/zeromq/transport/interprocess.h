@@ -93,6 +93,9 @@ constexpr const char* delimiter_str{"/"};
 
 void setup_socket(zmq::socket_t& socket, const protobuf::Socket& cfg);
 
+/// Subscription a client makes once it is ready(); its arrival at a publisher's socket implies all of that client's earlier subscriptions have arrived too
+std::string ready_marker_identifier(const std::string& client_name);
+
 #ifdef USE_OLD_ZMQ_CPP_API
 using zmq_recv_flags_type = int;
 using zmq_send_flags_type = int;
@@ -105,7 +108,8 @@ using zmq_send_flags_type = zmq::send_flags;
 class InterProcessPortalMainThread
 {
   public:
-    InterProcessPortalMainThread(zmq::context_t& context);
+    InterProcessPortalMainThread(zmq::context_t& context,
+                                 const protobuf::InterProcessPortalConfig& cfg);
     ~InterProcessPortalMainThread()
     {
 #ifdef USE_OLD_CPPZMQ_SETSOCKOPT
@@ -124,8 +128,12 @@ class InterProcessPortalMainThread
               zmq_recv_flags_type flags = zmq_recv_flags_type());
     void set_publish_cfg(const protobuf::Socket& cfg);
 
-    void set_hold_state(bool hold);
+    /// Hold state as reported by the Manager; the hold is released once the ready marker of every required client has arrived (or the timeout expires)
+    void set_hold_state(bool hold, const std::set<std::string>& required_clients);
     bool hold_state() { return hold_; }
+
+    /// Reads subscriptions arriving at the XPUB socket, releasing the hold if ready
+    void read_subscriptions();
 
     void publish(const std::string& identifier, const char* bytes, int size,
                  bool ignore_buffer = false);
@@ -137,10 +145,18 @@ class InterProcessPortalMainThread
     void send_control_msg(const protobuf::InprocControl& control);
 
   private:
+    void release_hold_if_ready();
+
   private:
+    const protobuf::InterProcessPortalConfig& cfg_;
     zmq::socket_t control_socket_;
     zmq::socket_t publish_socket_;
     bool hold_{true};
+    bool manager_hold_{true};
+    std::set<std::string> required_clients_;
+    std::chrono::steady_clock::time_point hold_release_deadline_;
+    // every subscription in the system, as forwarded by the Router to this XPUB socket
+    std::set<std::string> subscriptions_;
     bool have_pubsub_sockets_{false};
 
     std::deque<std::pair<std::string, std::vector<char>>>
@@ -230,7 +246,7 @@ class InterProcessPortalImplementation
     InterProcessPortalImplementation(const protobuf::InterProcessPortalConfig& cfg)
         : cfg_(cfg),
           zmq_context_(cfg.zeromq_number_io_threads()),
-          zmq_main_(zmq_context_),
+          zmq_main_(zmq_context_, cfg_),
           zmq_read_thread_(cfg_, zmq_context_, zmq_alive_,
                            middleware::PollerInterface::poll_mutex(),
                            middleware::PollerInterface::cv())
@@ -243,7 +259,7 @@ class InterProcessPortalImplementation
         : Base(inner),
           cfg_(cfg),
           zmq_context_(cfg.zeromq_number_io_threads()),
-          zmq_main_(zmq_context_),
+          zmq_main_(zmq_context_, cfg_),
           zmq_read_thread_(cfg_, zmq_context_, zmq_alive_,
                            middleware::PollerInterface::poll_mutex(),
                            middleware::PollerInterface::cv())
@@ -307,19 +323,13 @@ class InterProcessPortalImplementation
                     response->client_pid() == getpid() &&
                     response->client_name() == cfg_.client_name())
                 {
-                    zmq_main_.set_hold_state(response->hold());
-                }
-
-                // we're good to go now, so let's unsubscribe to this group
-                if (zmq_main_.publish_ready())
-                {
-                    this->template _unsubscribe<protobuf::ManagerResponse,
-                                                middleware::MarshallingScheme::PROTOBUF>(
-                        groups::manager_response,
-                        middleware::Subscriber<protobuf::ManagerResponse>());
+                    zmq_main_.set_hold_state(
+                        response->hold(), std::set<std::string>(response->required_client().begin(),
+                                                                response->required_client().end()));
                 }
             },
             groups::manager_response, middleware::Subscriber<protobuf::ManagerResponse>());
+        manager_response_subscribed_ = true;
     }
 
     void _do_publish(const std::string& identifier, const std::vector<char>& bytes)
@@ -346,6 +356,14 @@ class InterProcessPortalImplementation
 #else
         auto flags = zmq::recv_flags::dontwait;
 #endif
+
+        // the inner layers have already been polled, so all subscriptions forwarded so far
+        // precede the marker on the SUB socket
+        if (ready_ && !ready_marker_subscribed_)
+        {
+            zmq_main_.subscribe(ready_marker_identifier(cfg_.client_name()));
+            ready_marker_subscribed_ = true;
+        }
 
         while (zmq_main_.recv(&new_control_msg, flags))
             zmq_main_.control_buffer().push_back(new_control_msg);
@@ -384,6 +402,17 @@ class InterProcessPortalImplementation
             }
             zmq_main_.control_buffer().pop_front();
         }
+
+        zmq_main_.read_subscriptions();
+
+        if (manager_response_subscribed_ && zmq_main_.publish_ready())
+        {
+            this->template _unsubscribe<protobuf::ManagerResponse,
+                                        middleware::MarshallingScheme::PROTOBUF>(
+                groups::manager_response, middleware::Subscriber<protobuf::ManagerResponse>());
+            manager_response_subscribed_ = false;
+        }
+
         return items;
     }
 
@@ -397,6 +426,8 @@ class InterProcessPortalImplementation
     InterProcessPortalReadThread zmq_read_thread_;
 
     bool ready_{false};
+    bool ready_marker_subscribed_{false};
+    bool manager_response_subscribed_{false};
     bool ignore_buffer_{false};
 };
 
