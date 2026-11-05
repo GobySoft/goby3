@@ -1,0 +1,8 @@
+application: engineering_display
+interprocess:
+  subscribes:
+    - group: fleet::engineering
+      scheme: PROTOBUF
+      type: fleet::protobuf::Engineering
+      necessity: required
+      thread: Display

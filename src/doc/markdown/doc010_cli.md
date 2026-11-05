@@ -162,8 +162,8 @@ run:
 Works with the publish/subscribe interface files that `goby_clang_tool -gen` writes for each application (`<target>_interface.yml`, see `cmake_modules/GobyClangTool.cmake`), and the deployment files that place those applications on platforms and modules (see [Interfaces and deployments](doc260_interfaces.md)):
 
 ```
-goby interface validate <deployment.yml> [-D NAME=value] [-I <dir>] [-o HUMAN|JSON] [--output_file <path>] [--strict] [--report_unused] [--omit_group_regex <regex>] [--omit_node_regex <regex>]
-goby interface visualize <deployment.yml> [-D NAME=value] [-I <dir>] [--output_file <file.dot>] [--no_disconnected] [--omit_interthread] [--omit_group_regex <regex>] [--omit_node_regex <regex>] [--include_terminate] [--include_coroner] [--include_all] [--splines <setting>]
+goby interface validate <deployment.yml> [-D NAME=value] [-I <dir>] [-o HUMAN|JSON] [--output_file <path>] [--strict] [--report_unused] [--assume_dynamic] [--omit_group_regex <regex>] [--omit_node_regex <regex>]
+goby interface visualize <deployment.yml> [-D NAME=value] [-I <dir>] [--output_file <file.dot>] [--expand_instances] [--no_disconnected] [--omit_interthread] [--omit_group_regex <regex>] [--omit_node_regex <regex>] [--include_terminate] [--include_coroner] [--include_all] [--splines <setting>]
 ```
 
 - `validate` checks that every `required` subscription has a publisher in its scope (`required-unmet`, an error) and every `recommended` one (`recommended-unmet`, a warning), along with problems reading the files. It exits 0 when the deployment is valid, 1 on an error (or a warning, with `--strict`) and 2 when the deployment file cannot be read. `-o JSON` writes the `InterfaceValidation` message in `goby/apps/middleware/interface_tool/interface_tool_config.proto`.
@@ -193,6 +193,34 @@ fleet.yml: invalid, 1 error (2 platforms, 5 applications, 31 connections, 2/3 re
 - A platform lists what it `run`s, or groups that into `modules`, each one `gobyd`. Connections are matched within each layer's scope: interthread within an application, interprocess within a module, intermodule across the modules of a platform, and intervehicle between platforms.
 - A `run` entry names an application, and the interface file that declares it is found beside the deployment file, then in each `-I` directory and `GOBY_INTERFACE_PATH` (colon separated), then in Goby's own `share/goby/interfaces`. `plugins` merges plugin interfaces into their host application, `name` tells two instances of one application apart, and `file` gives an interface file by path. A list of files under `interfaces` (each optionally `{ file: ..., application: ... }`) is also accepted.
 - `${NAME}` and `${NAME:-default}` are replaced by `-D NAME=value`, then the environment. `${GOBY_INTERFACES_DIR}` is Goby's own interface directory.
+### Dynamic groups, instances and overrides
+
+`goby_clang_tool -gen` records publications and subscriptions made with `publish_dynamic()` and `subscribe_dynamic()` on a `DynamicGroup` as `dynamic: true`. When the group's string is known but its numeric part is set at run time (`DynamicGroup(groups::rx, cfg().modem_id())`), it adds `numeric: runtime`; when the string itself is set at run time, the group is `"*"` and `expr` holds the C++ expression. The deployment file supplies what the code cannot:
+
+```yaml
+deployment: fleet
+platforms:
+  - name: hub
+    run: [hub_manager]
+    bind:
+      - { group: fleet::hub_command, numeric: "151-153" }
+      - dynamic: { layer: interprocess, type: google::protobuf::Message }
+        publishes:
+          - { group: fleet::engineering, type: fleet::protobuf::Engineering }
+  - name: bot
+    instances: [1, 2, 3]
+    run: [mission_manager]
+    bind:
+      - { group: fleet::hub_command, numeric: "${instance} + 150" }
+necessity:
+  - { application: mission_manager, group: fleet::hub_command, set: required }
+```
+
+- `bind` (on a platform, or on one `run` entry, which takes precedence) gives the numeric part of matching groups (`*` is a wildcard), as a number, a range `a-b`, a list, or arithmetic on `${instance}`; or, with `dynamic:` selecting by layer, scheme and type, the groups and types a fully dynamic publication or subscription stands for.
+- `instances` makes one platform per value, named `<name><instance>`. `validate` checks each; `visualize` draws the platform once (its binds taking every instance's numerics) unless `--expand_instances` is given.
+- `necessity` sets the necessity of the subscriptions it selects (by `platform`, `module`, `application`, `thread`, `layer`, `group` and `type` regexes) in this deployment, whatever the code said.
+- A dynamic group with its numeric still unknown reaches subscribers of the same group, drawn dashed, but does not satisfy a required subscription unless `--assume_dynamic` is given. A group whose string is unknown reaches nothing. `validate` reports these as `dynamic-unbound` (warning) and `dynamic-unresolved` (info), and binds or overrides that select nothing as `bind-unused` and `necessity-unused` (warnings).
+
 - In CMake, `goby_validate_interfaces(DEPLOYMENT_YAML fleet.yml INTERFACE_DIRS ${YML_OUT_DIR})` (from `find_package(GOBY)`) adds a test that runs `goby interface validate --strict`.
 
 ## goby zeromq

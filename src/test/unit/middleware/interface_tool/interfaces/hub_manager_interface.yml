@@ -1,0 +1,18 @@
+# addresses each bot on its own intervehicle group, and publishes on a group chosen at run time
+application: hub_manager
+intervehicle:
+  publishes:
+    - group: fleet::hub_command
+      scheme: DCCL
+      type: fleet::protobuf::Command
+      thread: HubManager
+      dynamic: true
+      numeric: runtime
+interprocess:
+  publishes:
+    - group: "*"
+      scheme: PROTOBUF
+      type: google::protobuf::Message
+      thread: HubManager
+      dynamic: true
+      expr: DynamicGroup(cfg().group())

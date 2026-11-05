@@ -89,6 +89,20 @@ check 0 goby interface validate "$dir/deployments/elsewhere.yml" -I "$dir/interf
 GOBY_INTERFACE_PATH="$dir/interfaces" check 0 goby interface validate "$dir/deployments/elsewhere.yml"
 popd > /dev/null
 
+# dynamic groups: binds, platform instances and necessity overrides
+check 1 goby interface validate dynamic_fleet.yml
+expect_output "required-unmet  *bot3/mission_manager \[intervehicle\] no publisher for fleet::hub_command;153"
+expect_output "(necessity set by the deployment)"
+expect_output "3/4 required met"
+expect_output "bind-unused  *platforms\[0\].bind\[2\]"
+expect_output "necessity-unused  *necessity\[1\]"
+check 1 goby interface validate dynamic_unbound.yml
+expect_output "only a dynamic publisher with a numeric set at run time reaches fleet::hub_command;?"
+expect_output "dynamic-unbound  *hub/hub_manager"
+expect_output "dynamic-unresolved  *hub/hub_manager \[interprocess\]"
+check 1 goby interface validate dynamic_unbound.yml --assume_dynamic
+expect_output "1/2 required met"
+
 check 1 goby interface visualize missing_interface.yml
 expect_output "interface-missing"
 check 1 goby interface visualize no_such_deployment.yml
