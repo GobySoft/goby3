@@ -58,6 +58,8 @@ int indirect_ack_receive_count = 0;
 std::array<int, 2> direct_no_sub_receive_count = {{0, 0}};
 
 int indirect_subscriber_ack = 0;
+// Widgets the direct subscriber's republish_on_receive put back on its interprocess layer
+int widget_republish_count = 0;
 int direct_subscriber_ack = 0;
 
 std::atomic<bool> forward(true);
@@ -350,14 +352,19 @@ void direct_subscriber(const goby::zeromq::protobuf::InterProcessPortalConfig& z
 
     goby::middleware::protobuf::TransporterConfig widget_subscriber_cfg;
     widget_subscriber_cfg.mutable_intervehicle()->add_publisher_id(1);
+    widget_subscriber_cfg.mutable_intervehicle()->set_republish_on_receive(true);
     goby::middleware::Subscriber<Widget> widget_subscriber(widget_subscriber_cfg);
     intervehicle.subscribe<null, Widget>(&handle_widget, widget_subscriber_cfg);
+
+    // the publisher is on another platform, so Widgets in this group on this interprocess layer
+    // can only come from republish_on_receive (#237)
+    zmq.subscribe<null, Widget>([](const Widget&) { ++widget_republish_count; });
     zmq.ready();
 
     std::chrono::system_clock::time_point start = std::chrono::system_clock::now();
     std::chrono::system_clock::time_point timeout = start + std::chrono::seconds(10);
     while (ipc_receive_count[0] < max_publish || ipc_receive_count[1] < max_publish ||
-           ipc_receive_count[2] < max_publish)
+           ipc_receive_count[2] < max_publish || widget_republish_count < max_publish)
     {
         intervehicle.poll(std::chrono::seconds(1));
         if (std::chrono::system_clock::now() > timeout)
@@ -368,6 +375,8 @@ void direct_subscriber(const goby::zeromq::protobuf::InterProcessPortalConfig& z
     }
 
     assert(direct_subscriber_ack == 2);
+    // each received Widget republished exactly once
+    assert(widget_republish_count == max_publish);
 }
 
 // process 4
