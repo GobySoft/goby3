@@ -816,7 +816,7 @@ class InterVehiclePortal
         // then re-publish to driver threads
         {
             using intervehicle::protobuf::Subscription;
-            auto subscribe_lambda = [=](std::shared_ptr<const Subscription> d)
+            auto subscribe_lambda = [this](std::shared_ptr<const Subscription> d)
             {
                 this->innermost()
                     .template publish<intervehicle::groups::modem_subscription_forward_rx,
