@@ -1,0 +1,14 @@
+syntax = "proto2";
+import "dccl/option_extensions.proto";
+
+package goby.test.middleware.publisher_subscriber_options.protobuf;
+
+message Sample
+{
+    option (dccl.msg).id = 125;
+    option (dccl.msg).max_bytes = 32;
+    option (dccl.msg).codec_version = 4;
+
+    optional int32 a = 1 [(dccl.field) = { min: 0 max: 100 }];
+    optional uint32 group = 2 [(dccl.field) = { min: 0 max: 100 }];
+}
