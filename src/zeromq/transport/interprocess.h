@@ -473,13 +473,14 @@ class Manager
         middleware::scheme<protobuf::ManagerRequest>(), groups::manager_request,
         middleware::IdentifierWildcard::PROCESS_THREAD_WILDCARD, std::to_string(getpid()))};
 
+    // echo, as a portal on the thread that constructed the Manager (gobyd's) must still get replies
     std::string zmq_filter_rep_{
         middleware::InterProcessIdentifierManager::make_identifier(
             middleware::SerializerParserHelper<
                 protobuf::ManagerResponse,
                 middleware::scheme<protobuf::ManagerResponse>()>::type_name(),
             middleware::scheme<protobuf::ManagerResponse>(), groups::manager_response,
-            middleware::IdentifierWildcard::NO_WILDCARDS, std::to_string(getpid())) +
+            std::to_string(getpid()), middleware::thread_id(), true) +
         std::string(1, middleware::InterProcessIdentifierManager::end_delimiter)};
 }; // namespace zeromq
 

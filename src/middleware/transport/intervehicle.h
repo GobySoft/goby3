@@ -564,8 +564,13 @@ class InterVehicleTransporterBase
             if (func)
                 func(d);
             DynamicGroup g(inner_group);
-            this->inner().template publish_dynamic<Data, MarshallingScheme::DCCL>(d, g);
-            this->inner().template publish_dynamic<Data, MarshallingScheme::PROTOBUF>(d, g);
+            // relaying another platform's publication, so this thread's own subscriptions get it too
+            goby::middleware::protobuf::TransporterConfig cfg;
+            cfg.set_echo(true);
+            Publisher<Data> publisher(cfg);
+            this->inner().template publish_dynamic<Data, MarshallingScheme::DCCL>(d, g, publisher);
+            this->inner().template publish_dynamic<Data, MarshallingScheme::PROTOBUF>(d, g,
+                                                                                      publisher);
         };
     }
 

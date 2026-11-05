@@ -56,7 +56,7 @@ The protocol for Goby messages on ZeroMQ consists of an identifier followed by t
 The identifier is a null-terminated '/' delimited string (analogous to a file path) using the following structure:
 
 ```
-/group/scheme/type/process/thread/\0
+/group/scheme/type/process/thread/echo/\0
 ```
 
 These parts are as follows:
@@ -66,6 +66,7 @@ These parts are as follows:
 * type: The type name as returned by goby::middleware::SerializerParserHelper::type_name() for the given message
 * process: string representation of the publishing process id (`std::to_string(getpid())`).
 * thread: string representation of the publishing thread id based on the hex representation of the std::hash of the id (`goby::middleware::thread_id()`).
+* echo: `1` if the publishing thread asked to receive its own publication (goby::middleware::protobuf::TransporterConfig `echo`), otherwise `0`. A publication is not delivered back to the thread that published it unless this is set.
 
 Since ZMQ allows wildcard subscription based on substrings, you can subscribe at any point for more messages (don't forget the ending slash or you may get unintended messages if you wanted "Foo" but not "FooBar"):
 

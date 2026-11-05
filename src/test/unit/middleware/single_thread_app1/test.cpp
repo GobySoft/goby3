@@ -114,7 +114,10 @@ class TestApp : public Base
             Widget w;
             w.set_b(++tx_count_);
             std::cout << "Tx: " << w.DebugString() << std::flush;
-            interprocess().publish<widget1>(w);
+            // a thread only receives its own publication back with echo on
+            goby::middleware::protobuf::TransporterConfig cfg;
+            cfg.set_echo(true);
+            interprocess().publish<widget1>(w, goby::middleware::Publisher<Widget>(cfg));
         }
     }
 

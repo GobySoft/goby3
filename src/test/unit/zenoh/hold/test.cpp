@@ -62,12 +62,15 @@ int main()
     waiter.subscribe<held, IOData>([&](const IOData& io) { received.push_back(io.data()); });
     waiter.ready();
 
-    // published while the required client is absent: these must be held back, not sent
+    // published while the required client is absent: these must be held back, not sent; echo
+    // so that the publishing thread's own subscription sees them once the hold lifts
+    goby::middleware::protobuf::TransporterConfig echo_cfg;
+    echo_cfg.set_echo(true);
     for (int i = 0; i < 3; ++i)
     {
         IOData io;
         io.set_data("held-" + std::to_string(i));
-        waiter.publish<held>(io);
+        waiter.publish<held>(io, goby::middleware::Publisher<IOData>(echo_cfg));
     }
 
     // give a message that was wrongly sent every chance to come back before concluding it was held

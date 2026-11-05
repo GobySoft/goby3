@@ -43,7 +43,7 @@ Zenoh listens on `tcp/[::]:0` by default, which fails outright on a host without
 Goby's identifier becomes a Zenoh key expression below a root that names the platform and the layer:
 
 ```
-<key_prefix>/<platform>/<layer>/<group>/<scheme>/<type>/<process>/<thread>
+<key_prefix>/<platform>/<layer>/<group>/<scheme>/<type>/<process>/<thread>/<echo>
 ```
 
 * `key_prefix`, `platform`: from the configuration

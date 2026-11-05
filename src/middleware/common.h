@@ -57,6 +57,13 @@ inline std::string thread_id(std::thread::id i = std::this_thread::get_id())
     return ss.str();
 }
 
+// thread_id() of the calling thread, computed once per thread
+inline const std::string& this_thread_id()
+{
+    thread_local const std::string id = thread_id();
+    return id;
+}
+
 // Linux/Apple thread ID, useful because you can access it outside the system
 #if defined __APPLE__
 inline uint64_t gettid()

@@ -99,9 +99,12 @@ inline void parse_publish_type(const std::string& spec, int& scheme, std::string
 /// \param interprocess Reference to the interprocess portal
 /// \param cfg Publish configuration
 /// \param tool_name Name of the tool for error messages (e.g. "goby zeromq publish")
+/// \param transporter_cfg Publisher configuration (e.g. echo) for every publication
 template <typename InterprocessType, typename PublishConfig>
 void publish_tool_impl(InterprocessType& interprocess, const PublishConfig& cfg,
-                       const std::string& tool_name)
+                       const std::string& tool_name,
+                       const goby::middleware::protobuf::TransporterConfig& transporter_cfg =
+                           goby::middleware::protobuf::TransporterConfig())
 {
     using goby::glog;
     std::string type;
@@ -123,14 +126,15 @@ void publish_tool_impl(InterprocessType& interprocess, const PublishConfig& cfg,
             parser.AllowPartialMessage(false);
             parser.ParseFromString(cfg.value(), pb_msg.get());
 
+            goby::middleware::Publisher<google::protobuf::Message> publisher(transporter_cfg);
             if (scheme == goby::middleware::MarshallingScheme::DCCL)
                 interprocess.template publish_dynamic<google::protobuf::Message,
                                                       goby::middleware::MarshallingScheme::DCCL>(
-                    pb_msg, group);
+                    pb_msg, group, publisher);
             else if (scheme == goby::middleware::MarshallingScheme::PROTOBUF)
                 interprocess.template publish_dynamic<
                     google::protobuf::Message, goby::middleware::MarshallingScheme::PROTOBUF>(
-                    pb_msg, group);
+                    pb_msg, group, publisher);
             break;
         }
 
@@ -139,7 +143,8 @@ void publish_tool_impl(InterprocessType& interprocess, const PublishConfig& cfg,
             auto j = nlohmann::json::parse(cfg.value());
             if (type.empty() || type == "nlohmann::json")
             {
-                interprocess.template publish_dynamic<nlohmann::json>(j, group);
+                interprocess.template publish_dynamic<nlohmann::json>(
+                    j, group, goby::middleware::Publisher<nlohmann::json>(transporter_cfg));
             }
             else
             {
@@ -148,7 +153,7 @@ void publish_tool_impl(InterprocessType& interprocess, const PublishConfig& cfg,
                     nlohmann::json, goby::middleware::MarshallingScheme::JSON>::serialize(j);
 
                 interprocess.publish_serialized(type, goby::middleware::MarshallingScheme::JSON,
-                                                bytes, group);
+                                                bytes, group, transporter_cfg);
             }
 
             break;

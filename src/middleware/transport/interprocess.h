@@ -141,10 +141,12 @@ class InterProcessTransporterBase
 
     /// \brief Publish a message that has already been serialized for the given scheme
     void publish_serialized(std::string type_name, int scheme, const std::vector<char>& bytes,
-                            const goby::middleware::Group& group)
+                            const goby::middleware::Group& group,
+                            const goby::middleware::protobuf::TransporterConfig& cfg =
+                                goby::middleware::protobuf::TransporterConfig())
     {
         check_validity_runtime(group);
-        static_cast<Derived*>(this)->_publish_serialized(type_name, scheme, bytes, group);
+        static_cast<Derived*>(this)->_publish_serialized(type_name, scheme, bytes, group, cfg);
     }
 
     /// \brief Subscribe to a specific run-time defined group and data type (const reference variant). Where possible, prefer the static variant in StaticTransporterInterface::subscribe()
@@ -362,6 +364,7 @@ class InterProcessForwarder
         msg->set_allocated_data(sbytes);
 
         *key->mutable_cfg() = publisher.cfg();
+        key->set_publisher_thread(this_thread_id());
 
         this->inner().template publish<Base::to_portal_group_>(msg);
     }
@@ -376,9 +379,11 @@ class InterProcessForwarder
         // Capture alive_ by value (shared_ptr copy) so the lambda can detect
         // when the forwarder has been destroyed and avoid use-after-free.
         auto alive = alive_;
-        auto inner_publication_lambda = [=](std::shared_ptr<const Data> d)
+        auto inner_publication_lambda =
+            [=](std::shared_ptr<const Data> d, const PublicationSource& source)
         {
-            if (*alive)
+            // a local publication already reached this subscription through the inner layer
+            if (*alive && !source.local)
                 this->inner().template publish_dynamic<Data, scheme>(d, group);
         };
 
@@ -404,7 +409,8 @@ class InterProcessForwarder
     }
 
     void _publish_serialized(std::string type_name, int scheme, const std::vector<char>& bytes,
-                             const goby::middleware::Group& group)
+                             const goby::middleware::Group& group,
+                             const goby::middleware::protobuf::TransporterConfig& cfg)
     {
         auto msg = std::make_shared<goby::middleware::protobuf::SerializerTransporterMessage>();
         auto* key = msg->mutable_key();
@@ -413,6 +419,9 @@ class InterProcessForwarder
         key->set_type(type_name);
         key->set_group(std::string(group));
         msg->set_data(std::string(bytes.begin(), bytes.end()));
+
+        *key->mutable_cfg() = cfg;
+        key->set_publisher_thread(this_thread_id());
 
         this->inner().template publish<Base::to_portal_group_>(msg);
     }
@@ -433,17 +442,21 @@ class InterProcessForwarder
     {
         auto alive = alive_;
         auto inner_publication_lambda = [=](const std::vector<unsigned char>& data, int scheme,
-                                            const std::string& type, const Group& group)
+                                            const std::string& type, const Group& group,
+                                            const PublicationSource& source)
         {
             if (!*alive)
                 return;
-            std::shared_ptr<goby::middleware::protobuf::SerializerTransporterMessage>
-                forwarded_data(new goby::middleware::protobuf::SerializerTransporterMessage);
+            using goby::middleware::protobuf::SerializerTransporterMessage;
+            auto forwarded_data = std::make_shared<SerializerTransporterMessage>();
             forwarded_data->mutable_key()->set_marshalling_scheme(scheme);
             forwarded_data->mutable_key()->set_type(type);
             forwarded_data->mutable_key()->set_group(group);
             forwarded_data->set_data(std::string(data.begin(), data.end()));
-            this->inner().template publish<Base::regex_group_>(forwarded_data);
+            // regex subscriptions have no inner layer copy, so apply echo to the publishing thread here
+            this->inner().template publish_dynamic<SerializerTransporterMessage>(
+                forwarded_data, Base::regex_group_, Publisher<SerializerTransporterMessage>(),
+                (source.local && !source.echo) ? source.thread : std::thread::id());
         };
 
         auto portal_subscription = std::make_shared<SerializationSubscriptionRegex>(
@@ -484,11 +497,11 @@ class InterProcessPortalCommon : public InterProcessIdentifierManager
   protected:
     template <typename Data, int scheme>
     void _publish(const Data& d, const goby::middleware::Group& group,
-                  const middleware::Publisher<Data>& /*publisher*/)
+                  const middleware::Publisher<Data>& publisher)
     {
         std::vector<char> bytes(middleware::SerializerParserHelper<Data, scheme>::serialize(d));
         std::string type_name = middleware::SerializerParserHelper<Data, scheme>::type_name(d);
-        _publish_serialized(type_name, scheme, bytes, group);
+        _publish_serialized(type_name, scheme, bytes, group, std::string(), publisher.cfg().echo());
     }
 
     std::shared_ptr<middleware::SerializationSubscriptionRegex> _subscribe_regex(
@@ -543,18 +556,34 @@ class InterProcessPortalCommon : public InterProcessIdentifierManager
         if (lock)
             lock.reset();
 
-        std::string group, type;
-        int scheme, process;
-        std::size_t thread;
-        std::tie(group, scheme, type, process, thread) = this->parse_identifier(data);
+        const InterProcessIdentity publisher = this->parse_identifier(data);
+        const std::string& group = publisher.group;
+        const std::string& type = publisher.type_name;
+        const int scheme = publisher.scheme;
         std::string identifier = this->_make_identifier(
             type, scheme, group, IdentifierWildcard::PROCESS_THREAD_WILDCARD);
+
+        PublicationSource source;
+        source.local = this->_is_this_process(publisher.process);
+        source.echo = publisher.echo;
+        if (source.local)
+        {
+            auto it = forwarder_threads_.find(publisher.thread);
+            if (it != forwarder_threads_.end())
+                source.thread = it->second;
+        }
+        // the publishing thread only gets its own publication back if it asked for echo
+        auto is_publisher = [&](const std::string& subscriber_id)
+        { return source.local && !source.echo && subscriber_id == publisher.thread; };
 
         // build a set so if any of the handlers unsubscribes, we still have a pointer to the middleware::SerializationHandlerBase<>
         std::vector<std::weak_ptr<const middleware::SerializationHandlerBase<>>> subs_to_post;
         auto portal_range = portal_subscriptions_.equal_range(identifier);
         for (auto it = portal_range.first; it != portal_range.second; ++it)
-            subs_to_post.push_back(it->second);
+        {
+            if (!is_publisher(it->second->subscriber_id()))
+                subs_to_post.push_back(it->second);
+        }
         auto forwarder_it = forwarder_subscriptions_.find(identifier);
         if (forwarder_it != forwarder_subscriptions_.end())
             subs_to_post.push_back(forwarder_it->second);
@@ -566,7 +595,7 @@ class InterProcessPortalCommon : public InterProcessIdentifierManager
             for (auto& sub : subs_to_post)
             {
                 if (auto sub_sp = sub.lock())
-                    sub_sp->post(null_delim_it + 1, data.end());
+                    sub_sp->post(null_delim_it + 1, data.end(), source);
             }
         }
 
@@ -578,13 +607,15 @@ class InterProcessPortalCommon : public InterProcessIdentifierManager
             bool forwarder_subscription_posted = false;
             for (auto& sub : regex_subscriptions_)
             {
+                if (is_publisher(sub.first))
+                    continue;
+
                 // only post at most once for forwarders as the threads will filter
-                bool is_forwarded_sub =
-                    sub.first != middleware::identifier_part_to_string(std::this_thread::get_id());
+                bool is_forwarded_sub = sub.first != this_thread_id();
                 if (is_forwarded_sub && forwarder_subscription_posted)
                     continue;
 
-                if (sub.second->post(null_delim_it + 1, data.end(), scheme, type, group) &&
+                if (sub.second->post(null_delim_it + 1, data.end(), scheme, type, group, source) &&
                     is_forwarded_sub)
                     forwarder_subscription_posted = true;
             }
@@ -632,6 +663,8 @@ class InterProcessPortalCommon : public InterProcessIdentifierManager
         goby::glog.is_debug2() &&
             goby::glog << "Received subscription forwarded for identifier [" << identifier
                        << "] from subscriber id: " << subscription->subscriber_id() << std::endl;
+
+        forwarder_threads_[subscription->subscriber_id()] = subscription->thread_id();
 
         switch (subscription->action())
         {
@@ -703,14 +736,24 @@ class InterProcessPortalCommon : public InterProcessIdentifierManager
         if (regex_subscriptions_.empty())
             static_cast<Derived*>(this)->_do_portal_wildcard_subscribe();
 
+        forwarder_threads_[new_sub->subscriber_id()] = new_sub->thread_id();
         regex_subscriptions_.insert(std::make_pair(new_sub->subscriber_id(), new_sub));
     }
 
     void _publish_serialized(std::string type_name, int scheme, const std::vector<char>& bytes,
-                             const goby::middleware::Group& group)
+                             const goby::middleware::Group& group,
+                             const goby::middleware::protobuf::TransporterConfig& cfg)
+    {
+        _publish_serialized(type_name, scheme, bytes, group, std::string(), cfg.echo());
+    }
+
+    /// \param publisher_thread goby::middleware::thread_id() of the publishing thread, or empty for the calling thread
+    void _publish_serialized(std::string type_name, int scheme, const std::vector<char>& bytes,
+                             const goby::middleware::Group& group,
+                             const std::string& publisher_thread, bool echo)
     {
         std::string identifier =
-            this->_make_identifier(type_name, scheme, group, IdentifierWildcard::NO_WILDCARDS) +
+            this->_make_identifier(type_name, scheme, group, publisher_thread, echo) +
             InterProcessIdentifierManager::end_delimiter;
         static_cast<Derived*>(this)->_do_publish(identifier, bytes);
     }
@@ -734,6 +777,9 @@ class InterProcessPortalCommon : public InterProcessIdentifierManager
     std::unordered_multimap<std::string,
                             std::shared_ptr<const middleware::SerializationSubscriptionRegex>>
         regex_subscriptions_;
+
+    // subscriber id [thread id as string] to thread, to apply echo to forwarded subscriptions
+    std::unordered_map<std::string, std::thread::id> forwarder_threads_;
 };
 
 template <typename Derived, typename InnerTransporter, typename ImplementationTag>
@@ -762,7 +808,8 @@ class InterProcessPortalBase
                 std::vector<char> data(d->data().begin(), d->data().end());
                 static_cast<Derived*>(this)->_publish_serialized(
                     d->key().type(), d->key().marshalling_scheme(), data,
-                    goby::middleware::DynamicGroup(d->key().group()));
+                    goby::middleware::DynamicGroup(d->key().group()), d->key().publisher_thread(),
+                    d->key().cfg().echo());
             });
 
         this->inner().template subscribe<Base::to_portal_group_, SerializationHandlerBase<>>(

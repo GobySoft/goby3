@@ -30,6 +30,16 @@ const char goby::middleware::InterProcessIdentifierManager::end_delimiter{'\0'};
 
 const std::string goby::middleware::InterProcessIdentifierManager::delimiter_str_{delimiter};
 
+namespace
+{
+const std::string echo_true{"1"};
+std::string echo_component(bool echo)
+{
+    return (echo ? echo_true : std::string("0")) +
+           goby::middleware::InterProcessIdentifierManager::delimiter;
+}
+} // namespace
+
 std::string goby::middleware::InterProcessIdentifierManager::make_identifier(
     const std::string& type_name, int scheme, const std::string& group, IdentifierWildcard wildcard,
     const std::string& process,
@@ -55,7 +65,8 @@ std::string goby::middleware::InterProcessIdentifierManager::make_identifier(
                                 : std::string(identifier_part_to_string(scheme) + delimiter_str_)) +
                 sanitized_type_name + delimiter_str_ + process + delimiter_str_ +
                 (threads_buffer ? id_component(thread, *threads_buffer)
-                                : std::string(identifier_part_to_string(thread) + delimiter_str_)));
+                                : std::string(identifier_part_to_string(thread) + delimiter_str_)) +
+                echo_component(false));
         }
         case IdentifierWildcard::THREAD_WILDCARD:
         {
@@ -75,7 +86,17 @@ std::string goby::middleware::InterProcessIdentifierManager::make_identifier(
         }
     }
 }
-std::tuple<std::string, int, std::string, int, std::size_t>
+std::string goby::middleware::InterProcessIdentifierManager::make_identifier(
+    const std::string& type_name, int scheme, const std::string& group, const std::string& process,
+    const std::string& thread, bool echo,
+    std::unordered_map<int, std::string>* schemes_buffer /* = nullptr */)
+{
+    return make_identifier(type_name, scheme, group, IdentifierWildcard::THREAD_WILDCARD, process,
+                           schemes_buffer) +
+           thread + delimiter_str_ + echo_component(echo);
+}
+
+goby::middleware::InterProcessIdentity
 goby::middleware::InterProcessIdentifierManager::parse_identifier(const std::string& identifier)
 {
     enum
@@ -85,7 +106,8 @@ goby::middleware::InterProcessIdentifierManager::parse_identifier(const std::str
         POS_TYPE = 2,
         POS_PROCESS = 3,
         POS_THREAD = 4,
-        POS_MAX = POS_THREAD
+        POS_ECHO = 5,
+        POS_MAX = POS_ECHO
     };
 
     const int number_elements = POS_MAX + 1;
@@ -93,6 +115,13 @@ goby::middleware::InterProcessIdentifierManager::parse_identifier(const std::str
     std::vector<std::string> elem;
     for (auto i = 0; i < number_elements; ++i)
     {
+        if (previous_delimiter == std::string::npos ||
+            previous_delimiter + 1 >= identifier.size() ||
+            identifier[previous_delimiter + 1] == end_delimiter)
+        {
+            elem.emplace_back();
+            continue;
+        }
         auto delimiter_pos = identifier.find(delimiter, previous_delimiter + 1);
         elem.push_back(
             identifier.substr(previous_delimiter + 1, delimiter_pos - (previous_delimiter + 1)));
@@ -103,7 +132,10 @@ goby::middleware::InterProcessIdentifierManager::parse_identifier(const std::str
     auto& type = elem[POS_TYPE];
     std::replace(type.begin(), type.end(), delimiter_substitute, delimiter);
     std::replace(group.begin(), group.end(), delimiter_substitute, delimiter);
-    return std::make_tuple(
-        elem[POS_GROUP], middleware::MarshallingScheme::from_string(elem[POS_SCHEME]),
-        elem[POS_TYPE], std::stoi(elem[POS_PROCESS]), std::stoull(elem[POS_THREAD], nullptr, 16));
+    return InterProcessIdentity{group,
+                                middleware::MarshallingScheme::from_string(elem[POS_SCHEME]),
+                                type,
+                                std::stoi(elem[POS_PROCESS]),
+                                elem[POS_THREAD],
+                                elem[POS_ECHO] == echo_true};
 }

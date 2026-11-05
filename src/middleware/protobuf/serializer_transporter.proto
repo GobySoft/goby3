@@ -26,6 +26,9 @@ message SerializerTransporterKey
     optional uint64 serialize_time = 5
         [(dccl.field) = {units {prefix: "micro" base_dimensions: "T"}}];
     optional TransporterConfig cfg = 10;
+    // goby::middleware::thread_id() of the publisher, set by an InterProcessForwarder so the
+    // Portal can stamp the identifier with the publishing thread rather than its own
+    optional string publisher_thread = 11 [(dccl.field).omit = true];
     optional SerializerProtobufMetadata metadata = 20;
 }
 

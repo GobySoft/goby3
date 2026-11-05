@@ -122,6 +122,17 @@ class InterThreadTransporter
         detail::SubscriptionStore<Data>::publish(data, group, publisher);
     }
 
+    /// \brief Publish on behalf of another thread, so that TransporterConfig::echo applies to that thread rather than the calling one. Used by portals to deliver a publication that originated from a forwarder thread.
+    ///
+    /// \param publisher_thread Thread treated as the publisher; a default-constructed id means the calling thread
+    template <typename Data, int scheme = scheme<Data>()>
+    void publish_dynamic(std::shared_ptr<const Data> data, const Group& group,
+                         const Publisher<Data>& publisher, std::thread::id publisher_thread)
+    {
+        check_validity_runtime(group);
+        detail::SubscriptionStore<Data>::publish(data, group, publisher, publisher_thread);
+    }
+
     /// \brief Publish a message using a run-time defined DynamicGroup (shared pointer to mutable data variant). Where possible, prefer the static variant in StaticTransporterInterface::publish()
     ///
     /// \tparam Data data type to publish. Can usually be inferred from the \c data parameter.

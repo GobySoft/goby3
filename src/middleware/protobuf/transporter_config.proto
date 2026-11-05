@@ -6,8 +6,8 @@ package goby.middleware.protobuf;
 
 message TransporterConfig
 {
-    // if the publisher is also subscribed, should it receive a copy?
-    // TODO: implement at the interprocess and intervehicle layers
+    // if the publishing thread is also subscribed, should it receive a copy?
+    // (interthread and interprocess; TODO: intervehicle)
     optional bool echo = 1 [default = false];
 
     optional intervehicle.protobuf.TransporterConfig intervehicle = 10;

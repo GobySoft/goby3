@@ -191,8 +191,12 @@ template <typename Data> class SubscriptionStore : public SubscriptionStoreBase
     }
 
     static void publish(std::shared_ptr<const Data> data, const Group& group,
-                        const Publisher<Data>& publisher)
+                        const Publisher<Data>& publisher,
+                        std::thread::id publisher_thread = std::thread::id())
     {
+        if (publisher_thread == std::thread::id())
+            publisher_thread = std::this_thread::get_id();
+
         // push new data
         // build up local vector of relevant condition variables while locked
         std::vector<detail::DataProtection> cv_to_notify;
@@ -205,7 +209,7 @@ template <typename Data> class SubscriptionStore : public SubscriptionStoreBase
                 std::thread::id thread_id = it->second->first;
 
                 // don't store a copy if publisher == subscriber, and echo is false
-                if (thread_id != std::this_thread::get_id() || publisher.cfg().echo())
+                if (thread_id != publisher_thread || publisher.cfg().echo())
                 {
                     // protect the DataQueue we are writing to
                     std::unique_lock<std::mutex> lock(*(data_protection_.at(thread_id).data_mutex));

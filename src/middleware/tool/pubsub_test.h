@@ -112,7 +112,10 @@ class PubSubTestPortalEndpoint : public PubSubTestEndpoint
 
     void publish(const protobuf::PubSubTestPublish& pub) override
     {
-        publish_tool_impl(portal_, pub, tool_name_);
+        // an expectation on the same endpoint must see this endpoint's own publications
+        goby::middleware::protobuf::TransporterConfig cfg;
+        cfg.set_echo(true);
+        publish_tool_impl(portal_, pub, tool_name_, cfg);
     }
 
     void publish_health_request() override

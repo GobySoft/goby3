@@ -47,13 +47,15 @@ enum class IdentifierWildcard
     PROCESS_THREAD_WILDCARD // omit process and thread
 };
 
+/// \brief The components of a fully qualified interprocess identifier
 struct InterProcessIdentity
 {
     std::string group;
     int scheme;
     std::string type_name;
-    int process_id;
-    std::size_t thread_id;
+    int process;
+    std::string thread; // goby::middleware::thread_id() of the publishing thread
+    bool echo;          // whether the publishing thread wants its own publication back
 };
 
 // scheme
@@ -72,16 +74,21 @@ class InterProcessIdentifierManager
     const static char delimiter;
     const static char delimiter_substitute;
     const static char end_delimiter;
-    
+
     static std::string
     make_identifier(const std::string& type_name, int scheme, const std::string& group,
                     IdentifierWildcard wildcard, const std::string& process,
                     std::unordered_map<int, std::string>* schemes_buffer = nullptr,
                     std::unordered_map<std::thread::id, std::string>* threads_buffer = nullptr);
 
-    // group, scheme, type, process, thread
-    std::tuple<std::string, int, std::string, int, std::size_t> static parse_identifier(
-        const std::string& identifier);
+    /// \brief Fully qualified identifier for a publication from the given thread
+    static std::string
+    make_identifier(const std::string& type_name, int scheme, const std::string& group,
+                    const std::string& process, const std::string& thread, bool echo,
+                    std::unordered_map<int, std::string>* schemes_buffer = nullptr);
+
+    /// \brief Parse a fully qualified identifier; `echo` is false if the component is absent
+    static InterProcessIdentity parse_identifier(const std::string& identifier);
 
   protected:
     template <typename Data, int scheme>
@@ -105,6 +112,16 @@ class InterProcessIdentifierManager
         return make_identifier(type_name, scheme, group, wildcard, process_, &schemes_, &threads_);
     }
 
+    /// \param thread goby::middleware::thread_id() of the publishing thread, or empty for the calling thread
+    std::string _make_identifier(const std::string& type_name, int scheme, const std::string& group,
+                                 const std::string& thread, bool echo)
+    {
+        return make_identifier(type_name, scheme, group, process_,
+                               thread.empty() ? this_thread_id() : thread, echo, &schemes_);
+    }
+
+    bool _is_this_process(int process) const { return process == process_id_; }
+
   private:
     /// Given key, find the string in the map, or create it (to_string) and store it, and return the string.
     template <typename Key>
@@ -121,7 +138,8 @@ class InterProcessIdentifierManager
 
   private:
     static const std::string delimiter_str_;
-    const std::string process_{std::to_string(getpid())};
+    const int process_id_{getpid()};
+    const std::string process_{std::to_string(process_id_)};
     std::unordered_map<int, std::string> schemes_;
     std::unordered_map<std::thread::id, std::string> threads_;
 };

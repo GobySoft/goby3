@@ -52,6 +52,14 @@ template <typename Metadata, typename Enable = void> class SerializationHandlerP
 {
 };
 
+/// \brief Where a message received by an interprocess portal came from, for applying TransporterConfig::echo
+struct PublicationSource
+{
+    bool local{false};      // published by this process
+    bool echo{false};       // the publisher's TransporterConfig::echo
+    std::thread::id thread; // publishing thread, when local and known to the portal
+};
+
 /// \brief Selects the SerializationHandlerBase::post() signatures without metadata
 template <typename Metadata>
 class SerializationHandlerPostSelector<Metadata,
@@ -68,6 +76,14 @@ class SerializationHandlerPostSelector<Metadata,
                                                    std::vector<char>::const_iterator e) const = 0;
 #endif
     virtual const char* post(const char* b, const char* e) const = 0;
+
+    /// \brief Post a message along with where it came from, for applying TransporterConfig::echo
+    virtual std::string::const_iterator post(std::string::const_iterator b,
+                                             std::string::const_iterator e,
+                                             const PublicationSource& /*source*/) const
+    {
+        return post(b, e);
+    }
 };
 
 /// \brief Selects the SerializationHandlerBase::post() signatures with metadata (e.g. Publisher or Subscriber)
@@ -138,10 +154,23 @@ class SerializationSubscription : public SerializationHandlerBase<>
 {
   public:
     typedef std::function<void(std::shared_ptr<const Data> data)> HandlerType;
+    typedef std::function<void(std::shared_ptr<const Data> data, const PublicationSource& source)>
+        ForwardingHandlerType;
 
     SerializationSubscription(HandlerType handler,
                               const Group& group = Group(Group::broadcast_group),
                               const Subscriber<Data>& subscriber = Subscriber<Data>())
+        : handler_(handler ? ForwardingHandlerType([=](std::shared_ptr<const Data> d,
+                                                       const PublicationSource&) { handler(d); })
+                           : ForwardingHandlerType()),
+          type_name_(SerializerParserHelper<Data, scheme_id>::type_name()),
+          group_(group),
+          subscriber_(subscriber)
+    {
+    }
+
+    SerializationSubscription(ForwardingHandlerType handler, const Group& group,
+                              const Subscriber<Data>& subscriber)
         : handler_(handler),
           type_name_(SerializerParserHelper<Data, scheme_id>::type_name()),
           group_(group),
@@ -154,6 +183,12 @@ class SerializationSubscription : public SerializationHandlerBase<>
                                      std::string::const_iterator e) const override
     {
         return _post(b, e);
+    }
+
+    std::string::const_iterator post(std::string::const_iterator b, std::string::const_iterator e,
+                                     const PublicationSource& source) const override
+    {
+        return _post(b, e, source);
     }
 
 #ifndef _LIBCPP_VERSION
@@ -178,20 +213,21 @@ class SerializationSubscription : public SerializationHandlerBase<>
 
   private:
     template <typename CharIterator>
-    CharIterator _post(CharIterator bytes_begin, CharIterator bytes_end) const
+    CharIterator _post(CharIterator bytes_begin, CharIterator bytes_end,
+                       const PublicationSource& source = PublicationSource()) const
     {
         CharIterator actual_end;
         auto msg = SerializerParserHelper<Data, scheme_id>::parse(bytes_begin, bytes_end,
                                                                   actual_end, type_name_);
 
         if (subscribed_group() == subscriber_.group(*msg) && handler_)
-            handler_(msg);
+            handler_(msg, source);
 
         return actual_end;
     }
 
   private:
-    HandlerType handler_;
+    ForwardingHandlerType handler_;
     const std::string type_name_;
     const Group group_;
     Subscriber<Data> subscriber_;
@@ -427,8 +463,26 @@ class SerializationSubscriptionRegex
     typedef std::function<void(const std::vector<unsigned char>&, int scheme,
                                const std::string& type, const Group& group)>
         HandlerType;
+    typedef std::function<void(const std::vector<unsigned char>&, int scheme,
+                               const std::string& type, const Group& group,
+                               const PublicationSource& source)>
+        ForwardingHandlerType;
 
     SerializationSubscriptionRegex(HandlerType handler, const std::set<int>& schemes,
+                                   const std::string& type_regex = ".*",
+                                   const std::string& group_regex = ".*")
+        : handler_(handler ? ForwardingHandlerType([=](const std::vector<unsigned char>& data,
+                                                       int scheme, const std::string& type,
+                                                       const Group& group, const PublicationSource&)
+                                                   { handler(data, scheme, type, group); })
+                           : ForwardingHandlerType()),
+          schemes_(schemes),
+          type_regex_(type_regex),
+          group_regex_(group_regex)
+    {
+    }
+
+    SerializationSubscriptionRegex(ForwardingHandlerType handler, const std::set<int>& schemes,
                                    const std::string& type_regex = ".*",
                                    const std::string& group_regex = ".*")
         : handler_(handler), schemes_(schemes), type_regex_(type_regex), group_regex_(group_regex)
@@ -442,14 +496,14 @@ class SerializationSubscriptionRegex
     // return true if posted
     template <typename CharIterator>
     bool post(CharIterator bytes_begin, CharIterator bytes_end, int scheme, const std::string& type,
-              const std::string& group) const
+              const std::string& group, const PublicationSource& source = PublicationSource()) const
     {
         if ((schemes_.count(goby::middleware::MarshallingScheme::ALL_SCHEMES) ||
              schemes_.count(scheme)) &&
             std::regex_match(type, type_regex_) && std::regex_match(group, group_regex_))
         {
             std::vector<unsigned char> data(bytes_begin, bytes_end);
-            handler_(data, scheme, type, goby::middleware::DynamicGroup(group));
+            handler_(data, scheme, type, goby::middleware::DynamicGroup(group), source);
             return true;
         }
         else
@@ -462,7 +516,7 @@ class SerializationSubscriptionRegex
     std::string subscriber_id() const { return subscriber_id_; }
 
   private:
-    HandlerType handler_;
+    ForwardingHandlerType handler_;
     const std::set<int> schemes_;
     std::regex type_regex_;
     std::regex group_regex_;

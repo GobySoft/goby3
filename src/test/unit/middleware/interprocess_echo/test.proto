@@ -1,0 +1,9 @@
+syntax = "proto2";
+
+package goby.test.middleware.protobuf;
+
+message Sample
+{
+    required int32 source = 1;
+    required bool echo = 2;
+}

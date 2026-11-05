@@ -219,9 +219,11 @@ class InterModulePortalBase
             [this](const SerializerTransporterMessage& d)
             {
                 std::vector<char> data(d.data().begin(), d.data().end());
+                // a module's publication is stamped with this thread but isn't its own, so it must
+                // not be withheld from this thread as an echo
                 static_cast<Derived*>(this)->_publish_serialized(
                     d.key().type(), d.key().marshalling_scheme(), data,
-                    goby::middleware::DynamicGroup(d.key().group()));
+                    goby::middleware::DynamicGroup(d.key().group()), std::string(), true);
             });
 
         this->inner().template subscribe<Base::to_portal_group_, Subscription>(
