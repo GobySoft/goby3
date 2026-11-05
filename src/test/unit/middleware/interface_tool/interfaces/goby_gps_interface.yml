@@ -1,0 +1,160 @@
+application: goby_gps
+interprocess:
+  publishes:
+    - group: goby::middleware::groups::gpsd::att
+      scheme: PROTOBUF
+      type: goby::middleware::protobuf::gpsd::Attitude
+      thread: goby::apps::zeromq::GPSDClient
+    - group: goby::middleware::groups::gpsd::sky
+      scheme: PROTOBUF
+      type: goby::middleware::protobuf::gpsd::SkyView
+      thread: goby::apps::zeromq::GPSDClient
+    - group: goby::middleware::groups::gpsd::tpv
+      scheme: PROTOBUF
+      type: goby::middleware::protobuf::gpsd::TimePositionVelocity
+      thread: goby::apps::zeromq::GPSDClient
+    - group: goby::health::response
+      scheme: PROTOBUF
+      type: goby::middleware::protobuf::ProcessHealth
+      thread: "goby::middleware::HealthMonitorThread<struct goby::zeromq::detail::InterProcessTag>"
+    - group: goby::configuration
+      scheme: PROTOBUF
+      type: goby::apps::zeromq::protobuf::GPSDConfig
+      thread: goby::apps::zeromq::GPSDClient
+    - group: goby::terminate::response
+      scheme: PROTOBUF
+      type: goby::middleware::protobuf::TerminateResponse
+      thread: goby::apps::zeromq::GPSDClient
+  subscribes:
+    - group: goby::health::request
+      scheme: PROTOBUF
+      type: goby::middleware::protobuf::HealthRequest
+      necessity: optional
+      thread: "goby::middleware::HealthMonitorThread<struct goby::zeromq::detail::InterProcessTag>"
+    - group: goby::datum_update
+      scheme: PROTOBUF
+      type: goby::middleware::protobuf::DatumUpdate
+      necessity: optional
+      thread: goby::apps::zeromq::GPSDClient
+    - group: goby::terminate::request
+      scheme: PROTOBUF
+      type: goby::middleware::protobuf::TerminateRequest
+      necessity: optional
+      thread: goby::apps::zeromq::GPSDClient
+interthread:
+  threads:
+    - name: goby::apps::zeromq::GPSDClient
+      known: true
+      bases:
+        - goby::middleware::Application<class goby::apps::zeromq::protobuf::GPSDConfig>
+        - goby::middleware::MultiThreadApplication<class goby::apps::zeromq::protobuf::GPSDConfig, goby::zeromq::InterProcessPortal>
+        - goby::middleware::MultiThreadApplicationBase<class goby::apps::zeromq::protobuf::GPSDConfig, class goby::middleware::InterVehicleForwarder<class goby::zeromq::InterProcessPortalImplementation<class goby::middleware::InterThreadTransporter, goby::middleware::InterProcessPortalBase, struct goby::zeromq::detail::InterProcessTag> > >
+        - goby::middleware::Thread<class goby::apps::zeromq::protobuf::GPSDConfig, class goby::middleware::InterVehicleForwarder<class goby::zeromq::InterProcessPortalImplementation<class goby::middleware::InterThreadTransporter, goby::middleware::InterProcessPortalBase, struct goby::zeromq::detail::InterProcessTag> > >
+        - goby::middleware::coroner::ApplicationInterThread<class goby::middleware::MultiThreadApplication<class goby::apps::zeromq::protobuf::GPSDConfig, goby::zeromq::InterProcessPortal> >
+        - goby::middleware::terminate::Application<class goby::middleware::MultiThreadApplication<class goby::apps::zeromq::protobuf::GPSDConfig, goby::zeromq::InterProcessPortal> >
+      publishes:
+        - group: tcp_out
+          scheme: CXX_OBJECT
+          type: goby::middleware::protobuf::IOData
+        - group: goby::health::response
+          scheme: CXX_OBJECT
+          type: goby::middleware::protobuf::ProcessHealth
+        - group: goby::middleware::groups::gpsd::att
+          scheme: PROTOBUF
+          type: goby::middleware::protobuf::gpsd::Attitude
+          inner: true
+        - group: goby::middleware::groups::gpsd::sky
+          scheme: PROTOBUF
+          type: goby::middleware::protobuf::gpsd::SkyView
+          inner: true
+        - group: goby::middleware::groups::gpsd::tpv
+          scheme: PROTOBUF
+          type: goby::middleware::protobuf::gpsd::TimePositionVelocity
+          inner: true
+        - group: goby::configuration
+          scheme: PROTOBUF
+          type: goby::apps::zeromq::protobuf::GPSDConfig
+          inner: true
+        - group: goby::terminate::response
+          scheme: PROTOBUF
+          type: goby::middleware::protobuf::TerminateResponse
+          inner: true
+      subscribes:
+        - group: tcp_in
+          scheme: CXX_OBJECT
+          type: goby::middleware::protobuf::IOData
+          necessity: optional
+        - group: tcp_in
+          scheme: CXX_OBJECT
+          type: goby::middleware::protobuf::TCPClientEvent
+          necessity: optional
+        - group: goby::health::request
+          scheme: CXX_OBJECT
+          type: goby::middleware::protobuf::HealthRequest
+          necessity: optional
+    - name: "goby::middleware::HealthMonitorThread<struct goby::zeromq::detail::InterProcessTag>"
+      known: true
+      bases:
+        - goby::middleware::SimpleThread<struct goby::middleware::NullConfig, struct goby::zeromq::detail::InterProcessTag>
+        - goby::middleware::Thread<struct goby::middleware::NullConfig, class goby::middleware::InterVehicleForwarder<class goby::middleware::InterProcessForwarder<class goby::middleware::InterThreadTransporter, struct goby::zeromq::detail::InterProcessTag> > >
+        - goby::middleware::coroner::Thread<class goby::middleware::SimpleThread<struct goby::middleware::NullConfig, struct goby::zeromq::detail::InterProcessTag> >
+      publishes:
+        - group: goby::health::request
+          scheme: CXX_OBJECT
+          type: goby::middleware::protobuf::HealthRequest
+        - group: goby::health::response
+          scheme: CXX_OBJECT
+          type: goby::middleware::protobuf::ThreadHealth
+        - group: goby::health::response
+          scheme: PROTOBUF
+          type: goby::middleware::protobuf::ProcessHealth
+          inner: true
+      subscribes:
+        - group: goby::health::response
+          scheme: CXX_OBJECT
+          type: goby::middleware::protobuf::ProcessHealth
+          necessity: optional
+        - group: goby::health::response
+          scheme: CXX_OBJECT
+          type: goby::middleware::protobuf::ThreadHealth
+          necessity: optional
+        - group: goby::health::request
+          scheme: CXX_OBJECT
+          type: goby::middleware::protobuf::HealthRequest
+          necessity: optional
+    - name: "goby::middleware::io::detail::TCPClientThread<tcp_in, tcp_out, goby::middleware::io::PubSubLayer::INTERTHREAD, goby::middleware::io::PubSubLayer::INTERTHREAD, class goby::middleware::protobuf::TCPClientConfig, goby::zeromq::SimpleThread>"
+      known: true
+      bases:
+        - goby::middleware::SimpleThread<class goby::middleware::protobuf::TCPClientConfig, struct goby::zeromq::detail::InterProcessTag>
+        - goby::middleware::Thread<class goby::middleware::protobuf::TCPClientConfig, class goby::middleware::InterVehicleForwarder<class goby::middleware::InterProcessForwarder<class goby::middleware::InterThreadTransporter, struct goby::zeromq::detail::InterProcessTag> > >
+        - goby::middleware::coroner::Thread<class goby::middleware::SimpleThread<class goby::middleware::protobuf::TCPClientConfig, struct goby::zeromq::detail::InterProcessTag> >
+        - goby::middleware::io::detail::IOPublishTransporter<class goby::middleware::io::detail::IOThread<tcp_in, tcp_out, goby::middleware::io::PubSubLayer::INTERTHREAD, goby::middleware::io::PubSubLayer::INTERTHREAD, class goby::middleware::protobuf::TCPClientConfig, class boost::asio::basic_stream_socket<class boost::asio::ip::tcp>, goby::zeromq::SimpleThread>, tcp_in, goby::middleware::io::PubSubLayer::INTERTHREAD, struct goby::zeromq::detail::InterProcessTag, false>
+        - goby::middleware::io::detail::IOSubscribeTransporter<class goby::middleware::io::detail::IOThread<tcp_in, tcp_out, goby::middleware::io::PubSubLayer::INTERTHREAD, goby::middleware::io::PubSubLayer::INTERTHREAD, class goby::middleware::protobuf::TCPClientConfig, class boost::asio::basic_stream_socket<class boost::asio::ip::tcp>, goby::zeromq::SimpleThread>, tcp_out, goby::middleware::io::PubSubLayer::INTERTHREAD, struct goby::zeromq::detail::InterProcessTag, false>
+        - goby::middleware::io::detail::IOThread<tcp_in, tcp_out, goby::middleware::io::PubSubLayer::INTERTHREAD, goby::middleware::io::PubSubLayer::INTERTHREAD, class goby::middleware::protobuf::TCPClientConfig, class boost::asio::basic_stream_socket<class boost::asio::ip::tcp>, goby::zeromq::SimpleThread>
+        - goby::middleware::io::detail::IOTransporterByLayer<class goby::middleware::io::detail::IOThread<tcp_in, tcp_out, goby::middleware::io::PubSubLayer::INTERTHREAD, goby::middleware::io::PubSubLayer::INTERTHREAD, class goby::middleware::protobuf::TCPClientConfig, class boost::asio::basic_stream_socket<class boost::asio::ip::tcp>, goby::zeromq::SimpleThread>, goby::middleware::io::detail::Direction::PUBLISH, struct goby::zeromq::detail::InterProcessTag, goby::middleware::io::PubSubLayer::INTERTHREAD>
+        - goby::middleware::io::detail::IOTransporterByLayer<class goby::middleware::io::detail::IOThread<tcp_in, tcp_out, goby::middleware::io::PubSubLayer::INTERTHREAD, goby::middleware::io::PubSubLayer::INTERTHREAD, class goby::middleware::protobuf::TCPClientConfig, class boost::asio::basic_stream_socket<class boost::asio::ip::tcp>, goby::zeromq::SimpleThread>, goby::middleware::io::detail::Direction::SUBSCRIBE, struct goby::zeromq::detail::InterProcessTag, goby::middleware::io::PubSubLayer::INTERTHREAD>
+      publishes:
+        - group: goby::health::response
+          scheme: CXX_OBJECT
+          type: goby::middleware::protobuf::ThreadHealth
+        - group: tcp_in
+          scheme: CXX_OBJECT
+          type: goby::middleware::protobuf::IOData
+        - group: tcp_in
+          scheme: CXX_OBJECT
+          type: goby::middleware::protobuf::IOStatus
+        - group: tcp_in
+          scheme: CXX_OBJECT
+          type: goby::middleware::protobuf::TCPClientEvent
+        - group: tcp_in
+          scheme: CXX_OBJECT
+          type: "enum goby::middleware::io::ThreadState"
+      subscribes:
+        - group: goby::health::request
+          scheme: CXX_OBJECT
+          type: goby::middleware::protobuf::HealthRequest
+          necessity: optional
+        - group: tcp_out
+          scheme: CXX_OBJECT
+          type: goby::middleware::protobuf::IOData
+          necessity: optional

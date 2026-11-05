@@ -1,0 +1,99 @@
+// Copyright 2026:
+//   GobySoft, LLC (2013-)
+//   Community contributors (see AUTHORS file)
+// File authors:
+//   Toby Schneider <toby@gobysoft.org>
+//
+//
+// This file is part of the Goby Underwater Autonomy Project Binaries
+// ("The Goby Binaries").
+//
+// The Goby Binaries are free software: you can redistribute them and/or modify
+// them under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 2 of the License, or
+// (at your option) any later version.
+//
+// The Goby Binaries are distributed in the hope that they will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License
+// along with Goby.  If not, see <http://www.gnu.org/licenses/>.
+syntax = "proto2";
+import "goby/middleware/protobuf/app_config.proto";
+import "goby/protobuf/option_extensions.proto";
+
+package goby.apps.middleware.protobuf;
+
+message InterfaceToolConfig
+{
+    option (goby.msg).cfg.tool = {
+        is_tool: true
+        has_subtools: true
+        has_help_action: true
+    };
+
+    optional goby.middleware.protobuf.AppConfig app = 1
+        [(goby.field) = { cfg { action: DEVELOPER } }];
+
+    enum Action
+    {
+        help = 0 [(goby.ev).cfg = {
+            short_help_msg: "Print usage information",
+            full_help_msg: "Usage: \"goby interface help [action]\"\n"
+        }];
+        visualize = 1 [(goby.ev).cfg = {
+            short_help_msg: "Draw a deployment's publish/subscribe graph"
+        }];
+    }
+    optional Action action = 2 [
+        default = help,
+        (goby.field) = {
+            description: "The action this tool should take [can omit --action if 1st parameter]",
+            cfg { position: { enable: true }, cli_short: "A", action: HIDDEN }
+        }
+    ];
+}
+
+message InterfaceVisualizeConfig
+{
+    option (goby.msg).cfg.tool = {
+        is_tool: true
+        has_subtools: false
+        has_help_action: false
+    };
+
+    optional goby.middleware.protobuf.AppConfig app = 1
+        [(goby.field) = { cfg { action: DEVELOPER } }];
+
+    required string deployment_file = 10 [(goby.field) = {
+        description: "Deployment file (deployment.yml), or a single interface file drawn as a one-platform deployment",
+        cfg { position: { enable: true } }
+    }];
+    optional string output_file = 11
+        [(goby.field).description = "Write the graph here instead of stdout"];
+
+    optional bool no_disconnected = 20 [
+        default = false,
+        (goby.field).description =
+            "Do not draw publications without subscribers or subscriptions without publishers (required subscriptions are always drawn)"
+    ];
+    optional bool omit_interthread = 21
+        [default = false, (goby.field).description = "Do not draw interthread connections"];
+    optional string omit_group_regex = 22
+        [(goby.field).description = "Do not draw groups matching this regex"];
+    optional string omit_node_regex = 23 [(goby.field).description =
+                                              "Do not draw platforms, modules, applications or "
+                                              "threads whose name matches this regex"];
+    optional bool include_terminate = 24
+        [default = false, (goby.field).description = "Draw goby_terminate groups"];
+    optional bool include_coroner = 25
+        [default = false, (goby.field).description = "Draw goby_coroner groups"];
+    optional bool include_all = 26 [
+        default = false,
+        (goby.field).description = "Draw every group, including Goby's internal ones"
+    ];
+    optional string splines = 27
+        [default = "ortho", (goby.field).description = "Graphviz splines= setting"];
+}

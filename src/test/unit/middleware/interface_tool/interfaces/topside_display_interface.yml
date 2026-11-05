@@ -1,0 +1,16 @@
+application: topside_display
+intervehicle:
+  subscribes:
+    - group: nav::status;1
+      scheme: DCCL
+      type: nav::protobuf::Status
+      necessity: required
+      thread: Display
+interprocess:
+  subscribes:
+    - group: goby::middleware::interprocess::regex
+      scheme: PROTOBUF
+      type: google::protobuf::Message
+      necessity: optional
+      thread: Display
+      is_regex: true

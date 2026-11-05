@@ -1,0 +1,9 @@
+deployment: fleet
+platforms:
+  - name: auv
+    interfaces:
+      - nav_driver_interface.yml
+      - controller_interface.yml
+  - name: topside
+    interfaces:
+      - topside_display_interface.yml
