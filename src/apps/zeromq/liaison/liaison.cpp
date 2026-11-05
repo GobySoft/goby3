@@ -36,7 +36,6 @@
 #include <stdexcept>     // for runtim...
 #include <string>        // for string
 #include <type_traits>   // for __succ...
-#include <unistd.h>      // for usleep
 #include <unordered_map> // for operat...
 #include <vector>        // for vector
 
@@ -251,16 +250,11 @@ goby::apps::zeromq::Liaison::Liaison()
 
     // clean up sessions if there are none
     // see https://redmine.webtoolkit.eu/boards/2/topics/5614?r=5615#message-5615
-    expire_sessions_ = [=]()
+    // a non-zero schedule() delay uses a timer; sleeping in a posted job would block Wt's strand
+    expire_sessions_ = [this]()
     {
-        int seconds = 10;
-        auto start = goby::time::SteadyClock::now();
-        while (!terminating_ &&
-               goby::time::SteadyClock::now() < start + std::chrono::seconds(seconds))
-        {
-            // 100 ms to avoid pegging CPU but be responsive to shutdown
-            usleep(100000);
-        }
+        if (terminating_)
+            return;
 
         glog.is_debug3() && glog << std::chrono::duration_cast<std::chrono::seconds>(
                                         goby::time::SteadyClock::now().time_since_epoch())
@@ -269,11 +263,10 @@ goby::apps::zeromq::Liaison::Liaison()
 
         wt_server_.expireSessions();
 
-        if (!terminating_)
-            Wt::WServer::instance()->ioService().post(expire_sessions_);
+        Wt::WServer::instance()->ioService().schedule(std::chrono::seconds(10), expire_sessions_);
     };
 
-    Wt::WServer::instance()->ioService().post(expire_sessions_);
+    Wt::WServer::instance()->ioService().schedule(std::chrono::seconds(10), expire_sessions_);
 }
 
 void goby::apps::zeromq::Liaison::load_proto_file(const std::string& path)
