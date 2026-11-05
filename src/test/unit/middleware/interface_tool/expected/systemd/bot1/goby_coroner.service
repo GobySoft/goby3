@@ -1,0 +1,12 @@
+[Unit]
+Description=goby_coroner (bot1 of systemd_fleet)
+PartOf=systemd_fleet-bot1.target
+
+[Service]
+User=fleet
+ExecStart=goby_coroner /etc/fleet/bot1.pb.cfg --expected_name gobyd --expected_name nav_driver --expected_name mission_manager --expected_name engineering_display
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=systemd_fleet-bot1.target
