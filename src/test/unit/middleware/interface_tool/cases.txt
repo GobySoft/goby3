@@ -1,4 +1,4 @@
-# expected file | deployment | goby interface visualize flags | goby_clang_tool -viz flags
+# expected file | deployment | goby interface visualize flags | goby_clang_tool -viz flags | format (dot, the default, or d2)
 gps_stub | goby_gps_interface.yml | |
 fleet | fleet.yml | |
 fleet_no_disconnected | fleet.yml | --no_disconnected | -no-disconnected
@@ -11,3 +11,7 @@ run_features | run_features.yml | |
 dynamic_fleet | dynamic_fleet.yml | |
 dynamic_fleet_expanded | dynamic_fleet.yml | --expand_instances | -expand-instances
 dynamic_unbound | dynamic_unbound.yml | |
+gps_stub | goby_gps_interface.yml | | | d2
+modules | modules.yml | | | d2
+run_features | run_features.yml | | | d2
+dynamic_fleet_expanded | dynamic_fleet.yml | --expand_instances | -expand-instances | d2

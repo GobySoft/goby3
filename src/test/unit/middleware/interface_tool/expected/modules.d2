@@ -1,0 +1,51 @@
+vars: { d2-config: { layout-engine: elk } }
+direction: right
+classes: {
+  platform: { style.stroke: "#006400"; style.font-color: "#006400"; style.stroke-width: 2; style.fill: transparent }
+  module: { style.stroke: "#cd8500"; style.font-color: "#cd8500"; style.stroke-width: 2; style.fill: transparent }
+  application: { style.stroke: "#104e8b"; style.font-color: "#104e8b"; style.stroke-width: 2; style.fill: transparent }
+  thread: { style.stroke: "#551a8b"; style.font-color: "#551a8b" }
+  placeholder: { shape: text; style.font-color: "#888888" }
+  interthread: { style.stroke: "#551a8b"; style.font-size: 10 }
+  interprocess: { style.stroke: "#104e8b"; style.font-size: 10 }
+  intermodule: { style.stroke: "#cd8500"; style.font-size: 10 }
+  intervehicle: { style.stroke: "#006400"; style.font-size: 10 }
+  required: { style.stroke-width: 3 }
+  recommended: { style.stroke-dash: 6 }
+  regex: { style.stroke-dash: 2 }
+  dynamic: { style.stroke-dash: 4 }
+  unmet: { style.stroke: red; style.stroke-width: 3 }
+}
+auv: {
+  class: platform
+  payload: {
+    class: module
+    payload: {
+      class: application
+      Payload: { class: thread; tooltip: "P5: nav::depth | PROTOBUF | nav::protobuf::Depth\nM0: payload::science | PROTOBUF | payload::protobuf::Science" }
+      no_subscriber: { class: placeholder; label: "no subscriber" }
+    }
+  }
+  vehicle: {
+    class: module
+    controller: {
+      class: application
+      Controller: { class: thread; tooltip: "P3: nav::command | PROTOBUF | nav::protobuf::Command" }
+      no_publisher: { class: placeholder; label: "no publisher" }
+    }
+    nav_driver: {
+      class: application
+      Driver: { class: thread; label: "nav::Driver"; tooltip: "T0: nav::raw_out | CXX_OBJECT | std::string\nP0: nav::fix | PROTOBUF | nav::protobuf::Fix\nV0: nav::status;1 | DCCL | nav::protobuf::Status" }
+      SerialThread: { class: thread; label: "nav::SerialThread"; tooltip: "T1: nav::raw_in | CXX_OBJECT | std::string" }
+      no_subscriber: { class: placeholder; label: "no subscriber" }
+    }
+  }
+}
+auv.payload.payload.Payload -> auv.vehicle.controller.Controller: "M0 [science]" { class: intermodule; tooltip: "M0: payload::science | PROTOBUF | payload::protobuf::Science" }
+auv.vehicle.controller.Controller -> auv.vehicle.nav_driver.Driver: "P3 [command]" { class: [interprocess; recommended]; tooltip: "P3: nav::command | PROTOBUF | nav::protobuf::Command" }
+auv.vehicle.nav_driver.Driver -> auv.vehicle.nav_driver.SerialThread: "T0 [raw_out]" { class: interthread; tooltip: "T0: nav::raw_out | CXX_OBJECT | std::string" }
+auv.vehicle.nav_driver.SerialThread -> auv.vehicle.nav_driver.Driver: "T1 [raw_in]" { class: interthread; tooltip: "T1: nav::raw_in | CXX_OBJECT | std::string" }
+auv.vehicle.nav_driver.Driver -> auv.vehicle.controller.Controller: "P0 [fix]" { class: [interprocess; required]; tooltip: "P0: nav::fix | PROTOBUF | nav::protobuf::Fix" }
+auv.payload.payload.Payload -> auv.payload.payload.no_subscriber: "P5 [depth]" { class: interprocess; tooltip: "P5: nav::depth | PROTOBUF | nav::protobuf::Depth" }
+auv.vehicle.nav_driver.Driver -> auv.vehicle.nav_driver.no_subscriber: "V0 [status;1]" { class: intervehicle; tooltip: "V0: nav::status;1 | DCCL | nav::protobuf::Status" }
+auv.vehicle.controller.no_publisher -> auv.vehicle.controller.Controller: "P6 [depth]" { class: [interprocess; required; unmet]; tooltip: "P6: nav::depth | PROTOBUF | nav::protobuf::Depth" }
