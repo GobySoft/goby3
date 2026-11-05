@@ -128,6 +128,8 @@ Given this, the configuration for goby::middleware::Subscriber looks similar to 
 * Since the Subscription is just another DCCL message that could be lost on an unreliable link, a callback can be registered for successful subscription (acknowledgement of the Subscription message by a publisher node). When this function is called, the subscribing node knows the subscription has been set up successfully.
 * A callback for expired subscriptions (if the Subscription message reaches its TTL without being acknowledged by one or publisher nodes).
 
+Setting `republish_received: true` in the TransporterConfig's `intervehicle` settings also publishes each received message on the inner layer (e.g. interprocess) in the subscribed group, so it can be logged or used by other subscribers without republishing it in the callback. It is false by default.
+
 ## Group
 
 The goby::middleware::Group is a class that allows distinguishing different conceptual groupings of a particular data type. The *scheme*, *type*, and *group* fully define any publication or subscription.
