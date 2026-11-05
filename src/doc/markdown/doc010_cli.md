@@ -163,11 +163,11 @@ Works with the publish/subscribe interface files that `goby_clang_tool -gen` wri
 
 ```
 goby interface validate <deployment.yml> [-D NAME=value] [-I <dir>] [-o HUMAN|JSON] [--output_file <path>] [--strict] [--report_unused] [--assume_dynamic] [--omit_group_regex <regex>] [--omit_node_regex <regex>]
-goby interface visualize <deployment.yml> [-D NAME=value] [-I <dir>] [--output_file <file.dot>] [--expand_instances] [--no_disconnected] [--omit_interthread] [--omit_group_regex <regex>] [--omit_node_regex <regex>] [--include_terminate] [--include_coroner] [--include_all] [--splines <setting>]
+goby interface visualize <deployment.yml> [-D NAME=value] [-I <dir>] [--format DOT|D2] [--output_file <file>] [--expand_instances] [--no_disconnected] [--omit_interthread] [--omit_group_regex <regex>] [--omit_node_regex <regex>] [--include_terminate] [--include_coroner] [--include_all] [--splines <setting>]
 ```
 
 - `validate` checks that every `required` subscription has a publisher in its scope (`required-unmet`, an error) and every `recommended` one (`recommended-unmet`, a warning), along with problems reading the files. It exits 0 when the deployment is valid, 1 on an error (or a warning, with `--strict`) and 2 when the deployment file cannot be read. `-o JSON` writes the `InterfaceValidation` message in `goby/apps/middleware/interface_tool/interface_tool_config.proto`.
-- `visualize` writes the deployment as a Graphviz graph, e.g. `goby interface visualize fleet.yml | dot -Tsvg -o fleet.svg`. `goby_clang_tool -viz` draws the same graph.
+- `visualize` writes the deployment as a Graphviz graph, e.g. `goby interface visualize fleet.yml | dot -Tsvg -o fleet.svg`, or with `--format D2` as a [D2](https://d2lang.com) diagram, e.g. `goby interface visualize fleet.yml --format D2 > fleet.d2 && d2 fleet.d2 fleet.svg`. Both use the same colors and edge styles: bold for required, tapered (dashed in D2) for recommended, dotted for regex and dashed for dynamic groups, with full group, scheme and type in each tooltip. The D2 output sets the ELK layout, which handles connections between nested containers better than D2's default. `goby_clang_tool -viz` (`-format=dot|d2`) draws the same graph, and `goby_visualize_interfaces(... FORMAT D2 ...)` renders it in CMake.
 - Either takes a single interface file as a one-platform deployment.
 
 ```yaml

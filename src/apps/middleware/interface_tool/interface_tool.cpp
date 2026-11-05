@@ -32,6 +32,7 @@
 #include "goby/middleware/application/configuration_reader.h"
 #include "goby/middleware/application/interface.h"
 #include "goby/middleware/application/tool.h"
+#include "goby/middleware/tool/interface/render_d2.h"
 #include "goby/middleware/tool/interface/render_dot.h"
 #include "goby/middleware/tool/interface/validate.h"
 
@@ -194,18 +195,31 @@ void goby::apps::middleware::InterfaceVisualizeTool::run()
         return;
     }
 
-    interface::DotParams params;
-    params.filter.omit_group_regex = cfg.omit_group_regex();
-    params.filter.omit_node_regex = cfg.omit_node_regex();
-    params.filter.include_coroner = cfg.include_coroner() || cfg.include_all();
-    params.filter.include_terminate = cfg.include_terminate() || cfg.include_all();
-    params.filter.include_internal = cfg.include_all();
-    params.filter.omit_interthread = cfg.omit_interthread();
-    params.omit_disconnected = cfg.no_disconnected();
-    params.splines = cfg.splines();
+    interface::ViewFilter::Params filter;
+    filter.omit_group_regex = cfg.omit_group_regex();
+    filter.omit_node_regex = cfg.omit_node_regex();
+    filter.include_coroner = cfg.include_coroner() || cfg.include_all();
+    filter.include_terminate = cfg.include_terminate() || cfg.include_all();
+    filter.include_internal = cfg.include_all();
+    filter.omit_interthread = cfg.omit_interthread();
 
     std::stringstream out;
-    interface::write_dot(out, deployment, interface::resolve(deployment), params);
+    auto resolution = interface::resolve(deployment);
+    if (cfg.format() == protobuf::InterfaceVisualizeConfig::D2)
+    {
+        interface::D2Params params;
+        params.filter = filter;
+        params.omit_disconnected = cfg.no_disconnected();
+        interface::write_d2(out, deployment, resolution, params);
+    }
+    else
+    {
+        interface::DotParams params;
+        params.filter = filter;
+        params.omit_disconnected = cfg.no_disconnected();
+        params.splines = cfg.splines();
+        interface::write_dot(out, deployment, resolution, params);
+    }
     write_output(out.str(), cfg.output_file());
     quit(0);
 }
