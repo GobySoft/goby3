@@ -184,7 +184,8 @@ class SerializationSubscription : public SerializationHandlerBase<>
         auto msg = SerializerParserHelper<Data, scheme_id>::parse(bytes_begin, bytes_end,
                                                                   actual_end, type_name_);
 
-        if (subscribed_group() == subscriber_.group(*msg) && handler_)
+        if ((!subscriber_.group_in_message() || subscribed_group() == subscriber_.group(*msg)) &&
+            handler_)
             handler_(msg);
 
         return actual_end;
@@ -273,7 +274,8 @@ class IntervehicleSerializationSubscription
 
         subscriber_.set_link_data(*msg, header);
 
-        if (subscribed_group() == subscriber_.group(*msg) && handler_)
+        if ((!subscriber_.group_in_message() || subscribed_group() == subscriber_.group(*msg)) &&
+            handler_)
             handler_(msg);
 
         return actual_end;
