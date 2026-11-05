@@ -46,6 +46,9 @@ message InterfaceToolConfig
         visualize = 1 [(goby.ev).cfg = {
             short_help_msg: "Draw a deployment's publish/subscribe graph"
         }];
+        validate = 2 [(goby.ev).cfg = {
+            short_help_msg: "Check that every required subscription in a deployment has a publisher"
+        }];
     }
     optional Action action = 2 [
         default = help,
@@ -73,6 +76,14 @@ message InterfaceVisualizeConfig
     }];
     optional string output_file = 11
         [(goby.field).description = "Write the graph here instead of stdout"];
+    repeated string define = 12 [(goby.field) = {
+        description: "Set a variable used as ${NAME} in the deployment file, as NAME=value; overrides the environment",
+        cfg { cli_short: "D" }
+    }];
+    repeated string interface_dir = 13 [(goby.field) = {
+        description: "Search this directory for interface files, after the deployment file's own directory (also GOBY_INTERFACE_PATH, colon separated)",
+        cfg { cli_short: "I" }
+    }];
 
     optional bool no_disconnected = 20 [
         default = false,
@@ -96,4 +107,99 @@ message InterfaceVisualizeConfig
     ];
     optional string splines = 27
         [default = "ortho", (goby.field).description = "Graphviz splines= setting"];
+}
+
+message InterfaceValidateConfig
+{
+    option (goby.msg).cfg.tool = {
+        is_tool: true
+        has_subtools: false
+        has_help_action: false
+    };
+
+    optional goby.middleware.protobuf.AppConfig app = 1
+        [(goby.field) = { cfg { action: DEVELOPER } }];
+
+    required string deployment_file = 10 [(goby.field) = {
+        description: "Deployment file (deployment.yml), or a single interface file checked as a one-platform deployment",
+        cfg { position: { enable: true } }
+    }];
+    optional string output_file = 11
+        [(goby.field).description = "Write the report here instead of stdout"];
+    repeated string define = 12 [(goby.field) = {
+        description: "Set a variable used as ${NAME} in the deployment file, as NAME=value; overrides the environment",
+        cfg { cli_short: "D" }
+    }];
+    repeated string interface_dir = 13 [(goby.field) = {
+        description: "Search this directory for interface files, after the deployment file's own directory (also GOBY_INTERFACE_PATH, colon separated)",
+        cfg { cli_short: "I" }
+    }];
+
+    enum OutputFormat
+    {
+        HUMAN = 1;
+        JSON = 2;
+    }
+    optional OutputFormat output_format = 20
+        [default = HUMAN, (goby.field) = { cfg { cli_short: "o" } }];
+    optional bool strict = 21
+        [default = false, (goby.field).description = "Fail on warnings as well as errors"];
+    optional bool report_unused = 22 [
+        default = false,
+        (goby.field).description = "Also report publications that nothing subscribes to"
+    ];
+    optional string omit_group_regex = 23
+        [(goby.field).description = "Do not check groups matching this regex"];
+    optional string omit_node_regex = 24 [(goby.field).description =
+                                              "Do not check platforms, modules, applications or "
+                                              "threads whose name matches this regex"];
+}
+
+// Report written by 'goby interface validate -o JSON'
+
+message InterfaceIssue
+{
+    enum Severity
+    {
+        ERROR = 1;
+        WARNING = 2;
+        INFO = 3;
+    }
+    required Severity severity = 1;
+    required string code = 2 [(goby.field).description = "e.g. required-unmet"];
+    required string message = 3;
+    optional string location = 4 [(goby.field).description =
+                                      "Position in the deployment file, e.g. platforms[0].run[2]"];
+
+    message Subject
+    {
+        optional string platform = 1;
+        optional string module = 2;
+        optional string application = 3;
+        optional string thread = 4;
+        optional string layer = 5;
+        optional string group = 6;
+        optional string scheme = 7;
+        optional string type = 8;
+        optional string necessity = 9;
+    }
+    optional Subject subject = 5 [(goby.field).description =
+                                      "The publication or subscription the issue is about"];
+}
+
+message InterfaceValidation
+{
+    required string file = 1;
+    required bool valid = 2;
+    repeated InterfaceIssue issue = 3;
+
+    message Summary
+    {
+        optional int32 platforms = 1;
+        optional int32 applications = 2;
+        optional int32 connections = 3;
+        optional int32 required = 4;
+        optional int32 required_met = 5;
+    }
+    optional Summary summary = 4;
 }

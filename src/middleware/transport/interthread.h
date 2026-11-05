@@ -147,9 +147,11 @@ class InterThreadTransporter
     ///
     /// \tparam Data data type to subscribe to.
     /// \tparam scheme Marshalling scheme id (typically MarshallingScheme::MarshallingSchemeEnum). Can usually be inferred from the Data type.
+    /// \tparam necessity How important is this subscription (is it required?)
     /// \param f Callback function or lambda that is called upon receipt of the subscribed data
     /// \param group group to subscribe to (typically a DynamicGroup)
-    template <typename Data, int scheme = scheme<Data>()>
+    template <typename Data, int scheme = scheme<Data>(),
+              Necessity necessity = Necessity::OPTIONAL>
     void subscribe_dynamic(std::function<void(const Data&)> f, const Group& group,
                            const Subscriber<Data>& /*subscriber*/ = Subscriber<Data>())
     {
@@ -164,9 +166,11 @@ class InterThreadTransporter
     ///
     /// \tparam Data data type to subscribe to.
     /// \tparam scheme Marshalling scheme id (typically MarshallingScheme::MarshallingSchemeEnum). Can usually be inferred from the Data type.
+    /// \tparam necessity How important is this subscription (is it required?)
     /// \param f Callback function or lambda that is called upon receipt of the subscribed data
     /// \param group group to subscribe to (typically a DynamicGroup)
-    template <typename Data, int scheme = scheme<Data>()>
+    template <typename Data, int scheme = scheme<Data>(),
+              Necessity necessity = Necessity::OPTIONAL>
     void subscribe_dynamic(std::function<void(std::shared_ptr<const Data>)> f, const Group& group,
                            const Subscriber<Data>& /*subscriber*/ = Subscriber<Data>())
     {

@@ -207,8 +207,10 @@ inline bool connects(const PubSubEntry& a, const PubSubEntry& b)
     if (a.layer != b.layer || a.group != b.group)
         return false;
 
+    // a type regex is given at run time, so a regex subscription takes any type in its group
+    bool types_match = a.type == b.type || a.is_regex || b.is_regex;
     if ((a.scheme == b.scheme || a.scheme == "CXX_OBJECT" || b.scheme == "CXX_OBJECT") &&
-        a.type == b.type)
+        types_match)
         return true;
 
     // mavlink_message_t can be decoded as any MAVLink type

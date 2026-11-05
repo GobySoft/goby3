@@ -159,28 +159,41 @@ run:
 
 ## goby interface
 
-Works with the publish/subscribe interface files that `goby_clang_tool -gen` writes for each application (`<target>_interface.yml`, see `cmake_modules/GobyClangTool.cmake`), and the deployment files that place those applications on platforms and modules:
+Works with the publish/subscribe interface files that `goby_clang_tool -gen` writes for each application (`<target>_interface.yml`, see `cmake_modules/GobyClangTool.cmake`), and the deployment files that place those applications on platforms and modules (see [Interfaces and deployments](doc260_interfaces.md)):
 
 ```
-goby interface visualize <deployment.yml> [--output_file <file.dot>] [--no_disconnected] [--omit_interthread] [--omit_group_regex <regex>] [--omit_node_regex <regex>] [--include_terminate] [--include_coroner] [--include_all] [--splines <setting>]
+goby interface validate <deployment.yml> [-D NAME=value] [-I <dir>] [-o HUMAN|JSON] [--output_file <path>] [--strict] [--report_unused] [--omit_group_regex <regex>] [--omit_node_regex <regex>]
+goby interface visualize <deployment.yml> [-D NAME=value] [-I <dir>] [--output_file <file.dot>] [--no_disconnected] [--omit_interthread] [--omit_group_regex <regex>] [--omit_node_regex <regex>] [--include_terminate] [--include_coroner] [--include_all] [--splines <setting>]
 ```
 
-- `visualize` writes the deployment as a Graphviz graph, e.g. `goby interface visualize fleet.yml | dot -Tsvg -o fleet.svg`. A single interface file is drawn as a one-platform deployment. `goby_clang_tool -viz` draws the same graph.
+- `validate` checks that every `required` subscription has a publisher in its scope (`required-unmet`, an error) and every `recommended` one (`recommended-unmet`, a warning), along with problems reading the files. It exits 0 when the deployment is valid, 1 on an error (or a warning, with `--strict`) and 2 when the deployment file cannot be read. `-o JSON` writes the `InterfaceValidation` message in `goby/apps/middleware/interface_tool/interface_tool_config.proto`.
+- `visualize` writes the deployment as a Graphviz graph, e.g. `goby interface visualize fleet.yml | dot -Tsvg -o fleet.svg`. `goby_clang_tool -viz` draws the same graph.
+- Either takes a single interface file as a one-platform deployment.
 
 ```yaml
 deployment: fleet
 platforms:
   - name: auv
-    interfaces:
-      - goby_gps_interface.yml
-      - nav_interface.yml
-      - { file: plugin_interface.yml, application: goby_moos_gateway }
+    run:
+      - goby_gps
+      - nav_manager
+      - { application: goby_moos_gateway, plugins: [project_moos_gateway_plugin] }
+      - { application: goby_modemdriver, name: modem_acoustic }
   - name: topside
     modules:
-      - { name: shore, interfaces: [goby_liaison_interface.yml] }
+      - { name: shore, run: [goby_liaison] }
 ```
 
-Interface files are found relative to the current directory. A platform lists its `interfaces` directly or groups them into `modules`, each one `gobyd`. Connections are matched within each layer's scope: interthread within an application, interprocess within a module, intermodule across the modules of a platform, and intervehicle between platforms.
+```
+$ goby interface validate fleet.yml
+fleet.yml: invalid, 1 error (2 platforms, 5 applications, 31 connections, 2/3 required met)
+  error    required-unmet         auv/nav_manager [interprocess] no publisher for nav::depth (PROTOBUF nav::protobuf::Depth)
+```
+
+- A platform lists what it `run`s, or groups that into `modules`, each one `gobyd`. Connections are matched within each layer's scope: interthread within an application, interprocess within a module, intermodule across the modules of a platform, and intervehicle between platforms.
+- A `run` entry names an application, and the interface file that declares it is found beside the deployment file, then in each `-I` directory and `GOBY_INTERFACE_PATH` (colon separated), then in Goby's own `share/goby/interfaces`. `plugins` merges plugin interfaces into their host application, `name` tells two instances of one application apart, and `file` gives an interface file by path. A list of files under `interfaces` (each optionally `{ file: ..., application: ... }`) is also accepted.
+- `${NAME}` and `${NAME:-default}` are replaced by `-D NAME=value`, then the environment. `${GOBY_INTERFACES_DIR}` is Goby's own interface directory.
+- In CMake, `goby_validate_interfaces(DEPLOYMENT_YAML fleet.yml INTERFACE_DIRS ${YML_OUT_DIR})` (from `find_package(GOBY)`) adds a test that runs `goby interface validate --strict`.
 
 ## goby zeromq
 

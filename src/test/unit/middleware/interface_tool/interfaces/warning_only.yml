@@ -1,0 +1,5 @@
+# nav_driver's recommended nav::command has no publisher: a warning, so valid unless --strict
+deployment: warning_only
+platforms:
+  - name: auv
+    run: [nav_driver]

@@ -1,0 +1,22 @@
+# A subscription's necessity, read by 'goby interface validate' once goby_clang_tool -gen has run
+# over the generated application
+application:
+  name: NecessityDemo
+  cpp_type: goby::zeromq::SingleThreadApplication
+  config:
+    scheme: PROTOBUF
+    type: project.config.protobuf.NecessityDemoConfig
+
+interprocess:
+  subscribes:
+    - group: project::groups::nav
+      scheme: PROTOBUF
+      type: project.protobuf.NavigationReport
+      necessity: required
+    - group: project::groups::status
+      scheme: PROTOBUF
+      type: project.protobuf.Status
+      necessity: recommended
+    - group: project::groups::modem_rx
+      scheme: PROTOBUF
+      type: project.protobuf.CommsRx
