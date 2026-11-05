@@ -42,5 +42,6 @@ Goby's groups, types and schemes are known at compile time, so the publish/subsc
 ## Checking and drawing
 
 - `goby interface validate`: issue codes and exit status (see [goby interface](doc010_cli.md)).
+- `goby interface explain` for a single group; `list` and `diff` for inventories and regressions; `init` to start a deployment file.
 - `goby interface visualize` and `goby_clang_tool -viz`.
 - `goby_validate_interfaces()` in CMake.

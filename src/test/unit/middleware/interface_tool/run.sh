@@ -1,8 +1,8 @@
 #!/bin/bash
 # Checks 'goby interface' against the deployments in interfaces/: each case in cases.txt is drawn
 # and compared with expected/<case>.<dot|d2>, by 'goby interface visualize' and, when it was built,
-# by 'goby_clang_tool -viz', which shares the same code. Then 'goby interface validate' is checked
-# for its exit codes and the problems it reports.
+# by 'goby_clang_tool -viz', which shares the same code. Then validate, list, explain, diff and
+# init are checked for their exit codes and what they report.
 #
 # Usage: run.sh <goby bin dir> <this directory> [update]
 #   update: rewrite expected/ from the current output instead of comparing
@@ -111,6 +111,48 @@ expect_output "dynamic-unbound  *hub/hub_manager"
 expect_output "dynamic-unresolved  *hub/hub_manager \[interprocess\]"
 check 1 goby interface validate dynamic_unbound.yml --assume_dynamic
 expect_output "1/2 required met"
+
+# list
+check 0 goby interface list modules.yml
+expect_output "^auv/vehicle/nav_driver  *2  *2/2  *1/1  *-  *1/0$"
+check 0 goby interface list dynamic_fleet.yml platforms
+expect_output "^bot3  *1  *-$"
+check 0 goby interface list fleet.yml groups -o JSON
+expect_output '"group": "nav::fix"'
+check 2 goby interface list no_such_deployment.yml
+
+# explain: why a subscription is (not) met
+check 0 goby interface explain modules.yml depth
+expect_output "auv/vehicle/controller (Controller) \[interprocess\] nav::depth .*required: NOT MET"
+expect_output "interprocess stops at its module (one gobyd); it needs intermodule"
+check 0 goby interface explain dynamic_fleet.yml hub_command
+expect_output "publishes fleet::hub_command;151-152, not fleet::hub_command;153"
+expect_output "bot1/mission_manager (MissionManager) .*: met"
+check 0 goby interface explain dynamic_unbound.yml 'hub_command|engineering'
+expect_output "only a dynamic publisher whose numeric is set at run time reaches it"
+expect_output "a dynamic: bind can say whether it is fleet::engineering"
+check 0 goby interface explain fleet.yml nav::fix -o JSON
+expect_output '"met": true'
+check 1 goby interface explain fleet.yml no_such_group
+
+# diff: exits 0 when the same and 1 when different, as diff(1)
+check 0 goby interface diff fleet.yml run_fleet.yml
+expect_output "no differences"
+check 1 goby interface diff modules.yml modules_merged.yml
+expect_output "+ connection   \[interprocess\] auv/vehicle/payload (Payload) to auv/vehicle/controller (Controller): nav::depth"
+expect_output "\* met  *auv/vehicle/controller (Controller) \[interprocess\] nav::depth"
+check 1 goby interface diff "$dir/deployments/elsewhere.yml" -I "$dir/interfaces" --interface_dir_b "$dir/deployments/v2"
+expect_output "2 connections removed"
+check 1 goby interface diff modules_merged.yml modules.yml -o JSON
+expect_output '"newly_unmet"'
+check 2 goby interface diff fleet.yml no_such_deployment.yml
+
+# init: one platform running everything found
+check 0 goby interface init "$dir/interfaces" --platform auv --output_file "$work/init.yml"
+grep -q "^      - nav_driver$" "$work/init.yml" || { echo "FAILED: init did not list nav_driver"; fail=1; }
+check 1 goby interface validate "$work/init.yml" -I "$dir/interfaces"
+expect_output "9 applications"
+check 1 goby interface init "$dir/deployments"
 
 check 1 goby interface visualize missing_interface.yml
 expect_output "interface-missing"
