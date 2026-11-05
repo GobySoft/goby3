@@ -146,12 +146,12 @@ inline void define_julia_module(jlcxx::Module& types, const std::string& app_nam
         return;                                                                                   \
     }
 
-#define GOBY_JULIA_IF_SUBSCRIPTION(SCHEME, LAYER_ENUM, LAYER_FUNCTION, GROUP, GROUP_KEY, TYPE) \
+#define GOBY_JULIA_IF_SUBSCRIPTION(SCHEME, LAYER_ENUM, LAYER_FUNCTION, GROUP, GROUP_KEY, TYPE, NECESSITY) \
     if (id == goby::middleware::julia::Identifier{                                              \
                   goby::middleware::julia::PubSubLayer::LAYER_ENUM, TYPE::descriptor()->name(), \
                   goby::middleware::MarshallingScheme::SCHEME, GROUP_KEY})                      \
     {                                                                                           \
-        LAYER_FUNCTION().subscribe<GROUP>(                                                      \
+        LAYER_FUNCTION().subscribe<GROUP, goby::middleware::Necessity::NECESSITY>(              \
             [=](const TYPE& pb)                                                                 \
             {                                                                                   \
                 std::vector<std::uint8_t> bytes = goby::middleware::julia::serialize_uint8<     \

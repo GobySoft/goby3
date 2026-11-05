@@ -61,6 +61,23 @@
                 "type": { "$ref": "#/$defs/identifier" }
             }
         },
+        "subscription": {
+            "type": "object",
+            "required": ["group", "scheme", "type"],
+            "additionalProperties": false,
+            "properties": {
+                "group": {
+                    "description": "C++ group expression, e.g. project::groups::my_group",
+                    "$ref": "#/$defs/identifier"
+                },
+                "scheme": { "$ref": "#/$defs/scheme" },
+                "type": { "$ref": "#/$defs/identifier" },
+                "necessity": {
+                    "description": "How important the subscription is to the application; checked by 'goby interface validate'",
+                    "enum": ["required", "recommended", "optional"]
+                }
+            }
+        },
         "portal": {
             "type": "object",
             "additionalProperties": false,
@@ -71,7 +88,7 @@
                     "pattern": "^[A-Za-z_][A-Za-z0-9_]*$"
                 },
                 "publishes": { "type": "array", "items": { "$ref": "#/$defs/entry" } },
-                "subscribes": { "type": "array", "items": { "$ref": "#/$defs/entry" } }
+                "subscribes": { "type": "array", "items": { "$ref": "#/$defs/subscription" } }
             }
         },
         "layer": {
