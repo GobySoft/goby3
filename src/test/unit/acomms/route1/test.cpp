@@ -134,7 +134,7 @@ int main(int /*argc*/, char* argv[])
     d_cfg3.set_modem_id(ID_3_1);
 
     srand(time(nullptr));
-    int port1 = rand() % 1000 + 50020;
+    int port1 = rand() % 1000 + 22200;
     int port2 = port1 + 1;
 
     d_cfg2.MutableExtension(config)->mutable_local()->set_port(port1);

@@ -228,7 +228,7 @@ int main(int /*argc*/, char* argv[])
     zmq_cfg.set_platform("poller_attach_test");
     zmq_cfg.set_transport(goby::zeromq::protobuf::InterProcessPortalConfig::TCP);
     zmq_cfg.set_ip_address("127.0.0.1");
-    zmq_cfg.set_tcp_port(54330);
+    zmq_cfg.set_tcp_port(24330);
 
     // ---- UDPM configuration (different address/port from defaults) ----
     goby::udpm::protobuf::InterProcessPortalConfig udpm_cfg;

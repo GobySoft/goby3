@@ -62,7 +62,7 @@ int direct_subscriber_ack = 0;
 
 std::atomic<bool> forward(true);
 std::atomic<int> zmq_reqs(0);
-int udp_port = 60000;
+int udp_port = 23500;
 
 using goby::glog;
 using namespace goby::util::logger;
