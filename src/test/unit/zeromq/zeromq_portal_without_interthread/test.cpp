@@ -128,7 +128,7 @@ int main(int /*argc*/, char* argv[])
     cfg.set_platform("test4");
     cfg.set_transport(goby::zeromq::protobuf::InterProcessPortalConfig::TCP);
     cfg.set_ip_address("127.0.0.1");
-    cfg.set_tcp_port(54325);
+    cfg.set_tcp_port(24325);
 
     pid_t child_pid = fork();
 
