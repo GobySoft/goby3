@@ -234,6 +234,7 @@ void goby::apps::moos::FrontSeatLegacyTranslator::handle_mail_desired_course(con
     }
     else if (key == "DESIRED_PITCH")
     {
+        // degrees, though NAV_PITCH and NAV_ROLL are published in radians (likewise DESIRED_ROLL)
         desired_course_.set_pitch_with_units(msg.GetDouble() * degree::degrees);
     }
     else if (key == "DESIRED_ROLL")
