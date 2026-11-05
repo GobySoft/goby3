@@ -5,26 +5,26 @@
 //   Toby Schneider <toby@gobysoft.org>
 //
 //
-// This file is part of the Goby Underwater Autonomy Project Binaries
-// ("The Goby Binaries").
+// This file is part of the Goby Underwater Autonomy Project Libraries
+// ("The Goby Libraries").
 //
-// The Goby Binaries are free software: you can redistribute them and/or modify
-// them under the terms of the GNU General Public License as published by
-// the Free Software Foundation, either version 2 of the License, or
+// The Goby Libraries are free software: you can redistribute them and/or modify
+// them under the terms of the GNU Lesser General Public License as published by
+// the Free Software Foundation, either version 2.1 of the License, or
 // (at your option) any later version.
 //
-// The Goby Binaries are distributed in the hope that they will be useful,
+// The Goby Libraries are distributed in the hope that they will be useful,
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-// GNU General Public License for more details.
+// GNU Lesser General Public License for more details.
 //
-// You should have received a copy of the GNU General Public License
+// You should have received a copy of the GNU Lesser General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
-#ifndef GOBY_APPS_MIDDLEWARE_CLANG_TOOL_YAML_RAII_H
-#define GOBY_APPS_MIDDLEWARE_CLANG_TOOL_YAML_RAII_H
+#ifndef GOBY_MIDDLEWARE_TOOL_INTERFACE_YAML_RAII_H
+#define GOBY_MIDDLEWARE_TOOL_INTERFACE_YAML_RAII_H
 
-#include "yaml-cpp/yaml.h"
+#include <yaml-cpp/yaml.h>
 
 namespace goby
 {

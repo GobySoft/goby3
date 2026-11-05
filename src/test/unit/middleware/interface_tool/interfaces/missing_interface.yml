@@ -1,0 +1,5 @@
+deployment: missing
+platforms:
+  - name: auv
+    interfaces:
+      - no_such_interface.yml

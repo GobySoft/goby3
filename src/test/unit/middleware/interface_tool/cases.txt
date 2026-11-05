@@ -1,0 +1,8 @@
+# expected file | deployment | goby interface visualize flags | goby_clang_tool -viz flags
+gps_stub | goby_gps_interface.yml | |
+fleet | fleet.yml | |
+fleet_no_disconnected | fleet.yml | --no_disconnected | -no-disconnected
+fleet_omit_interthread | fleet.yml | --omit_interthread | -omit-interthread
+fleet_include_all | fleet.yml | --include_all | -include-all
+modules | modules.yml | |
+modules_omit_node | modules.yml | --omit_node_regex=.*Serial.* | -omit-node-regex=.*Serial.*
