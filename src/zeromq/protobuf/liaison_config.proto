@@ -296,9 +296,10 @@ message ProtobufMapConfig
              "goby::middleware::frontseat::node_status"];
 
     optional int32 track_length = 20 [
-        default = 500,
+        default = 5000,
         (goby.field).description =
-            "Track points kept per vehicle, and the most the Trail slider shows"
+            "Most track points kept per vehicle; older points are dropped even when "
+            "they are inside the Trail time"
     ];
     optional double track_min_move_meters = 21 [
         default = 1.0,
@@ -315,6 +316,13 @@ message ProtobufMapConfig
         (goby.field).description =
             "Show the time since each vehicle's last position beside its name "
             "on the map, not only once it is stale. The Show age box toggles it"
+    ];
+    optional int32 trail_seconds = 24 [
+        default = 600,
+        (goby.field).description =
+            "How far back each track is drawn, in seconds, until changed with the "
+            "Trail slider (which rounds it to its nearest step). 0 draws none; "
+            "negative draws every kept point"
     ];
 
     optional int32 map_height = 30 [default = 600];

@@ -24,6 +24,7 @@
 #include <algorithm> // for min, max
 #include <cmath>     // for isnan, lround, cos, sqrt
 #include <cstdio>    // for snprintf
+#include <cstdlib>   // for abs
 #include <iomanip>   // for setprecision
 #include <iterator>  // for distance
 #include <regex>     // for regex_replace
@@ -154,6 +155,35 @@ std::string format_age(std::chrono::steady_clock::duration age)
     return std::to_string(seconds / 60) + " min";
 }
 
+// the Trail slider's steps in seconds; the last (-1) draws every kept point
+constexpr std::array<int, 11> trail_steps{0, 30, 60, 120, 300, 600, 900, 1800, 3600, 7200, -1};
+
+int nearest_trail_step(int seconds)
+{
+    if (seconds < 0)
+        return trail_steps.size() - 1;
+    int nearest = 0;
+    for (int i = 1, n = trail_steps.size() - 1; i < n; ++i)
+    {
+        if (std::abs(trail_steps[i] - seconds) < std::abs(trail_steps[nearest] - seconds))
+            nearest = i;
+    }
+    return nearest;
+}
+
+std::string trail_label(int seconds)
+{
+    if (seconds < 0)
+        return "All";
+    if (seconds == 0)
+        return "Off";
+    if (seconds < 60)
+        return std::to_string(seconds) + " s";
+    if (seconds < 3600)
+        return std::to_string(seconds / 60) + " min";
+    return std::to_string(seconds / 3600) + " h";
+}
+
 // equirectangular approximation, ample for the metre-scale track threshold
 double distance_meters(const std::pair<double, double>& a, const std::pair<double, double>& b)
 {
@@ -170,7 +200,7 @@ goby::apps::zeromq::LiaisonMap::LiaisonMap(const protobuf::LiaisonConfig& cfg)
       map_cfg_(cfg.pb_map_config()),
       update_freq_(cfg.update_freq()),
       show_age_(map_cfg_.show_age()),
-      trail_points_(map_cfg_.track_length()),
+      trail_step_(nearest_trail_step(map_cfg_.trail_seconds())),
       user_drag_(this, "userDrag")
 {
     set_name("Map");
@@ -206,7 +236,7 @@ void goby::apps::zeromq::LiaisonMap::handle_fix(const VehicleFix& fix)
     if (!vehicle.has_track_point ||
         distance_meters(vehicle.last_track_point, point) >= map_cfg_.track_min_move_meters())
     {
-        vehicle.unsent_track.push_back(point);
+        vehicle.unsent_track.push_back({point, vehicle.received});
         vehicle.last_track_point = point;
         vehicle.has_track_point = true;
         while (vehicle.unsent_track.size() > static_cast<std::size_t>(map_cfg_.track_length()))
@@ -258,14 +288,20 @@ void goby::apps::zeromq::LiaisonMap::create_map()
     create_vehicle_list(panel);
 
     // tracks are drawn with Leaflet directly: WLeafletMap polylines cannot be extended or removed
+    // each point carries the browser time it was received, from the age Liaison sends with it,
+    // so the server's and browser's clocks need not agree. S is the trail in seconds (<0: all).
     js_setup_ = "if(!m.gobyTracks){m.gobyTracks={};"
-                "m.gobyShow=function(t,K){t.setLatLngs(K>0?t.all.slice(-K):[]);};"
-                "m.gobyTrack=function(n,c,p,N,K){var t=m.gobyTracks[n];"
+                "m.gobyShow=function(t,S,force){var i=0;"
+                "if(S>=0){var c=Date.now()-1e3*S;while(i<t.all.length&&t.all[i].t<c)++i;}"
+                "if(force||i!==t.first){t.first=i;"
+                "t.setLatLngs(t.all.slice(i).map(function(q){return q.ll;}));}};"
+                "m.gobyTrack=function(n,c,p,N,S){var t=m.gobyTracks[n];"
                 "if(!t){t=m.gobyTracks[n]=L.polyline([],{color:c,weight:2,opacity:0.8,"
                 "interactive:false,className:'map-track'}).addTo(m);t.all=[];}"
-                "t.all=t.all.concat(p.map(function(q){return L.latLng(q[0],q[1]);})).slice(-N);"
-                "m.gobyShow(t,K);};"
-                "m.gobyTrail=function(K){for(var n in m.gobyTracks)m.gobyShow(m.gobyTracks[n],K);};"
+                "var now=Date.now();t.all=t.all.concat(p.map(function(q){"
+                "return {ll:L.latLng(q[0],q[1]),t:now-q[2]};})).slice(-N);m.gobyShow(t,S,true);};"
+                "m.gobyTrail=function(S,force){"
+                "for(var n in m.gobyTracks)m.gobyShow(m.gobyTracks[n],S,force);};"
                 "m.gobyClearTracks=function(){for(var n in m.gobyTracks){"
                 "m.gobyTracks[n].all=[];m.gobyTracks[n].setLatLngs([]);}};"
                 "m.on('dragstart',function(){" +
@@ -320,13 +356,13 @@ void goby::apps::zeromq::LiaisonMap::create_controls(Wt::WContainerWidget* paren
     auto* trail_slider = controls->addNew<Wt::WSlider>();
     trail_slider->addStyleClass("map-trail");
     trail_slider->setNativeControl(true);
-    trail_slider->setRange(0, map_cfg_.track_length());
-    trail_slider->setValue(trail_points_);
-    trail_slider->valueChanged().connect([this](int points) { set_trail_points(points); });
-    trail_slider->sliderMoved().connect([this](int points) { set_trail_points(points); });
+    trail_slider->setRange(0, trail_steps.size() - 1);
+    trail_slider->setValue(trail_step_);
+    trail_slider->valueChanged().connect([this](int step) { set_trail(step); });
+    trail_slider->sliderMoved().connect([this](int step) { set_trail(step); });
     trail_text_ = controls->addNew<Wt::WText>();
     trail_text_->setStyleClass("map-trail-points");
-    set_trail_points(trail_points_);
+    set_trail(trail_step_);
 }
 
 void goby::apps::zeromq::LiaisonMap::create_vehicle_list(Wt::WContainerWidget* parent)
@@ -408,6 +444,13 @@ void goby::apps::zeromq::LiaisonMap::update_map()
         const auto age = now - vehicle.received;
         update_vehicle_ui(name, vehicle, age > stale_timeout, age);
         tracks += track_js(name, vehicle);
+    }
+
+    // points age out of the trail with no new data, so trim about once a second
+    if (trail_seconds() > 0 && now - last_trail_age_ >= std::chrono::seconds(1))
+    {
+        last_trail_age_ = now;
+        tracks += "m.gobyTrail(" + std::to_string(trail_seconds()) + ",false);";
     }
 
     if (!fitted_ && map_cfg_.fit_on_first_fix() && !vehicles_.empty())
@@ -504,14 +547,19 @@ std::string goby::apps::zeromq::LiaisonMap::track_js(const std::string& name, Ve
     if (vehicle.unsent_track.empty())
         return "";
 
+    const auto now = std::chrono::steady_clock::now();
     std::ostringstream js;
     js << std::fixed << std::setprecision(7) << "m.gobyTrack("
        << Wt::WWebWidget::jsStringLiteral(name) << ",'" << vehicle_colour(vehicle.fix.type)
        << "',[";
     for (auto it = vehicle.unsent_track.begin(); it != vehicle.unsent_track.end(); ++it)
-        js << (it == vehicle.unsent_track.begin() ? "" : ",") << "[" << it->first << ","
-           << it->second << "]";
-    js << "]," << map_cfg_.track_length() << "," << trail_points_ << ");";
+    {
+        const auto age_ms =
+            std::chrono::duration_cast<std::chrono::milliseconds>(now - it->received).count();
+        js << (it == vehicle.unsent_track.begin() ? "" : ",") << "[" << it->position.first << ","
+           << it->position.second << "," << age_ms << "]";
+    }
+    js << "]," << map_cfg_.track_length() << "," << trail_seconds() << ");";
 
     vehicle.unsent_track.clear();
     return js.str();
@@ -617,13 +665,15 @@ void goby::apps::zeromq::LiaisonMap::toggle_pause()
         update_map();
 }
 
-void goby::apps::zeromq::LiaisonMap::set_trail_points(int points)
+void goby::apps::zeromq::LiaisonMap::set_trail(int step)
 {
-    trail_points_ = points;
-    trail_text_->setText(std::to_string(points) + " points");
+    trail_step_ = step;
+    trail_text_->setText(trail_label(trail_seconds()));
     if (map_)
-        run_map_js("m.gobyTrail(" + std::to_string(points) + ");");
+        run_map_js("m.gobyTrail(" + std::to_string(trail_seconds()) + ",true);");
 }
+
+int goby::apps::zeromq::LiaisonMap::trail_seconds() const { return trail_steps.at(trail_step_); }
 
 goby::apps::zeromq::MapCommsThread::MapCommsThread(LiaisonMap* map,
                                                    const protobuf::LiaisonConfig& config, int index)

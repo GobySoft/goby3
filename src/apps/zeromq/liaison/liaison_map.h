@@ -88,6 +88,12 @@ class LiaisonMap : public goby::zeromq::LiaisonContainerWithComms<LiaisonMap, Ma
   private:
     using LatLon = std::pair<double, double>;
 
+    struct TrackPoint
+    {
+        LatLon position;
+        std::chrono::steady_clock::time_point received;
+    };
+
     struct Vehicle
     {
         VehicleFix fix;
@@ -95,7 +101,7 @@ class LiaisonMap : public goby::zeromq::LiaisonContainerWithComms<LiaisonMap, Ma
         bool fix_changed{true};
         bool stale{false};
 
-        std::deque<LatLon> unsent_track;
+        std::deque<TrackPoint> unsent_track;
         LatLon last_track_point;
         bool has_track_point{false};
 
@@ -142,7 +148,8 @@ class LiaisonMap : public goby::zeromq::LiaisonContainerWithComms<LiaisonMap, Ma
     void clear_tracks();
     void set_following(const std::string& name);
     void toggle_pause();
-    void set_trail_points(int points);
+    void set_trail(int step);
+    int trail_seconds() const;
 
   private:
     const protobuf::ProtobufMapConfig map_cfg_;
@@ -152,7 +159,8 @@ class LiaisonMap : public goby::zeromq::LiaisonContainerWithComms<LiaisonMap, Ma
     bool paused_{false};
     bool fitted_{false};
     bool show_age_;
-    int trail_points_;
+    int trail_step_;
+    std::chrono::steady_clock::time_point last_trail_age_;
     std::string followed_;
 
     Wt::WLeafletMap* map_{nullptr};
