@@ -107,11 +107,13 @@ The default configuration is usually sufficient, but you can customize many of t
 
 ## Map
 
-The `goby_liaison` Map shows the vehicles reporting on the *interprocess* layer, each as an arrow pointing along its heading with a track of where it has been. By default the base map is [OpenStreetMap](https://www.openstreetmap.org) with the [OpenSeaMap](https://www.openseamap.org) seamark overlay, both fetched by the browser from the public tile servers.
+The `goby_liaison` Map shows the vehicles reporting on the *interprocess* layer, each as an arrow pointing along its heading with a track of where it has been. The layer control at the map's top right chooses the background, which the browser fetches from public servers and remembers per viewer. By default the bases are [GEBCO](https://www.gebco.net) bathymetry (worldwide, about 450 m resolution) and [OpenStreetMap](https://www.openstreetmap.org); the overlays are NOAA's [chart display service](https://nauticalcharts.noaa.gov) (on: a full nautical chart in US waters, transparent elsewhere) and the [OpenSeaMap](https://www.openseamap.org) seamarks (off).
 
 Positions come from `goby.middleware.frontseat.protobuf.NodeStatus` on `goby::middleware::frontseat::node_status`, as published by `goby_frontseat_interface`. Vehicles are named by `NodeStatus.name`. Positions received over the *intervehicle* layer must be republished on *interprocess* to be shown.
 
-The list below the map shows each vehicle's heading, speed, depth and the age of its last position. Click a row to centre on that vehicle, or choose it under Follow to keep it centred (dragging the map stops following). Vehicles that have not reported for `stale_timeout_seconds` are faded and show their age beside their name; Show age does this for every vehicle. The Trail slider sets how far back each track is drawn, from Off through 30 s to 2 h, or All; points age out of the trail even when a vehicle stops reporting. Tracks start when the browser opens the page.
+The list below the map shows each vehicle's heading, speed, depth and the age of its last position. Click a row to centre on that vehicle, or choose it under Follow to keep it centred (dragging the map stops following). Vehicles that have not reported for `stale_timeout_seconds` are faded and show their age beside their name; Show age does this for every vehicle. The Trail slider sets how far back each track is drawn, from Off through 30 s to 2 h, or All; points age out of the trail even when a vehicle stops reporting. Show depth adds a gauge beside each vehicle below the surface: the surface at the top, 5000 m at the bottom on a log scale, with ticks at 10, 100 and 1000 m. Tracks start when the browser opens the page.
+
+Add ENC uploads an S-57 electronic navigational chart: a cell's `.000` file, or a `.zip` of cells such as those NOAA publishes. Liaison stores it under `enc_dir`, converts it with GDAL's `ogr2ogr` (which must be on the `PATH`, e.g. from `gdal-bin`), and draws it for every viewer as an overlay named after the cell: depth areas, land, contours, soundings (from zoom 15), and aids to navigation and hazards with their names on hover. This is a simplified display for situational awareness, not a certified chart. Uploads are limited by Wt's `max-request-size`, set to 128 MB in the docroot's `wt_config.xml`.
 
 - pb_map_config
 	- source: Position sources, replacing the default NodeStatus source:
@@ -123,14 +125,21 @@ The list below the map shows each vehicle's heading, speed, depth and the age of
 	- track_min_move_meters: Minimum movement before a new track point is added. Defaults to 1.
 	- stale_timeout_seconds: Defaults to 60.
 	- show_age: Start with Show age checked. Defaults to false.
+	- show_depth: Start with Show depth checked. Defaults to false.
 	- trail_seconds: Initial Trail, rounded to the slider's nearest step; 0 for none, negative for every kept point. Defaults to 600.
-	- tile_layer: One or more tile layers, replacing the default layers:
-		+ url_template: Leaflet URL template, e.g. `https://tile.openstreetmap.org/{z}/{x}/{y}.png`. Tiles placed under `tiles/` in the docroot can be referenced as `tiles/{z}/{x}/{y}.png`.
+	- tile_layer: The layers offered in the layer control, replacing the default layers:
+		+ name: Label in the layer control. Defaults to the URL's host.
+		+ url_template: Leaflet URL template, e.g. `https://tile.openstreetmap.org/{z}/{x}/{y}.png`, or the service URL for `wms`. Tiles placed under `tiles/` in the docroot can be referenced as `tiles/{z}/{x}/{y}.png`.
+		+ wms: Request from a WMS service: `layers` (required), `format`, `version`, `styles`.
 		+ attribution: HTML attribution shown in the corner of the map.
 		+ min_zoom, max_zoom: Zoom range the layer provides.
-		+ overlay: Set true for a transparent layer drawn above the base layer. Only the first non-overlay layer is shown.
+		+ overlay: Set true for a layer drawn above the base and switched on and off by itself; otherwise it is one of the bases to choose between, the first selected to start.
+		+ shown: Whether an overlay starts switched on. Defaults to true.
+		+ tile_size: Pixels per WMS image; 512 means fewer requests and fewer labels cut at image edges. Defaults to 256.
 		+ opacity: 0 to 1.
 	- blank_background: Set true to draw no tiles, e.g. without network access.
+	- enc_upload: Offer Add ENC. Defaults to true.
+	- enc_dir: Where uploaded ENCs are kept. Defaults to `$HOME/.goby/liaison/enc`.
 	- initial_lat, initial_lon, initial_zoom: Initial view.
 	- map_height: in pixels
 

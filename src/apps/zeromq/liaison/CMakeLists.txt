@@ -7,6 +7,7 @@ add_library(goby_liaison_core SHARED
   liaison_commander.cpp
   liaison_scope.cpp
   liaison_map.cpp
+  liaison_map_enc.cpp
 )
 
 target_link_libraries(goby_liaison_core

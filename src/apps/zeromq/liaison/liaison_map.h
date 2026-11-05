@@ -28,6 +28,7 @@
 #include <chrono>     // for steady_clock
 #include <cmath>      // for NAN
 #include <deque>      // for deque
+#include <filesystem> // for path
 #include <functional> // for function
 #include <map>        // for map
 #include <memory>     // for shared_ptr
@@ -43,9 +44,13 @@
 #include "goby/zeromq/liaison/liaison_container.h"      // for LiaisonContainerWithComms
 #include "goby/zeromq/protobuf/liaison_config.pb.h"     // for LiaisonConfig
 
+#include "liaison_map_enc.h" // for enc::Cell
+
 namespace Wt
 {
 class WComboBox;
+class WFileResource;
+class WFileUpload;
 class WContainerWidget;
 class WPushButton;
 class WTable;
@@ -109,6 +114,7 @@ class LiaisonMap : public goby::zeromq::LiaisonContainerWithComms<LiaisonMap, Ma
         Wt::WContainerWidget* marker_widget{nullptr};
         Wt::WText* arrow{nullptr};
         Wt::WText* label{nullptr};
+        Wt::WText* depth_gauge{nullptr};
 
         Wt::WTableRow* row{nullptr};
         enum Column
@@ -129,8 +135,10 @@ class LiaisonMap : public goby::zeromq::LiaisonContainerWithComms<LiaisonMap, Ma
     void create_map();
     void create_controls(Wt::WContainerWidget* parent);
     void create_vehicle_list(Wt::WContainerWidget* parent);
-    void add_tile_layers();
-    void add_tile_layer(const protobuf::ProtobufMapConfig::TileLayer& layer);
+    std::string tile_layers_js() const;
+    std::string enc_js() const;
+    void add_enc_cell(const enc::Cell& cell);
+    void handle_enc_upload();
 
     void update_map();
     void add_vehicle_ui(const std::string& name, Vehicle& vehicle);
@@ -159,6 +167,7 @@ class LiaisonMap : public goby::zeromq::LiaisonContainerWithComms<LiaisonMap, Ma
     bool paused_{false};
     bool fitted_{false};
     bool show_age_;
+    bool show_depth_;
     int trail_step_;
     std::chrono::steady_clock::time_point last_trail_age_;
     std::string followed_;
@@ -170,6 +179,10 @@ class LiaisonMap : public goby::zeromq::LiaisonContainerWithComms<LiaisonMap, Ma
     Wt::WComboBox* follow_box_{nullptr};
     Wt::WPushButton* pause_button_{nullptr};
     Wt::WText* trail_text_{nullptr};
+    const std::filesystem::path enc_dir_;
+    Wt::WFileUpload* enc_upload_{nullptr};
+    Wt::WText* enc_status_{nullptr};
+    std::vector<std::shared_ptr<Wt::WFileResource>> enc_resources_;
 
     std::map<std::string, Vehicle> vehicles_;
 

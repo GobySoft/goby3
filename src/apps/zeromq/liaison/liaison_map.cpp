@@ -32,12 +32,16 @@
 #include <string>    // for string
 #include <vector>    // for vector
 
+#include <Wt/Json/Array.h>       // for Array
 #include <Wt/Json/Object.h>      // for Object
+#include <Wt/Json/Serializer.h>  // for serialize
 #include <Wt/Json/Value.h>       // for Value
 #include <Wt/WApplication.h>     // for WApplication
 #include <Wt/WCheckBox.h>        // for WCheckBox
 #include <Wt/WComboBox.h>        // for WComboBox
 #include <Wt/WContainerWidget.h> // for WContainerWidget
+#include <Wt/WFileResource.h>    // for WFileResource
+#include <Wt/WFileUpload.h>      // for WFileUpload
 #include <Wt/WLength.h>          // for WLength
 #include <Wt/WPushButton.h>      // for WPushButton
 #include <Wt/WSlider.h>          // for WSlider
@@ -69,26 +73,80 @@ bool has_configuration_property(const std::string& name)
     return Wt::WApplication::readConfigurationProperty(name, value) && !value.empty();
 }
 
+// GEBCO covers the world, coarsely; the NOAA chart overlay is transparent outside its coverage,
+// so together they give a chart in US waters and bathymetry everywhere else
 google::protobuf::RepeatedPtrField<TileLayer> default_tile_layers()
 {
     google::protobuf::RepeatedPtrField<TileLayer> layers;
 
-    layers.Add(); // OpenStreetMap from the field defaults
+    auto* gebco = layers.Add();
+    gebco->set_name("GEBCO bathymetry");
+    gebco->set_url_template("https://wms.gebco.net/mapserv");
+    gebco->mutable_wms()->set_layers("GEBCO_LATEST");
+    gebco->set_attribution(
+        "Imagery reproduced from the <a href=\"https://www.gebco.net\">GEBCO</a> "
+        "Grid, GEBCO Compilation Group");
+
+    layers.Add()->set_name("OpenStreetMap"); // the field defaults
+
+    auto* noaa = layers.Add();
+    noaa->set_name("NOAA chart");
+    noaa->set_url_template("https://gis.charttools.noaa.gov/arcgis/rest/services/MCS/"
+                           "NOAAChartDisplay/MapServer/exts/MaritimeChartService/WMSServer");
+    // the chart without its data quality, low accuracy, additional information, shallow water
+    // pattern and overscale layers, which hatch most of a coastal display
+    noaa->mutable_wms()->set_layers("0,1,2,3,4,5,6,7");
+    noaa->set_tile_size(512);
+    noaa->set_overlay(true);
+    noaa->set_attribution(
+        "Chart: <a href=\"https://nauticalcharts.noaa.gov\">NOAA Office of Coast Survey</a>, "
+        "not for navigation");
 
     auto* seamarks = layers.Add();
+    seamarks->set_name("OpenSeaMap seamarks");
     seamarks->set_url_template("https://tiles.openseamap.org/seamark/{z}/{x}/{y}.png");
     seamarks->set_attribution(
         "&copy; <a href=\"https://www.openseamap.org\">OpenSeaMap</a> contributors");
     seamarks->set_max_zoom(18);
     seamarks->set_overlay(true);
+    // NOAA's chart already shows the buoys and lights in its coverage
+    seamarks->set_shown(false);
 
     return layers;
+}
+
+std::string layer_name(const TileLayer& layer)
+{
+    if (layer.has_name())
+        return layer.name();
+    static const std::regex host("^[a-z]+://([^/]+)");
+    std::smatch match;
+    if (std::regex_search(layer.url_template(), match, host))
+        return match[1];
+    return layer.url_template();
 }
 
 std::string exact_regex(const std::string& s)
 {
     static const std::regex special_chars{R"([-[\]{}()*+?.,\^$|#\s])"};
     return "^" + std::regex_replace(s, special_chars, R"(\$&)") + "$";
+}
+
+// a depth gauge says nothing about a vessel that stays at the surface
+bool has_depth_gauge(const goby::apps::zeromq::VehicleFix& fix)
+{
+    using namespace goby::middleware::frontseat::protobuf;
+    switch (fix.type)
+    {
+        case USV:
+        case USV_POWERED:
+        case USV_SAILING:
+        case SHIP:
+        case BUOY:
+        case MOORING:
+        case MOORING_SURFACE: return false;
+        default: return !std::isnan(fix.depth);
+    }
 }
 
 std::string vehicle_colour(VehicleType type)
@@ -110,6 +168,32 @@ std::string vehicle_colour(VehicleType type)
         case TARGET: return "#b7322c";
         default: return "#7a7f85";
     }
+}
+
+// a log scale shows a few metres below the surface as clearly as a few thousand
+std::string depth_gauge_svg(double depth)
+{
+    depth = std::max(0.0, depth);
+    constexpr double bottom = 5000, height = 30, width = 6;
+    auto y = [](double d)
+    { return height * std::log10(1 + std::max(0.0, d)) / std::log10(1 + bottom); };
+
+    std::ostringstream svg;
+    svg << std::fixed << std::setprecision(1)
+        << "<svg width=\"26\" height=\"42\" viewBox=\"-1 -1 26 42\">"
+        << "<title>depth " << depth << " m</title>"
+        << "<rect width=\"" << width << "\" height=\"" << height << "\" fill=\"#eef3f7\"/>"
+        << "<rect width=\"" << width << "\" height=\"" << std::min(height, y(depth))
+        << "\" fill=\"#1d4f86\"/>"
+        << "<rect width=\"" << width << "\" height=\"" << height
+        << "\" fill=\"none\" stroke=\"#4b5a68\" stroke-width=\"0.8\"/>";
+    for (double tick : {10.0, 100.0, 1000.0})
+        svg << "<line x1=\"" << width << "\" x2=\"" << width + 3 << "\" y1=\"" << y(tick)
+            << "\" y2=\"" << y(tick) << "\" stroke=\"#4b5a68\" stroke-width=\"0.8\"/>";
+    svg << "<text x=\"" << width / 2 << "\" y=\"" << height + 9
+        << "\" text-anchor=\"middle\" font-size=\"9\" class=\"map-depth-value\">"
+        << std::setprecision(depth < 10 ? 1 : 0) << depth << "</text></svg>";
+    return svg.str();
 }
 
 std::string arrow_svg(double heading, const std::string& colour)
@@ -200,7 +284,9 @@ goby::apps::zeromq::LiaisonMap::LiaisonMap(const protobuf::LiaisonConfig& cfg)
       map_cfg_(cfg.pb_map_config()),
       update_freq_(cfg.update_freq()),
       show_age_(map_cfg_.show_age()),
+      show_depth_(map_cfg_.show_depth()),
       trail_step_(nearest_trail_step(map_cfg_.trail_seconds())),
+      enc_dir_(enc::directory(map_cfg_)),
       user_drag_(this, "userDrag")
 {
     set_name("Map");
@@ -280,8 +366,6 @@ void goby::apps::zeromq::LiaisonMap::create_map()
     map_->setStyleClass("liaison-map");
     map_->resize(Wt::WLength::Auto, Wt::WLength(map_cfg_.map_height()));
 
-    add_tile_layers();
-
     map_->panTo(Wt::WLeafletMap::Coordinate(map_cfg_.initial_lat(), map_cfg_.initial_lon()));
     map_->setZoomLevel(map_cfg_.initial_zoom());
 
@@ -290,7 +374,8 @@ void goby::apps::zeromq::LiaisonMap::create_map()
     // tracks are drawn with Leaflet directly: WLeafletMap polylines cannot be extended or removed
     // each point carries the browser time it was received, from the age Liaison sends with it,
     // so the server's and browser's clocks need not agree. S is the trail in seconds (<0: all).
-    js_setup_ = "if(!m.gobyTracks){m.gobyTracks={};"
+    js_setup_ = tile_layers_js() +
+                "if(!m.gobyTracks){m.gobyTracks={};"
                 "m.gobyShow=function(t,S,force){var i=0;"
                 "if(S>=0){var c=Date.now()-1e3*S;while(i<t.all.length&&t.all[i].t<c)++i;}"
                 "if(force||i!==t.first){t.first=i;"
@@ -305,7 +390,96 @@ void goby::apps::zeromq::LiaisonMap::create_map()
                 "m.gobyClearTracks=function(){for(var n in m.gobyTracks){"
                 "m.gobyTracks[n].all=[];m.gobyTracks[n].setLatLngs([]);}};"
                 "m.on('dragstart',function(){" +
-                user_drag_.createCall({}) + "});}";
+                user_drag_.createCall({}) + "});}" + enc_js();
+
+    for (const auto& cell : enc::stored_cells(enc_dir_)) add_enc_cell(cell);
+}
+
+std::string goby::apps::zeromq::LiaisonMap::enc_js() const
+{
+    // A simplified chart: depth areas shaded by their shallow limit, land, contours, soundings
+    // (from zoom 15, as there are thousands) and aids to navigation coloured by their COLOUR.
+    // Panes keep the chart under the tracks and vehicles whatever order the layers load in.
+    return "if(!m.gobyAddEnc){m.gobyEnc={};"
+           "[['gobyEncArea',350],['gobyEncLine',360],['gobyEncText',370],['gobyEncAids',380]]"
+           ".forEach(function(p){m.createPane(p[0]).style.zIndex=p[1];});"
+           "var fill=function(d){return d<0?'#a9c79b':d<2?'#7fb2de':d<5?'#a4c9eb':"
+           "d<10?'#c5ddf2':d<20?'#e1edf8':'#fbfdff';},"
+           "colour={'1':'#ffffff','2':'#222222','3':'#d7263d','4':'#1f9d55','6':'#f2d21b',"
+           "'11':'#f28c28'},hazard={OBSTRN:'Obstruction',WRECKS:'Wreck',UWTROC:'Rock'};"
+           "var make=function(k,d){"
+           "if(k==='SOUNDG')return L.geoJSON(d,{pointToLayer:function(f,ll){"
+           "var z=f.properties.DEPTH;return L.marker(ll,{pane:'gobyEncText',interactive:false,"
+           "icon:L.divIcon({className:'map-enc-sounding',iconSize:null,"
+           "html:'<span>'+(z<31?z.toFixed(1):Math.round(z))+'</span>'})});}});"
+           "if(k==='DEPARE'||k==='DRGARE')return L.geoJSON(d,{pane:'gobyEncArea',"
+           "interactive:false,style:function(f){return {stroke:k==='DRGARE',color:'#8a9aa8',"
+           "weight:1,dashArray:'4 3',fillColor:fill(f.properties.DRVAL1),fillOpacity:1};}});"
+           "if(k==='LNDARE')return L.geoJSON(d,{pane:'gobyEncArea',interactive:false,"
+           "style:{color:'#8b7d55',weight:1,fillColor:'#f1e3b3',fillOpacity:1}});"
+           "if(k==='DEPCNT')return L.geoJSON(d,{pane:'gobyEncLine',style:{color:'#6f8fae',"
+           "weight:1},onEachFeature:function(f,l){if(f.properties.VALDCO!=null)"
+           "l.bindTooltip(f.properties.VALDCO+' m',{sticky:true});}});"
+           "if(k==='COALNE')return L.geoJSON(d,{pane:'gobyEncLine',interactive:false,"
+           "style:{color:'#4a4030',weight:1.5}});"
+           "return L.geoJSON(d,{pane:'gobyEncAids',style:{color:'#333',weight:1,"
+           "dashArray:'2 2',fill:false},pointToLayer:function(f,ll){var p=f.properties,"
+           "c=p.COLOUR&&p.COLOUR.length?colour[p.COLOUR[0]]||'#999':'#999';"
+           "return L.circleMarker(ll,{pane:'gobyEncAids',radius:k==='LIGHTS'||hazard[k]?3:5,"
+           "color:'#222',weight:1,fillOpacity:1,"
+           "fillColor:k==='LIGHTS'?'#d000d0':hazard[k]?'#fff':c});},"
+           "onEachFeature:function(f,l){var p=f.properties,"
+           "t=p.OBJNAM||hazard[k]||(k==='LIGHTS'?'Light':k);"
+           "if(p.VALSOU!=null)t+=' '+p.VALSOU+' m';l.bindTooltip(t);}});};"
+           "m.gobyAddEnc=function(n,urls){var g=L.layerGroup(),sounding=null,old=m.gobyEnc[n];"
+           "if(!m.gobyLayers||m.gobyLayers===1)m.gobyLayers=L.control.layers({},{}).addTo(m);"
+           "if(old){m.removeLayer(old);m.gobyLayers.removeLayer(old);}m.gobyEnc[n]=g;"
+           "Object.keys(urls).forEach(function(k){fetch(urls[k]).then(function(r){"
+           "return r.json();}).then(function(d){var l=make(k,d);if(k==='SOUNDG'){sounding=l;"
+           "if(m.getZoom()<15)return;}g.addLayer(l);});});"
+           "m.on('zoomend',function(){if(sounding){if(m.getZoom()>=15)g.addLayer(sounding);"
+           "else g.removeLayer(sounding);}});"
+           "m.gobyLayers.addOverlay(g,n);var on=true;try{var s=JSON.parse("
+           "localStorage.getItem('goby-liaison-map-layers')||'{}');"
+           "if(s.overlays&&n in s.overlays)on=s.overlays[n];}catch(e){}if(on)g.addTo(m);};}";
+}
+
+void goby::apps::zeromq::LiaisonMap::add_enc_cell(const enc::Cell& cell)
+{
+    Wt::Json::Object urls;
+    for (const auto& [layer, file] : cell.layers)
+    {
+        auto resource = std::make_shared<Wt::WFileResource>("application/geo+json", file.string());
+        urls[layer] = Wt::Json::Value(Wt::WString::fromUTF8(resource->url()));
+        enc_resources_.push_back(resource);
+    }
+
+    // the Leaflet map may not exist yet when the tab is first shown
+    Wt::WApplication::instance()->doJavaScript(
+        "(function f(){var m=" + map_->mapJsRef() + ";if(m){" + js_setup_ + "m.gobyAddEnc(" +
+        Wt::WWebWidget::jsStringLiteral("ENC " + cell.name) + "," + Wt::Json::serialize(urls, 0) +
+        ");}else setTimeout(f,100);})();");
+}
+
+void goby::apps::zeromq::LiaisonMap::handle_enc_upload()
+{
+    try
+    {
+        std::string added;
+        for (const auto& cell : enc::import(enc_upload_->spoolFileName(),
+                                            enc_upload_->clientFileName().toUTF8(), enc_dir_))
+        {
+            if (map_)
+                add_enc_cell(cell);
+            added += (added.empty() ? "" : ", ") + cell.name;
+        }
+        enc_status_->setText(Wt::WString::fromUTF8("Added " + added));
+    }
+    catch (const std::exception& e)
+    {
+        glog.is_warn() && glog << "Liaison Map: ENC upload: " << e.what() << std::endl;
+        enc_status_->setText(Wt::WString::fromUTF8(e.what()));
+    }
 }
 
 void goby::apps::zeromq::LiaisonMap::create_controls(Wt::WContainerWidget* parent)
@@ -352,6 +526,20 @@ void goby::apps::zeromq::LiaisonMap::create_controls(Wt::WContainerWidget* paren
             }
         });
 
+    auto* depth_box = controls->addNew<Wt::WCheckBox>("Show depth");
+    depth_box->addStyleClass("map-show-depth");
+    depth_box->setChecked(show_depth_);
+    depth_box->changed().connect(
+        [this, depth_box]()
+        {
+            show_depth_ = depth_box->isChecked();
+            for (auto& [name, vehicle] : vehicles_)
+            {
+                if (vehicle.depth_gauge)
+                    vehicle.depth_gauge->setHidden(!show_depth_ || !has_depth_gauge(vehicle.fix));
+            }
+        });
+
     controls->addNew<Wt::WText>("Trail:");
     auto* trail_slider = controls->addNew<Wt::WSlider>();
     trail_slider->addStyleClass("map-trail");
@@ -363,6 +551,29 @@ void goby::apps::zeromq::LiaisonMap::create_controls(Wt::WContainerWidget* paren
     trail_text_ = controls->addNew<Wt::WText>();
     trail_text_->setStyleClass("map-trail-points");
     set_trail(trail_step_);
+
+    if (map_cfg_.enc_upload())
+    {
+        controls->addNew<Wt::WText>("Add ENC:");
+        enc_upload_ = controls->addNew<Wt::WFileUpload>();
+        enc_upload_->addStyleClass("map-enc-upload");
+        enc_upload_->setFilters(".000,.zip");
+        enc_status_ = controls->addNew<Wt::WText>();
+        enc_status_->setStyleClass("map-enc-status");
+        enc_upload_->changed().connect(
+            [this]()
+            {
+                enc_status_->setText("Uploading...");
+                enc_upload_->upload();
+            });
+        enc_upload_->uploaded().connect([this]() { handle_enc_upload(); });
+        enc_upload_->fileTooLarge().connect(
+            [this](::int64_t)
+            {
+                enc_status_->setText(
+                    "Too large for the server (max-request-size in wt_config.xml)");
+            });
+    }
 }
 
 void goby::apps::zeromq::LiaisonMap::create_vehicle_list(Wt::WContainerWidget* parent)
@@ -379,48 +590,58 @@ void goby::apps::zeromq::LiaisonMap::create_vehicle_list(Wt::WContainerWidget* p
     waiting_text_->setStyleClass("map-waiting");
 }
 
-void goby::apps::zeromq::LiaisonMap::add_tile_layers()
+std::string goby::apps::zeromq::LiaisonMap::tile_layers_js() const
 {
     if (map_cfg_.blank_background())
-        return;
+        return "";
 
     const auto layers =
         map_cfg_.tile_layer_size() > 0 ? map_cfg_.tile_layer() : default_tile_layers();
 
-    const TileLayer* base = nullptr;
-    std::vector<const TileLayer*> overlays;
+    Wt::Json::Array specs;
     for (const auto& layer : layers)
     {
-        if (layer.overlay())
+        Wt::Json::Object options;
+        options["attribution"] = Wt::Json::Value(Wt::WString::fromUTF8(layer.attribution()));
+        options["minZoom"] = Wt::Json::Value(layer.min_zoom());
+        options["maxZoom"] = Wt::Json::Value(layer.max_zoom());
+        options["opacity"] = Wt::Json::Value(layer.opacity());
+        if (layer.has_wms())
         {
-            overlays.push_back(&layer);
+            options["layers"] = Wt::Json::Value(Wt::WString::fromUTF8(layer.wms().layers()));
+            options["format"] = Wt::Json::Value(Wt::WString::fromUTF8(layer.wms().format()));
+            options["version"] = Wt::Json::Value(Wt::WString::fromUTF8(layer.wms().version()));
+            options["styles"] = Wt::Json::Value(Wt::WString::fromUTF8(layer.wms().styles()));
+            options["transparent"] = Wt::Json::Value(layer.overlay());
+            options["tileSize"] = Wt::Json::Value(layer.tile_size());
         }
-        else if (!base)
-        {
-            base = &layer;
-        }
-        else
-        {
-            glog.is_warn() && glog << "Liaison Map: only the first base tile_layer is shown, "
-                                      "ignoring: "
-                                   << layer.url_template() << std::endl;
-        }
+
+        Wt::Json::Object spec;
+        spec["name"] = Wt::Json::Value(Wt::WString::fromUTF8(layer_name(layer)));
+        spec["url"] = Wt::Json::Value(Wt::WString::fromUTF8(layer.url_template()));
+        spec["wms"] = Wt::Json::Value(layer.has_wms());
+        spec["overlay"] = Wt::Json::Value(layer.overlay());
+        spec["shown"] = Wt::Json::Value(layer.shown());
+        spec["options"] = Wt::Json::Value(std::move(options));
+        specs.push_back(Wt::Json::Value(std::move(spec)));
     }
 
-    // Leaflet draws tile layers in the order they are added
-    if (base)
-        add_tile_layer(*base);
-    for (const auto* overlay : overlays) add_tile_layer(*overlay);
-}
-
-void goby::apps::zeromq::LiaisonMap::add_tile_layer(const TileLayer& layer)
-{
-    Wt::Json::Object options;
-    options["attribution"] = Wt::Json::Value(Wt::WString::fromUTF8(layer.attribution()));
-    options["minZoom"] = Wt::Json::Value(layer.min_zoom());
-    options["maxZoom"] = Wt::Json::Value(layer.max_zoom());
-    options["opacity"] = Wt::Json::Value(layer.opacity());
-    map_->addTileLayer(layer.url_template(), options);
+    // Wt's own tile layers cannot be removed, so the layers and Leaflet's layer control are made
+    // here. The viewer's choice is kept in the browser, as it is a per-viewer preference.
+    return "if(!m.gobyLayers){var S=" + Wt::Json::serialize(specs, 0) +
+           ",B={},O={},first=null,saved={},key='goby-liaison-map-layers';"
+           "try{saved=JSON.parse(localStorage.getItem(key)||'{}');}catch(e){}"
+           "S.forEach(function(s,i){var o=s.options;o.zIndex=s.overlay?10+i:1;"
+           "var l=s.wms?L.tileLayer.wms(s.url,o):L.tileLayer(s.url,o);"
+           "if(s.overlay){O[s.name]=l;var on=saved.overlays&&s.name in saved.overlays?"
+           "saved.overlays[s.name]:s.shown;if(on)l.addTo(m);}"
+           "else{B[s.name]=l;if(first===null)first=s.name;}});"
+           "var b=saved.base in B?saved.base:first;if(b!==null)B[b].addTo(m);"
+           "m.on('baselayerchange overlayadd overlayremove',function(){"
+           "var st={overlays:{}};for(var n in B)if(m.hasLayer(B[n]))st.base=n;"
+           "for(var n in O)st.overlays[n]=m.hasLayer(O[n]);"
+           "try{localStorage.setItem(key,JSON.stringify(st));}catch(e){}});"
+           "if(S.length>1)m.gobyLayers=L.control.layers(B,O).addTo(m);else m.gobyLayers=1;}";
 }
 
 void goby::apps::zeromq::LiaisonMap::update_map()
@@ -473,6 +694,9 @@ void goby::apps::zeromq::LiaisonMap::add_vehicle_ui(const std::string& name, Veh
                                   Wt::TextFormat::UnsafeXHTML);
     vehicle.label = widget->addNew<Wt::WText>(Wt::WString::fromUTF8(name), Wt::TextFormat::Plain);
     vehicle.label->setStyleClass("map-vehicle-label");
+    vehicle.depth_gauge = widget->addNew<Wt::WText>("", Wt::TextFormat::UnsafeXHTML);
+    vehicle.depth_gauge->setStyleClass("map-depth-gauge");
+    vehicle.depth_gauge->setHidden(true);
 
     auto marker = std::make_unique<Wt::WLeafletMap::WidgetMarker>(
         Wt::WLeafletMap::Coordinate(vehicle.fix.lat, vehicle.fix.lon), std::move(widget));
@@ -508,6 +732,9 @@ void goby::apps::zeromq::LiaisonMap::update_vehicle_ui(const std::string& name, 
         if (vehicle.fix_changed)
             vehicle.marker->move(Wt::WLeafletMap::Coordinate(fix.lat, fix.lon));
         vehicle.arrow->setText(arrow_svg(fix.heading, vehicle_colour(fix.type)));
+        if (has_depth_gauge(fix))
+            vehicle.depth_gauge->setText(depth_gauge_svg(fix.depth));
+        vehicle.depth_gauge->setHidden(!show_depth_ || !has_depth_gauge(fix));
         vehicle.marker_widget->toggleStyleClass("stale", stale);
         vehicle.row->setStyleClass(row_style(name, vehicle));
 
