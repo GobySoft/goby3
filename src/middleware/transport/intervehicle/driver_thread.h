@@ -129,15 +129,15 @@ serialize_publication(const Data& d, const Group& group, const Publisher<Data>& 
 ///        ImplementationTag so it uses the same InterProcessForwarder prefix as the portal's
 ///        InnerTransporter.
 template <typename ImplementationTag>
-class ModemDriverThread
-    : public goby::middleware::Thread<intervehicle::protobuf::PortalConfig::LinkConfig,
-                                      InterProcessForwarder<InterThreadTransporter,
-                                                            ImplementationTag>>
+class ModemDriverThread : public goby::middleware::Thread<
+                              intervehicle::protobuf::PortalConfig::LinkConfig,
+                              InterProcessForwarder<InterThreadTransporter, ImplementationTag>>
 {
   public:
     using buffer_data_type = goby::middleware::protobuf::SerializerTransporterMessage;
     using modem_id_type = goby::acomms::DynamicBuffer<buffer_data_type>::modem_id_type;
     using subbuffer_id_type = goby::acomms::DynamicBuffer<buffer_data_type>::subbuffer_id_type;
+    using buffer_value_type = goby::acomms::DynamicBuffer<buffer_data_type>::Value;
 
     ModemDriverThread(const intervehicle::protobuf::PortalConfig::LinkConfig& cfg);
     void loop() override;
@@ -150,11 +150,17 @@ class ModemDriverThread
     void _receive(const goby::acomms::protobuf::ModemTransmission& rx_msg);
     void _forward_subscription(intervehicle::protobuf::Subscription subscription);
     void _accept_subscription(const intervehicle::protobuf::Subscription& subscription);
+    void _ack_value(intervehicle::protobuf::AckMessagePair& ack_pair,
+                    const goby::time::SteadyClock::time_point now,
+                    const goby::acomms::DynamicBuffer<buffer_data_type>::Value& value);
     void _expire_value(const goby::time::SteadyClock::time_point now,
                        const goby::acomms::DynamicBuffer<buffer_data_type>::Value& value,
                        intervehicle::protobuf::ExpireData::ExpireReason reason);
+    void _erase_pending_ack(
+        const std::vector<goby::acomms::DynamicBuffer<buffer_data_type>::Value>& values);
     void _discard_superseded(
         const std::vector<goby::acomms::DynamicBuffer<buffer_data_type>::Value>& values);
+    std::vector<buffer_value_type> _take_superseded(const buffer_value_type& value);
 
     subbuffer_id_type _create_buffer_id(unsigned dccl_id, unsigned group);
 
@@ -182,13 +188,13 @@ class ModemDriverThread
 
     bool _dest_is_in_subnet(modem_id_type dest_id)
     {
-        bool dest_in_subnet =
-            (dest_id & this->cfg().subnet_mask()) == (this->cfg().modem_id() & this->cfg().subnet_mask());
+        bool dest_in_subnet = (dest_id & this->cfg().subnet_mask()) ==
+                              (this->cfg().modem_id() & this->cfg().subnet_mask());
         if (!dest_in_subnet)
-            goby::glog.is_debug3() && goby::glog
-                                          << "Dest: " << dest_id
-                                          << " is not in subnet (our id: " << this->cfg().modem_id()
-                                          << ", mask: " << this->cfg().subnet_mask() << ")" << std::endl;
+            goby::glog.is_debug3() &&
+                goby::glog << "Dest: " << dest_id
+                           << " is not in subnet (our id: " << this->cfg().modem_id()
+                           << ", mask: " << this->cfg().subnet_mask() << ")" << std::endl;
 
         return dest_in_subnet;
     }
@@ -209,10 +215,16 @@ class ModemDriverThread
 
     goby::middleware::protobuf::SerializerTransporterKey subscription_key_;
     std::set<modem_id_type> subscription_subbuffers_;
-    // last subscription queued per destination for each subscriber, so a newer one can replace it
-    std::map<modem_id_type,
-             std::vector<std::pair<intervehicle::protobuf::Subscription, buffer_data_type>>>
-        queued_subscriptions_;
+    struct QueuedSubscription
+    {
+        intervehicle::protobuf::Subscription subscription;
+        buffer_data_type data;
+        // equivalent subscriptions (possibly from other local subscribers) that this one replaced
+        // and now stands in for: they are acked or expired along with it
+        std::vector<buffer_value_type> superseded;
+    };
+    // subscriptions queued or awaiting ack per destination, so a newer equivalent one can replace them
+    std::map<modem_id_type, std::vector<QueuedSubscription>> queued_subscriptions_;
 
     goby::acomms::DynamicBuffer<buffer_data_type> buffer_;
 
