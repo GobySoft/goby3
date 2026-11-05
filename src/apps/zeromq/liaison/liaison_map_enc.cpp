@@ -26,6 +26,8 @@
 #include <cctype>    // for isalnum, tolower
 #include <cstdio>    // for popen, pclose, fgets
 #include <cstdlib>   // for getenv
+#include <fstream>   // for ifstream, ofstream
+#include <regex>     // for regex_search
 #include <stdexcept> // for runtime_error
 #include <utility>   // for pair
 
@@ -119,7 +121,7 @@ std::vector<std::string> zip_entries(const fs::path& zip)
 goby::apps::zeromq::enc::Cell convert(const std::string& name, const std::string& source,
                                       const fs::path& cell_dir)
 {
-    goby::apps::zeromq::enc::Cell cell{name, {}};
+    goby::apps::zeromq::enc::Cell cell{name, {}, {}};
     const fs::path out = cell_dir / "geojson";
     fs::remove_all(out);
     fs::create_directories(out);
@@ -144,6 +146,22 @@ goby::apps::zeromq::enc::Cell convert(const std::string& name, const std::string
         fs::remove_all(cell_dir);
         throw std::runtime_error(name + " has no chart layers this map draws");
     }
+
+    // soundings and depth areas are in whatever units the cell declares
+    const auto dsid =
+        run(std::string(s57_options) + " ogrinfo -ro -q -al " + shell_quote(source) + " DSID");
+    std::smatch duni;
+    if (std::regex_search(dsid.second, duni, std::regex("DSPM_DUNI \\(Integer\\) = ([0-9]+)")))
+    {
+        const std::map<std::string, std::string> units{
+            {"1", "metres"}, {"2", "fathoms and feet"}, {"3", "feet"}, {"4", "fathoms"}};
+        auto it = units.find(duni[1]);
+        if (it != units.end())
+        {
+            cell.depth_units = it->second;
+            std::ofstream(cell_dir / "depth_units") << cell.depth_units;
+        }
+    }
     return cell;
 }
 } // namespace
@@ -166,7 +184,9 @@ goby::apps::zeromq::enc::stored_cells(const fs::path& dir)
         const fs::path geojson = entry.path() / "geojson";
         if (!fs::is_directory(geojson, ec))
             continue;
-        Cell cell{entry.path().filename().string(), {}};
+        Cell cell{entry.path().filename().string(), {}, {}};
+        std::ifstream units(entry.path() / "depth_units");
+        std::getline(units, cell.depth_units);
         for (const auto& file : fs::directory_iterator(geojson, ec))
         {
             if (file.path().extension() == ".json")

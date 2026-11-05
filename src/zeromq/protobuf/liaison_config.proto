@@ -280,6 +280,11 @@ message ProtobufMapConfig
                 "Highest zoom the server has tiles for; beyond it, up to max_zoom, "
                 "its tiles are enlarged rather than left blank"
         ];
+        optional string depth_units = 12 [
+            (goby.field).description =
+                "Units of the depths the layer labels (e.g. feet), named in the "
+                "map's corner while the layer is shown"
+        ];
         optional int32 tile_size = 10 [
             default = 256,
             (goby.field).description =

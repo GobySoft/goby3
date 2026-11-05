@@ -113,7 +113,7 @@ Positions come from `goby.middleware.frontseat.protobuf.NodeStatus` on `goby::mi
 
 The list below the map shows each vehicle's heading, speed, depth and the age of its last position. Click a row to centre on that vehicle, or choose it under Follow to keep it centred (dragging the map stops following). Vehicles that have not reported for `stale_timeout_seconds` are faded and show their age beside their name; Show age does this for every vehicle. The Trail slider sets how far back each track is drawn, from Off through 30 s to 2 h, or All; points age out of the trail even when a vehicle stops reporting. Show depth adds a gauge beside each vehicle below the surface: the surface at the top, 5000 m at the bottom on a log scale, with ticks at 10, 100 and 1000 m. Tracks start when the browser opens the page.
 
-Add ENC uploads an S-57 electronic navigational chart: a cell's `.000` file, or a `.zip` of cells such as those NOAA publishes. Liaison stores it under `enc_dir`, converts it with GDAL's `ogr2ogr` (which must be on the `PATH`, e.g. from `gdal-bin`), and draws it for every viewer as an overlay named after the cell: depth areas, land, contours, soundings (from zoom 15), and aids to navigation and hazards with their names on hover. This is a simplified display for situational awareness, not a certified chart. Uploads are limited by Wt's `max-request-size`, set to 128 MB in the docroot's `wt_config.xml`.
+Add ENC uploads an S-57 electronic navigational chart: a cell's `.000` file, or a `.zip` of cells such as those NOAA publishes. Liaison stores it under `enc_dir`, converts it with GDAL's `ogr2ogr` (which must be on the `PATH`, e.g. from `gdal-bin`), and draws it for every viewer as an overlay named after the cell, with the depth units the cell declares named in the map's corner: depth areas, land, contours, soundings (from zoom 15), and aids to navigation and hazards with their names on hover. This is a simplified display for situational awareness, not a certified chart. Uploads are limited by Wt's `max-request-size`, set to 128 MB in the docroot's `wt_config.xml`.
 
 - pb_map_config
 	- source: Position sources, replacing the default NodeStatus source:
@@ -136,6 +136,7 @@ Add ENC uploads an S-57 electronic navigational chart: a cell's `.000` file, or 
 		+ max_native_zoom: Highest zoom the server has tiles for; beyond it, its tiles are enlarged.
 		+ overlay: Set true for a layer drawn above the base and switched on and off by itself; otherwise it is one of the bases to choose between, the first selected to start.
 		+ shown: Whether an overlay starts switched on. Defaults to true.
+		+ depth_units: Units of the depths the layer labels, named in the map's bottom-left corner while it is shown (feet for the default NOAA chart).
 		+ tile_size: Pixels per WMS image; 512 means fewer requests and fewer labels cut at image edges. Defaults to 256.
 		+ opacity: 0 to 1.
 	- blank_background: Set true to draw no tiles, e.g. without network access.

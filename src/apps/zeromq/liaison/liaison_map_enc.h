@@ -45,6 +45,8 @@ namespace enc
 struct Cell
 {
     std::string name;
+    // as the cell declares them (DSPM DUNI), e.g. "metres"; empty if unknown
+    std::string depth_units;
     // S-57 object class (e.g. DEPARE) to its GeoJSON file
     std::map<std::string, std::filesystem::path> layers;
 };

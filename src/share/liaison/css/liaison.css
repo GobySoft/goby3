@@ -218,6 +218,7 @@ div.map-vehicle.stale { opacity: 0.4; }
 /* right of the arrow and above the label, which is centred under the arrow */
 span.map-depth-gauge { position: absolute; left: 24px; top: -14px; line-height: 0; }
 span.map-depth-gauge text { fill: #1d2a36; paint-order: stroke; stroke: #fff; stroke-width: 2px; }
+div.map-depth-units { background: rgba(255, 255, 255, 0.8); padding: 0 5px; font-size: 11px; color: #333; }
 div.map-enc { display: flex; align-items: center; gap: 4px; white-space: nowrap; }
 span.map-enc-status { color: #666; }
 div.map-enc-sounding span
