@@ -48,23 +48,17 @@
 #include <llvm/Support/raw_ostream.h>              // for raw_string_ostream
 #include <yaml-cpp/emitter.h>                      // for operator<<, Emitter
 
-#include "actions.h"                               // for generate
-#include "goby/middleware/marshalling/interface.h" // for MarshallingScheme
-#include "goby/middleware/transport/interface.h"   // for Necessity, Necess...
-#include "pubsub_entry.h"                          // for Layer, PubSubEntry
-#include "yaml_raii.h"                             // for YMap, YSeq
-#include "clang/ASTMatchers/ASTMatchFinder.h"      // for MatchFinder::Matc...
-#include "clang/ASTMatchers/ASTMatchers.h"         // for hasName, callee
-#include "clang/Tooling/Tooling.h"                 // for newFrontendAction...
+#include "actions.h"                                     // for generate
+#include "goby/middleware/marshalling/interface.h"       // for MarshallingScheme
+#include "goby/middleware/tool/interface/pubsub_entry.h" // for Layer, PubSubEntry
+#include "goby/middleware/tool/interface/yaml_raii.h"    // for YMap, YSeq
+#include "goby/middleware/transport/interface.h"         // for Necessity, Necess...
+#include "clang/ASTMatchers/ASTMatchFinder.h"            // for MatchFinder::Matc...
+#include "clang/ASTMatchers/ASTMatchers.h"               // for hasName, callee
+#include "clang/Tooling/Tooling.h"                       // for newFrontendAction...
 
-using goby::clang::Layer;
-using goby::clang::PubSubEntry;
-
-std::map<Layer, std::string> layer_to_str{{Layer::UNKNOWN, "unknown"},
-                                          {Layer::INTERTHREAD, "interthread"},
-                                          {Layer::INTERPROCESS, "interprocess"},
-                                          {Layer::INTERMODULE, "intermodule"},
-                                          {Layer::INTERVEHICLE, "intervehicle"}};
+using goby::middleware::tool::interface::Layer;
+using goby::middleware::tool::interface::PubSubEntry;
 
 ::clang::ast_matchers::StatementMatcher pubsub_matcher(std::string method)
 {
@@ -284,8 +278,8 @@ class PubSubAggregator : public ::clang::ast_matchers::MatchFinder::MatchCallbac
         bool is_regex = (method.find("regex") != std::string::npos);
 
         auto direction = (method.find("publish") != std::string::npos)
-                             ? goby::clang::PubSubEntry::Direction::PUBLISH
-                             : goby::clang::PubSubEntry::Direction::SUBSCRIBE;
+                             ? PubSubEntry::Direction::PUBLISH
+                             : PubSubEntry::Direction::SUBSCRIBE;
 
         std::set<std::string> internal_groups{
             "goby::middleware::interprocess::to_portal",
@@ -415,7 +409,7 @@ int goby::clang::generate(::clang::tooling::ClangTool& Tool, std::string output_
              ++layer_it)
         {
             Layer layer = *layer_it;
-            root_map.add_key(layer_to_str.at(layer));
+            root_map.add_key(goby::middleware::tool::interface::layer_name(layer));
             goby::yaml::YMap layer_map(yaml_out);
 
             auto find_most_derived_parents = [&](std::string thread) -> std::set<std::string> {

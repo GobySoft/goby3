@@ -10,3 +10,7 @@ add_subdirectory(serial_mux)
 
 add_subdirectory(goby_tool)
 add_subdirectory(test_tool)
+
+if(enable_yaml)
+  add_subdirectory(interface_tool)
+endif()

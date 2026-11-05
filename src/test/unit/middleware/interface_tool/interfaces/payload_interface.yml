@@ -1,0 +1,18 @@
+application: payload
+intermodule:
+  publishes:
+    - group: payload::science
+      scheme: PROTOBUF
+      type: payload::protobuf::Science
+      thread: Payload
+interprocess:
+  publishes:
+    - group: payload::science
+      scheme: PROTOBUF
+      type: payload::protobuf::Science
+      thread: Payload
+      inner: true
+    - group: nav::depth
+      scheme: PROTOBUF
+      type: nav::protobuf::Depth
+      thread: Payload
