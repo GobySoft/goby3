@@ -306,6 +306,70 @@ std::set<std::string> issue_locations(const std::string& text)
     return locations;
 }
 
+// Issue locations for a test whose endpoints are "loop" (interprocess, the default) and "iv"
+// (intervehicle)
+std::set<std::string> intervehicle_issue_locations(const std::string& text)
+{
+    auto issues = PubSubTestValidator(parse_test(text), {"loop", "iv"})
+                      .set_intervehicle_endpoints({"iv"}, "loop")
+                      .validate();
+    std::set<std::string> locations;
+    for (const auto& i : issues)
+    {
+        std::cout << "  issue: " << i.location() << ": " << i.message() << std::endl;
+        locations.insert(i.location());
+    }
+    return locations;
+}
+
+// Intervehicle endpoints need DCCL types, numeric groups, a group_field for any group but 0 (the
+// broadcast group) and, for subscriptions, at least one publisher_id. Subscription is a DCCL type
+// with a top-level integer field 'group'. Ack and expiry expectations report on the endpoint's
+// own publications, so none of the subscription rules apply to them.
+void test_intervehicle_validator()
+{
+    assert(intervehicle_issue_locations(R"(
+        run {
+            publish { endpoint: "iv" group: "7" group_field: "group"
+                      type: "DCCL/goby.middleware.intervehicle.protobuf.Subscription"
+                      value: "api_version: 1 header { src: 1 } action: SUBSCRIBE dccl_id: 1 group: 0"
+                      intervehicle { buffer { ack_required: true } clear_pending: true } }
+            publish { endpoint: "iv" group: "0"
+                      type: "DCCL/goby.middleware.intervehicle.protobuf.Subscription"
+                      value: "api_version: 1 header { src: 1 } action: SUBSCRIBE dccl_id: 1 group: 0" }
+            expect { endpoint: "iv" group: "7" group_field: "group"
+                     type: "goby.middleware.intervehicle.protobuf.Subscription"
+                     intervehicle { publisher_id: 1 } }
+            expect { endpoint: "iv" group: "7"
+                     type: "PROTOBUF/goby.middleware.intervehicle.protobuf.AckData" }
+        }
+    )")
+               .empty());
+
+    auto locations = intervehicle_issue_locations(R"(
+        run {
+            publish { endpoint: "iv" group: "nav"
+                      type: "PROTOBUF/goby.middleware.intervehicle.protobuf.Subscription"
+                      value: "api_version: 1 header { src: 1 } action: SUBSCRIBE dccl_id: 1 group: 0" }
+            publish { endpoint: "iv" group: "7"
+                      type: "DCCL/goby.middleware.intervehicle.protobuf.Subscription"
+                      value: "api_version: 1 header { src: 1 } action: SUBSCRIBE dccl_id: 1 group: 0" }
+            publish { group: "g" type: "JSON" value: "{}" group_field: "x"
+                      intervehicle { broadcast: true } }
+            expect { endpoint: "iv" group: "7" group_field: "header"
+                     type: "goby.middleware.intervehicle.protobuf.Sub.*" }
+            expect { endpoint: "iv" group: "7" group_field: "group"
+                     type: "PROTOBUF/goby.middleware.intervehicle.protobuf.AckData" }
+        }
+    )");
+    for (const auto* loc :
+         {"test.run[0].publish[0].type", "test.run[0].publish[0].group",
+          "test.run[0].publish[1].group_field", "test.run[0].publish[2].group_field",
+          "test.run[0].publish[2].intervehicle", "test.run[0].expect[0].type",
+          "test.run[0].expect[0].intervehicle.publisher_id", "test.run[0].expect[1]"})
+        assert(locations.count(loc));
+}
+
 void test_validator()
 {
     // a well-formed test has no issues
@@ -419,6 +483,7 @@ int main(int argc, char* argv[])
     test_require_app();
     test_wait();
     test_validator();
+    test_intervehicle_validator();
     test_expand_runs();
     test_json_render();
 
