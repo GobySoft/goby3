@@ -21,6 +21,16 @@
 // You should have received a copy of the GNU General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
+#include <algorithm>
+#include <cstdlib>
+#include <filesystem>
+#include <set>
+#include <string>
+#include <vector>
+
+#include <sys/wait.h>
+#include <unistd.h>
+
 #include "goby/middleware/application/configuration_reader.h"
 #include "goby/middleware/application/interface.h"
 #include "goby/middleware/application/tool.h"
@@ -68,6 +78,99 @@ class GobyTool : public goby::middleware::Application<protobuf::GobyToolConfig>
 } // namespace apps
 } // namespace goby
 
+namespace
+{
+// the tool installed beside this one, as goby's own subtools are found, else from the PATH
+std::string sibling_or_path(const std::string& app)
+{
+    std::error_code ec;
+    auto self = std::filesystem::read_symlink("/proc/self/exe", ec);
+    if (!ec)
+    {
+        auto sibling = self.parent_path() / app;
+        if (std::filesystem::exists(sibling, ec))
+            return sibling.string();
+    }
+    return app;
+}
+
+void exec(const std::vector<std::string>& args)
+{
+    std::vector<char*> c_args;
+    for (const auto& arg : args) c_args.push_back(const_cast<char*>(arg.c_str()));
+    c_args.push_back(nullptr);
+    auto path = sibling_or_path(args.front());
+    if (path.find('/') != std::string::npos)
+        execv(path.c_str(), c_args.data());
+    execvp(c_args[0], c_args.data());
+}
+
+/// \brief goby launch <deployment>.yml [--platform ...]: writes the platform's goby_launch file
+/// beside the deployment file (so preseed.goby and relative paths still work) and runs it.
+/// Returns only when no deployment file was given.
+void launch_deployment(const std::vector<std::string>& args)
+{
+    auto is_deployment = [](const std::string& arg)
+    {
+        auto ext = std::filesystem::path(arg).extension().string();
+        return ext == ".yml" || ext == ".yaml";
+    };
+    auto deployment_it = std::find_if(args.begin(), args.end(), is_deployment);
+    if (deployment_it == args.end())
+        return;
+
+    static const std::set<std::string> interface_options{
+        "--platform", "--instance", "--module", "-D", "--define", "-I", "--interface_dir"};
+    std::vector<std::string> generate{"goby_interface_tool", "launch", *deployment_it};
+    std::vector<std::string> launch{"goby_launch"};
+    std::string unit;
+    for (auto it = args.begin(); it != args.end(); ++it)
+    {
+        if (it == deployment_it)
+            continue;
+        auto eq = it->find('=');
+        auto key = it->substr(0, eq);
+        if (!interface_options.count(key))
+        {
+            launch.push_back(*it);
+            continue;
+        }
+        generate.push_back(*it);
+        std::string value = eq == std::string::npos ? "" : it->substr(eq + 1);
+        if (eq == std::string::npos && std::next(it) != args.end())
+        {
+            value = *(++it);
+            generate.push_back(value);
+        }
+        if (key == "--platform" || key == "--instance" || key == "--module")
+            unit += (unit.empty() ? "" : ".") + value;
+    }
+
+    // one file per platform, so several vehicles can be launched from the same deployment
+    std::filesystem::path deployment(*deployment_it);
+    auto generated = deployment.parent_path() / ("." + deployment.stem().string() +
+                                                 (unit.empty() ? "" : "." + unit) + ".launch");
+    generate.push_back("--output_file");
+    generate.push_back(generated.string());
+
+    pid_t pid = fork();
+    if (pid == 0)
+    {
+        exec(generate);
+        _exit(127);
+    }
+    int status = 0;
+    waitpid(pid, &status, 0);
+    if (!WIFEXITED(status) || WEXITSTATUS(status) != 0)
+        std::exit(WIFEXITED(status) && WEXITSTATUS(status) != 127 ? WEXITSTATUS(status) : 1);
+
+    launch.push_back(generated.string());
+    exec(launch);
+    std::cerr << "Could not run goby_launch; ensure it is on your PATH" << std::endl;
+    std::exit(1);
+}
+} // namespace
+
 int main(int argc, char* argv[])
 {
     return goby::run<goby::apps::middleware::GobyTool>(
@@ -81,6 +184,12 @@ goby::apps::middleware::GobyTool::GobyTool()
         goby::apps::middleware::protobuf::GobyToolConfig::Action_descriptor());
 
     int exit_code = 0;
+    if (app_cfg().action() == goby::apps::middleware::protobuf::GobyToolConfig::launch)
+    {
+        const auto& extra = app_cfg().app().tool_cfg().extra_cli_param();
+        launch_deployment(std::vector<std::string>(extra.begin(), extra.end()));
+    }
+
     if (!tool_helper.perform_action(app_cfg().action()))
     {
         switch (app_cfg().action())

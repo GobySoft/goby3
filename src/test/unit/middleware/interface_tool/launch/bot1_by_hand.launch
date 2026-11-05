@@ -1,0 +1,6 @@
+#!/usr/bin/env -S goby_launch -L -P -p bot1
+# written by hand before the deployment file had launch data
+gobyd bot1.pb.cfg -v
+mission_manager bot1.pb.cfg -v
+[env=FLEET_DEBUG=1] MOOSDB /tmp/bot1.moos
+[kill=SIGTERM] pHelmIvP /tmp/bot1.moos
