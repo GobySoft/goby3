@@ -1,0 +1,13 @@
+# plugins: merges display_plugin into topside_display; name: runs nav_driver twice; the variable
+# picks the controller
+deployment: features
+platforms:
+  - name: auv
+    run:
+      - { application: nav_driver, name: nav_primary }
+      - { application: nav_driver, name: nav_backup }
+      - "${CONTROLLER:-controller}"
+  - name: topside
+    run:
+      - { application: topside_display, plugins: [display_plugin] }
+      - { file: payload_interface.yml }

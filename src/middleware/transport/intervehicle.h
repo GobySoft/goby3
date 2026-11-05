@@ -213,10 +213,12 @@ class InterVehicleTransporterBase
     ///
     /// \tparam Data data type to subscribe to.
     /// \tparam scheme Marshalling scheme id (typically MarshallingScheme::MarshallingSchemeEnum). Can usually be inferred from the Data type.
+    /// \tparam necessity How important is this subscription (is it required?)
     /// \param f Callback function or lambda that is called upon receipt of the subscribed data
     /// \param group group to subscribe to (typically a DynamicGroup)
     /// \param subscriber Optional metadata that controls the subscription or sets callbacks to monitor the subscription result. Typically unnecessary for interprocess and inner layers.
-    template <typename Data, int scheme = goby::middleware::scheme<Data>()>
+    template <typename Data, int scheme = goby::middleware::scheme<Data>(),
+              Necessity necessity = Necessity::OPTIONAL>
     void subscribe_dynamic(std::function<void(const Data&)> f, const Group& group = Group(),
                            const Subscriber<Data>& subscriber = Subscriber<Data>())
     {
@@ -231,10 +233,12 @@ class InterVehicleTransporterBase
     ///
     /// \tparam Data data type to subscribe to.
     /// \tparam scheme Marshalling scheme id (typically MarshallingScheme::MarshallingSchemeEnum). Can usually be inferred from the Data type.
+    /// \tparam necessity How important is this subscription (is it required?)
     /// \param f Callback function or lambda that is called upon receipt of the subscribed data
     /// \param group group to subscribe to (typically a DynamicGroup)
     /// \param subscriber Optional metadata that controls the subscription or sets callbacks to monitor the subscription result. Typically unnecessary for interprocess and inner layers.
-    template <typename Data, int scheme = goby::middleware::scheme<Data>()>
+    template <typename Data, int scheme = goby::middleware::scheme<Data>(),
+              Necessity necessity = Necessity::OPTIONAL>
     void subscribe_dynamic(std::function<void(std::shared_ptr<const Data>)> f,
                            const Group& group = Group(),
                            const Subscriber<Data>& subscriber = Subscriber<Data>())

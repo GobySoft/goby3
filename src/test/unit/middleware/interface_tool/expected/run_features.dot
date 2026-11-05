@@ -1,0 +1,93 @@
+digraph features { 
+	splines=ortho
+	newrank=true
+	subgraph cluster_0 {
+		label=<<b>auv</b>>
+		fontcolor="#006400"
+		penwidth=2
+		pencolor="#00640020"
+		subgraph cluster_1 {
+			label=<<b>controller</b>>
+			fontcolor="#104e8b"
+			penwidth=2
+			pencolor="#104e8b20"
+			auv_nomodule_controller_Controller[penwidth=2,color="#551a8b20"]
+		}
+		auv_nomodule_controller_Controller->auv_nomodule_nav_backup_nav_58__58_Driver[fontsize=7,headlabel="P6",taillabel="P6",xlabel=<P6[command]>,color="#104e8b",style=tapered,tooltip="P6: nav::command | PROTOBUF | nav::protobuf::Command",labeltooltip="P6: nav::command | PROTOBUF | nav::protobuf::Command",headtooltip="P6: nav::command | PROTOBUF | nav::protobuf::Command",penwidth=0.5,arrowhead=vee,arrowsize=0.3]
+		auv_nomodule_controller_Controller->auv_nomodule_nav_primary_nav_58__58_Driver[fontsize=7,headlabel="P6",taillabel="P6",xlabel=<P6[command]>,color="#104e8b",style=tapered,tooltip="P6: nav::command | PROTOBUF | nav::protobuf::Command",labeltooltip="P6: nav::command | PROTOBUF | nav::protobuf::Command",headtooltip="P6: nav::command | PROTOBUF | nav::protobuf::Command",penwidth=0.5,arrowhead=vee,arrowsize=0.3]
+		subgraph cluster_2 {
+			label=<<b>nav_backup</b>>
+			fontcolor="#104e8b"
+			penwidth=2
+			pencolor="#104e8b20"
+			auv_nomodule_nav_backup_nav_58__58_Driver->auv_nomodule_nav_backup_nav_58__58_SerialThread[fontsize=7,headlabel="T2",taillabel="T2",xlabel=<T2[raw_out]>,color="#551a8b",style=solid,tooltip="T2: nav::raw_out | CXX_OBJECT | std::string",labeltooltip="T2: nav::raw_out | CXX_OBJECT | std::string",headtooltip="T2: nav::raw_out | CXX_OBJECT | std::string",penwidth=0.5,arrowhead=vee,arrowsize=0.3]
+			auv_nomodule_nav_backup_nav_58__58_Driver[penwidth=2,color="#551a8b20"]
+			auv_nomodule_nav_backup_nav_58__58_SerialThread->auv_nomodule_nav_backup_nav_58__58_Driver[fontsize=7,headlabel="T3",taillabel="T3",xlabel=<T3[raw_in]>,color="#551a8b",style=solid,tooltip="T3: nav::raw_in | CXX_OBJECT | std::string",labeltooltip="T3: nav::raw_in | CXX_OBJECT | std::string",headtooltip="T3: nav::raw_in | CXX_OBJECT | std::string",penwidth=0.5,arrowhead=vee,arrowsize=0.3]
+			auv_nomodule_nav_backup_nav_58__58_SerialThread[penwidth=2,color="#551a8b20"]
+		}
+		auv_nomodule_nav_backup_nav_58__58_Driver->auv_nomodule_controller_Controller[fontsize=7,headlabel="P3",taillabel="P3",xlabel=<P3[fix]>,color="#104e8b",style=bold,tooltip="P3: nav::fix | PROTOBUF | nav::protobuf::Fix",labeltooltip="P3: nav::fix | PROTOBUF | nav::protobuf::Fix",headtooltip="P3: nav::fix | PROTOBUF | nav::protobuf::Fix",penwidth=0.5,arrowhead=vee,arrowsize=0.3]
+		subgraph cluster_3 {
+			label=<<b>nav_primary</b>>
+			fontcolor="#104e8b"
+			penwidth=2
+			pencolor="#104e8b20"
+			auv_nomodule_nav_primary_nav_58__58_Driver->auv_nomodule_nav_primary_nav_58__58_SerialThread[fontsize=7,headlabel="T0",taillabel="T0",xlabel=<T0[raw_out]>,color="#551a8b",style=solid,tooltip="T0: nav::raw_out | CXX_OBJECT | std::string",labeltooltip="T0: nav::raw_out | CXX_OBJECT | std::string",headtooltip="T0: nav::raw_out | CXX_OBJECT | std::string",penwidth=0.5,arrowhead=vee,arrowsize=0.3]
+			auv_nomodule_nav_primary_nav_58__58_Driver[penwidth=2,color="#551a8b20"]
+			auv_nomodule_nav_primary_nav_58__58_SerialThread->auv_nomodule_nav_primary_nav_58__58_Driver[fontsize=7,headlabel="T1",taillabel="T1",xlabel=<T1[raw_in]>,color="#551a8b",style=solid,tooltip="T1: nav::raw_in | CXX_OBJECT | std::string",labeltooltip="T1: nav::raw_in | CXX_OBJECT | std::string",headtooltip="T1: nav::raw_in | CXX_OBJECT | std::string",penwidth=0.5,arrowhead=vee,arrowsize=0.3]
+			auv_nomodule_nav_primary_nav_58__58_SerialThread[penwidth=2,color="#551a8b20"]
+		}
+		auv_nomodule_nav_primary_nav_58__58_Driver->auv_nomodule_controller_Controller[fontsize=7,headlabel="P0",taillabel="P0",xlabel=<P0[fix]>,color="#104e8b",style=bold,tooltip="P0: nav::fix | PROTOBUF | nav::protobuf::Fix",labeltooltip="P0: nav::fix | PROTOBUF | nav::protobuf::Fix",headtooltip="P0: nav::fix | PROTOBUF | nav::protobuf::Fix",penwidth=0.5,arrowhead=vee,arrowsize=0.3]
+		auv_nomodule_controller_Controller_no_publishers_red  
+auv_nomodule_controller_Controller_no_publishers_red->auv_nomodule_controller_Controller[fontsize=7,headlabel="P9",taillabel="P9",xlabel=<P9[depth]>,color="red",style=bold,tooltip="P9: nav::depth | PROTOBUF | nav::protobuf::Depth",labeltooltip="P9: nav::depth | PROTOBUF | nav::protobuf::Depth",headtooltip="P9: nav::depth | PROTOBUF | nav::protobuf::Depth",penwidth=0.5,arrowhead=vee,arrowsize=0.3]
+		auv_nomodule_controller_Controller_no_publishers__35_cd8500  
+auv_nomodule_controller_Controller_no_publishers__35_cd8500->auv_nomodule_controller_Controller[fontsize=7,headlabel="M1",taillabel="M1",xlabel=<M1[science]>,color="#cd8500",style=solid,tooltip="M1: payload::science | PROTOBUF | payload::protobuf::Science",labeltooltip="M1: payload::science | PROTOBUF | payload::protobuf::Science",headtooltip="M1: payload::science | PROTOBUF | payload::protobuf::Science",penwidth=0.5,arrowhead=vee,arrowsize=0.3]
+	}
+	auv_nomodule_nav_backup_nav_58__58_Driver->topside_nomodule_topside_display_Display[fontsize=7,headlabel="V1",taillabel="V1",xlabel=<V1[status;1]>,color="#006400",style=bold,tooltip="V1: nav::status;1 | DCCL | nav::protobuf::Status",labeltooltip="V1: nav::status;1 | DCCL | nav::protobuf::Status",headtooltip="V1: nav::status;1 | DCCL | nav::protobuf::Status",penwidth=0.5,arrowhead=vee,arrowsize=0.3]
+	auv_nomodule_nav_primary_nav_58__58_Driver->topside_nomodule_topside_display_Display[fontsize=7,headlabel="V0",taillabel="V0",xlabel=<V0[status;1]>,color="#006400",style=bold,tooltip="V0: nav::status;1 | DCCL | nav::protobuf::Status",labeltooltip="V0: nav::status;1 | DCCL | nav::protobuf::Status",headtooltip="V0: nav::status;1 | DCCL | nav::protobuf::Status",penwidth=0.5,arrowhead=vee,arrowsize=0.3]
+	subgraph cluster_4 {
+		label=<<b>topside</b>>
+		fontcolor="#006400"
+		penwidth=2
+		pencolor="#00640020"
+		subgraph cluster_5 {
+			label=<<b>payload</b>>
+			fontcolor="#104e8b"
+			penwidth=2
+			pencolor="#104e8b20"
+			topside_nomodule_payload_Payload[penwidth=2,color="#551a8b20"]
+		}
+		topside_nomodule_payload_Payload_no_subscribers__35_104e8b [label="",style=invis] 
+topside_nomodule_payload_Payload->topside_nomodule_payload_Payload_no_subscribers__35_104e8b[fontsize=7,headlabel="P8",taillabel="P8",xlabel=<P8[depth]>,color="#104e8b",style=solid,tooltip="P8: nav::depth | PROTOBUF | nav::protobuf::Depth",labeltooltip="P8: nav::depth | PROTOBUF | nav::protobuf::Depth",headtooltip="P8: nav::depth | PROTOBUF | nav::protobuf::Depth",penwidth=0.5,arrowhead=vee,arrowsize=0.3]
+		subgraph cluster_6 {
+			label=<<b>topside_display</b>>
+			fontcolor="#104e8b"
+			penwidth=2
+			pencolor="#104e8b20"
+			topside_nomodule_topside_display_Display[penwidth=2,color="#551a8b20"]
+		}
+		topside_nomodule_topside_display_Display_no_publishers__35_104e8b  
+topside_nomodule_topside_display_Display_no_publishers__35_104e8b->topside_nomodule_topside_display_Display[fontsize=7,headlabel="P10",taillabel="P10",xlabel=<P10[fix]>,color="#104e8b",style=tapered,tooltip="P10: nav::fix | PROTOBUF | nav::protobuf::Fix",labeltooltip="P10: nav::fix | PROTOBUF | nav::protobuf::Fix",headtooltip="P10: nav::fix | PROTOBUF | nav::protobuf::Fix",penwidth=0.5,arrowhead=vee,arrowsize=0.3]
+	topside_nomodule_payload_Payload_no_subscribers__35_cd8500 [label="",style=invis] 
+topside_nomodule_payload_Payload->topside_nomodule_payload_Payload_no_subscribers__35_cd8500[fontsize=7,headlabel="M0",taillabel="M0",xlabel=<M0[science]>,color="#cd8500",style=solid,tooltip="M0: payload::science | PROTOBUF | payload::protobuf::Science",labeltooltip="M0: payload::science | PROTOBUF | payload::protobuf::Science",headtooltip="M0: payload::science | PROTOBUF | payload::protobuf::Science",penwidth=0.5,arrowhead=vee,arrowsize=0.3]
+	}
+	auv_nomodule_controller_Controller
+ [label=<<font color="#551a8b">Controller</font><br/><font color="#104e8b" point-size="10">P6: </font><b><font point-size="10">nav::command</font></b><br/><font point-size="6">PROTOBUF</font><br/><font point-size="8">nav::protobuf::Command</font><br/>>,shape=box,style=solid]
+	auv_nomodule_controller_Controller_no_publishers__35_cd8500
+ [label=<<font color="#cd8500" point-size="10">M1: </font><b><font point-size="10">payload::science</font></b><br/><font point-size="6">PROTOBUF</font><br/><font point-size="8">payload::protobuf::Science</font><br/>>,penwidth=0]
+	auv_nomodule_controller_Controller_no_publishers_red
+ [label=<<font color="#104e8b" point-size="10">P9: </font><b><font point-size="10">nav::depth</font></b><br/><font point-size="6">PROTOBUF</font><br/><font point-size="8">nav::protobuf::Depth</font><br/>>,penwidth=0]
+	auv_nomodule_nav_backup_nav_58__58_Driver
+ [label=<<font color="#551a8b">nav::Driver</font><br/><font color="#551a8b" point-size="10">T2: </font><b><font point-size="10">nav::raw_out</font></b><br/><font point-size="6">CXX_OBJECT</font><br/><font point-size="8">std::string</font><br/><font color="#104e8b" point-size="10">P3: </font><b><font point-size="10">nav::fix</font></b><br/><font point-size="6">PROTOBUF</font><br/><font point-size="8">nav::protobuf::Fix</font><br/><font color="#006400" point-size="10">V1: </font><b><font point-size="10">nav::status;1</font></b><br/><font point-size="6">DCCL</font><br/><font point-size="8">nav::protobuf::Status</font><br/>>,shape=box,style=solid]
+	auv_nomodule_nav_backup_nav_58__58_SerialThread
+ [label=<<font color="#551a8b">nav::SerialThread</font><br/><font color="#551a8b" point-size="10">T3: </font><b><font point-size="10">nav::raw_in</font></b><br/><font point-size="6">CXX_OBJECT</font><br/><font point-size="8">std::string</font><br/>>,shape=box,style=solid]
+	auv_nomodule_nav_primary_nav_58__58_Driver
+ [label=<<font color="#551a8b">nav::Driver</font><br/><font color="#551a8b" point-size="10">T0: </font><b><font point-size="10">nav::raw_out</font></b><br/><font point-size="6">CXX_OBJECT</font><br/><font point-size="8">std::string</font><br/><font color="#104e8b" point-size="10">P0: </font><b><font point-size="10">nav::fix</font></b><br/><font point-size="6">PROTOBUF</font><br/><font point-size="8">nav::protobuf::Fix</font><br/><font color="#006400" point-size="10">V0: </font><b><font point-size="10">nav::status;1</font></b><br/><font point-size="6">DCCL</font><br/><font point-size="8">nav::protobuf::Status</font><br/>>,shape=box,style=solid]
+	auv_nomodule_nav_primary_nav_58__58_SerialThread
+ [label=<<font color="#551a8b">nav::SerialThread</font><br/><font color="#551a8b" point-size="10">T1: </font><b><font point-size="10">nav::raw_in</font></b><br/><font point-size="6">CXX_OBJECT</font><br/><font point-size="8">std::string</font><br/>>,shape=box,style=solid]
+	topside_nomodule_payload_Payload
+ [label=<<font color="#551a8b">Payload</font><br/><font color="#104e8b" point-size="10">P8: </font><b><font point-size="10">nav::depth</font></b><br/><font point-size="6">PROTOBUF</font><br/><font point-size="8">nav::protobuf::Depth</font><br/><font color="#cd8500" point-size="10">M0: </font><b><font point-size="10">payload::science</font></b><br/><font point-size="6">PROTOBUF</font><br/><font point-size="8">payload::protobuf::Science</font><br/>>,shape=box,style=solid]
+	topside_nomodule_topside_display_Display
+ [label=<<font color="#551a8b">Display</font><br/>>,shape=box,style=solid]
+	topside_nomodule_topside_display_Display_no_publishers__35_104e8b
+ [label=<<font color="#104e8b" point-size="10">P10: </font><b><font point-size="10">nav::fix</font></b><br/><font point-size="6">PROTOBUF</font><br/><font point-size="8">nav::protobuf::Fix</font><br/>>,penwidth=0]
+}

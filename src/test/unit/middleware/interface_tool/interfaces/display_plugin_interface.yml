@@ -1,0 +1,8 @@
+application: display_plugin
+interprocess:
+  subscribes:
+    - group: nav::fix
+      scheme: PROTOBUF
+      type: nav::protobuf::Fix
+      necessity: recommended
+      thread: Display

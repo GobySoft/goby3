@@ -1,0 +1,10 @@
+# fleet.yml with applications named rather than their files listed: draws the same graph
+deployment: fleet
+platforms:
+  - name: auv
+    run:
+      - nav_driver
+      - controller
+  - name: topside
+    run:
+      - topside_display
