@@ -107,6 +107,11 @@ message InterfaceVisualizeConfig
     ];
     optional string splines = 27
         [default = "ortho", (goby.field).description = "Graphviz splines= setting"];
+    optional bool expand_instances = 28 [
+        default = false,
+        (goby.field).description =
+            "Draw each of a platform's instances: separately, rather than once for all of them"
+    ];
 }
 
 message InterfaceValidateConfig
@@ -147,6 +152,11 @@ message InterfaceValidateConfig
     optional bool report_unused = 22 [
         default = false,
         (goby.field).description = "Also report publications that nothing subscribes to"
+    ];
+    optional bool assume_dynamic = 25 [
+        default = false,
+        (goby.field).description =
+            "Count a dynamic publication whose group's numeric part is set at run time (and not given with bind:) as reaching the subscriptions it might"
     ];
     optional string omit_group_regex = 23
         [(goby.field).description = "Do not check groups matching this regex"];

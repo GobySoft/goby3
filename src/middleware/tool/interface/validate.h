@@ -24,6 +24,7 @@
 #ifndef GOBY_MIDDLEWARE_TOOL_INTERFACE_VALIDATE_H
 #define GOBY_MIDDLEWARE_TOOL_INTERFACE_VALIDATE_H
 
+#include <map>
 #include <set>
 #include <string>
 #include <tuple>
@@ -44,6 +45,8 @@ struct ValidateParams
     ViewFilter::Params filter{"", "", true, true, true, false};
     // report publications that nothing subscribes to (common, and usually fine, for libraries)
     bool report_unused{false};
+    // count a dynamic publisher whose numeric is set at run time as reaching its subscribers
+    bool assume_dynamic{false};
 };
 
 struct ValidationSummary
@@ -66,7 +69,7 @@ inline Issue::Subject subject(const Unmatched& u)
     s.application = u.at.application->name;
     s.thread = u.entry.thread;
     s.layer = layer_name(u.entry.layer);
-    s.group = u.entry.group;
+    s.group = u.entry.display_group();
     s.scheme = u.entry.scheme;
     s.type = u.entry.type;
     if (u.entry.direction == PubSubEntry::Direction::SUBSCRIBE)
@@ -76,7 +79,7 @@ inline Issue::Subject subject(const Unmatched& u)
 
 inline std::string describe(const PubSubEntry& e)
 {
-    return e.group + " (" + e.scheme + " " + e.type + ")";
+    return e.display_group() + " (" + e.scheme + " " + e.type + ")";
 }
 } // namespace detail
 
@@ -96,45 +99,81 @@ inline ValidationSummary validate(const Deployment& deployment, const Resolution
             summary.applications += module.applications.size();
     }
 
+    // subscription -> reached by a publisher whose group certainly matches
+    std::map<std::tuple<const Application*, PubSubEntry>, bool> reached;
     for (const auto& c : resolution.connections)
     {
         if (!filter.is_included(c))
             continue;
         ++summary.connections;
+        auto it = reached.emplace(std::make_tuple(c.sub_at.application, c.sub), false).first;
+        it->second = it->second || !c.loose;
     }
 
-    // a subscription is required once, however many publishers reach it
-    std::set<std::tuple<const Application*, PubSubEntry>> required_met;
-    for (const auto& c : resolution.connections)
+    auto add = [&](Issue::Severity severity, const std::string& code, const std::string& message,
+                   const Unmatched& u)
     {
-        if (filter.is_included(c) && c.sub.necessity == goby::middleware::Necessity::REQUIRED)
-            required_met.emplace(c.sub_at.application, c.sub);
-    }
-    summary.required_met = required_met.size();
-    summary.required = summary.required_met;
-
-    for (const auto& u : resolution.unpublished)
-    {
-        if (!filter.is_included(u))
-            continue;
-
         Issue issue;
-        switch (u.entry.necessity)
-        {
-            case goby::middleware::Necessity::REQUIRED:
-                ++summary.required;
-                issue.severity = Issue::Severity::ERROR;
-                issue.code = "required-unmet";
-                break;
-            case goby::middleware::Necessity::RECOMMENDED:
-                issue.severity = Issue::Severity::WARNING;
-                issue.code = "recommended-unmet";
-                break;
-            case goby::middleware::Necessity::OPTIONAL: continue;
-        }
-        issue.message = "no publisher for " + detail::describe(u.entry);
+        issue.severity = severity;
+        issue.code = code;
+        issue.message = message;
         issue.subject = detail::subject(u);
         issues.push_back(issue);
+    };
+
+    std::vector<Unmatched> pubs, subs;
+    collect_entries(deployment, pubs, subs);
+
+    for (const auto& u : subs)
+    {
+        if (!filter.is_included(u) || u.entry.necessity == goby::middleware::Necessity::OPTIONAL)
+            continue;
+
+        bool required = u.entry.necessity == goby::middleware::Necessity::REQUIRED;
+        auto it = reached.find(std::make_tuple(u.at.application, u.entry));
+        bool met = it != reached.end() && (it->second || params.assume_dynamic);
+        if (required)
+            ++summary.required;
+        if (met)
+        {
+            if (required)
+                ++summary.required_met;
+            continue;
+        }
+
+        std::string message =
+            it == reached.end()
+                ? "no publisher for " + detail::describe(u.entry)
+                : "only a dynamic publisher with a numeric set at run time reaches " +
+                      detail::describe(u.entry) + " (give its numeric with bind:, or use " +
+                      "--assume_dynamic)";
+        if (u.entry.necessity_overridden)
+            message += " (necessity set by the deployment)";
+        if (required)
+            add(Issue::Severity::ERROR, "required-unmet", message, u);
+        else
+            add(Issue::Severity::WARNING, "recommended-unmet", message, u);
+    }
+
+    for (const auto* entries : {&pubs, &subs})
+    {
+        for (const auto& u : *entries)
+        {
+            if (!filter.is_included(u))
+                continue;
+            if (u.entry.unresolved())
+                add(Issue::Severity::INFO, "dynamic-unresolved",
+                    "goby_clang_tool could not determine this dynamic group" +
+                        (u.entry.expr.empty() ? std::string() : " (" + u.entry.expr + ")") +
+                        "; a dynamic: bind can say what it stands for",
+                    u);
+            else if (u.entry.unbound())
+                add(Issue::Severity::WARNING, "dynamic-unbound",
+                    "the numeric part of " + u.entry.group +
+                        " is set at run time; give it with bind: { group: " + u.entry.group +
+                        ", numeric: ... }",
+                    u);
+        }
     }
 
     if (params.report_unused)
@@ -143,12 +182,8 @@ inline ValidationSummary validate(const Deployment& deployment, const Resolution
         {
             if (u.entry.is_inner_pub || !filter.is_included(u))
                 continue;
-            Issue issue;
-            issue.severity = Issue::Severity::INFO;
-            issue.code = "publisher-unused";
-            issue.message = "no subscriber for " + detail::describe(u.entry);
-            issue.subject = detail::subject(u);
-            issues.push_back(issue);
+            add(Issue::Severity::INFO, "publisher-unused",
+                "no subscriber for " + detail::describe(u.entry), u);
         }
     }
 

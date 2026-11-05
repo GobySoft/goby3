@@ -1,0 +1,9 @@
+# the same applications with nothing bound: the dynamic groups are left to run time
+deployment: dynamic_unbound
+platforms:
+  - name: hub
+    run: [hub_manager, engineering_display]
+  - name: bot
+    run: [mission_manager]
+necessity:
+  - { application: mission_manager, group: fleet::hub_command, set: required }
