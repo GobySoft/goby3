@@ -68,8 +68,19 @@ void goby::moos::convert_and_publish_node_status(
             -status.pose().heading_with_units<quantity<si::plane_angle>>().value());
     }
 
+    if (status.pose().has_course_over_ground())
+        moos_comms.Notify(
+            "NAV_HEADING_OVER_GROUND",
+            status.pose().course_over_ground_with_units<quantity<degree::plane_angle>>().value());
+
+    // MOOS-IvP treats NAV_SPEED as speed through water
+    const auto& speed = status.speed();
     moos_comms.Notify("NAV_SPEED",
-                      status.speed().over_ground_with_units<quantity<si::velocity>>().value());
+                      speed.has_over_water()
+                          ? speed.over_water_with_units<quantity<si::velocity>>().value()
+                          : speed.over_ground_with_units<quantity<si::velocity>>().value());
+    moos_comms.Notify("NAV_SPEED_OVER_GROUND",
+                      speed.over_ground_with_units<quantity<si::velocity>>().value());
 
     if (status.pose().has_pitch())
         moos_comms.Notify("NAV_PITCH",

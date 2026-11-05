@@ -23,6 +23,7 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
+#include <algorithm>     // for remove_if
 #include <deque>         // for deque
 #include <limits>        // for numeric_...
 #include <list>          // for operator!=
@@ -384,6 +385,32 @@ void goby::middleware::intervehicle::ModemDriverThread<ImplementationTag>::_expi
 }
 
 template <typename ImplementationTag>
+void goby::middleware::intervehicle::ModemDriverThread<ImplementationTag>::_discard_superseded(
+    const std::vector<goby::acomms::DynamicBuffer<buffer_data_type>::Value>& values)
+{
+    auto now = goby::time::SteadyClock::now();
+    for (const auto& value : values)
+    {
+        // otherwise a late ack would also report this value as delivered
+        for (auto& frame_values_p : pending_ack_)
+        {
+            auto& frame_values = frame_values_p.second;
+            frame_values.erase(std::remove_if(frame_values.begin(), frame_values.end(),
+                                              [&](const auto& pending)
+                                              {
+                                                  return pending.modem_id == value.modem_id &&
+                                                         pending.subbuffer_id ==
+                                                             value.subbuffer_id &&
+                                                         pending.push_time == value.push_time &&
+                                                         pending.data == value.data;
+                                              }),
+                               frame_values.end());
+        }
+        _expire_value(now, value, intervehicle::protobuf::ExpireData::EXPIRED_SUPERSEDED);
+    }
+}
+
+template <typename ImplementationTag>
 void goby::middleware::intervehicle::ModemDriverThread<ImplementationTag>::_forward_subscription(
     intervehicle::protobuf::Subscription subscription)
 {
@@ -432,7 +459,27 @@ void goby::middleware::intervehicle::ModemDriverThread<ImplementationTag>::_forw
         auto subscribe_time = subscription.time_with_units();
         subscription_publication->mutable_key()->set_serialize_time_with_units(subscribe_time);
 
+        auto& queued = queued_subscriptions_[dest];
+        for (auto it = queued.begin(); it != queued.end();)
+        {
+            const auto& queued_subscription = it->first;
+            if (queued_subscription.dccl_id() == subscription.dccl_id() &&
+                queued_subscription.group() == subscription.group() &&
+                queued_subscription.intervehicle() == subscription.intervehicle())
+            {
+                const auto& queued_data = it->second;
+                _discard_superseded(buffer_.erase_if(dest, buffer_id, [&](const auto& v)
+                                                     { return v.data == queued_data; }));
+                it = queued.erase(it);
+            }
+            else
+            {
+                ++it;
+            }
+        }
+
         buffer_.push({dest, buffer_id, goby::time::SteadyClock::now(), *subscription_publication});
+        queued.emplace_back(subscription, *subscription_publication);
     }
 }
 
@@ -715,6 +762,9 @@ void goby::middleware::intervehicle::ModemDriverThread<ImplementationTag>::_buff
         {
             if (!_dest_is_in_subnet(dest_id))
                 continue;
+
+            if (msg->key().cfg().intervehicle().clear_pending())
+                _discard_superseded(buffer_.clear(dest_id, buffer_id));
 
             auto exceeded =
                 buffer_.push({dest_id, buffer_id, goby::time::SteadyClock::now(), *msg});

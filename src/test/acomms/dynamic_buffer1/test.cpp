@@ -710,3 +710,34 @@ BOOST_FIXTURE_TEST_CASE(check_multiframe_size, DynamicBufferFixture)
     BOOST_CHECK_EQUAL(msg.frame(0).size(), 29 + 138);
     BOOST_CHECK_EQUAL(msg.frame(0), std::string(29, 'C') + std::string(138, 'B'));
 }
+
+// erase_if removes only the matching values from the named subbuffer, wherever they sit in the
+// queue, and returns them with the destination and subbuffer filled in. clear() empties a
+// subbuffer without touching its siblings.
+BOOST_FIXTURE_TEST_CASE(erase_if_and_clear, DynamicBufferFixture)
+{
+    auto now = TestClock::now();
+    buffer.push({goby::acomms::BROADCAST_ID, "A", now, "1"});
+    buffer.push({goby::acomms::BROADCAST_ID, "A", now, "2"});
+    buffer.push({goby::acomms::BROADCAST_ID, "B", now, "1"});
+    buffer.push({goby::acomms::BROADCAST_ID, "B", now, "2"});
+
+    auto erased = buffer.erase_if(goby::acomms::BROADCAST_ID, "A",
+                                  [](const auto& v) { return v.data == "1"; });
+    BOOST_REQUIRE_EQUAL(erased.size(), 1);
+    BOOST_CHECK_EQUAL(erased[0].data, "1");
+    BOOST_CHECK_EQUAL(erased[0].subbuffer_id, "A");
+    BOOST_CHECK_EQUAL(erased[0].modem_id, goby::acomms::BROADCAST_ID);
+    BOOST_CHECK_EQUAL(buffer.sub(goby::acomms::BROADCAST_ID, "A").size(), 1);
+    BOOST_CHECK_EQUAL(buffer.sub(goby::acomms::BROADCAST_ID, "B").size(), 2);
+
+    auto none = buffer.erase_if(goby::acomms::BROADCAST_ID, "A",
+                                [](const auto& v) { return v.data == "missing"; });
+    BOOST_CHECK(none.empty());
+
+    auto cleared = buffer.clear(goby::acomms::BROADCAST_ID, "B");
+    BOOST_CHECK_EQUAL(cleared.size(), 2);
+    BOOST_CHECK(buffer.sub(goby::acomms::BROADCAST_ID, "B").empty());
+    BOOST_CHECK_EQUAL(buffer.size(), 1);
+    BOOST_CHECK_EQUAL(buffer.top().data, "2");
+}
