@@ -217,6 +217,16 @@ class IntervehicleSerializationSubscription
     {
     }
 
+    /// \brief Subscription to a type named at run time (e.g. Data = google::protobuf::Message)
+    IntervehicleSerializationSubscription(HandlerType handler, std::string type_name,
+                                          const Group& group, const Subscriber<Data>& subscriber)
+        : handler_(handler),
+          type_name_(std::move(type_name)),
+          group_(group),
+          subscriber_(subscriber)
+    {
+    }
+
     // handle an incoming message
     std::string::const_iterator post(std::string::const_iterator b, std::string::const_iterator e,
                                      const intervehicle::protobuf::Header& header) const override
