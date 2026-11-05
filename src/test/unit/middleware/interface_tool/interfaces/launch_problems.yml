@@ -1,0 +1,12 @@
+# a Goby application before gobyd, a hold and an expected list that disagree with what is launched,
+# and a '#' that goby_launch would cut
+deployment: launch_problems
+platforms:
+  - name: bot
+    run:
+      - mission_manager
+      - { application: gobyd, hold: [goby_coroner] }
+      - { application: goby_coroner, expected: [gobyd, nav_driver] }
+      - { process: logger, exec: "logger --tag fleet#1" }
+necessity:
+  - { application: mission_manager, group: fleet::hub_command, set: required }

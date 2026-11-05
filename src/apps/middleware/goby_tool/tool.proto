@@ -31,7 +31,7 @@ message GobyToolConfig
             short_help_msg: "Manage goby log files",
         }];
         launch = 2 [(goby.ev).cfg = {
-            short_help_msg: "Launch goby *.launch files",
+            short_help_msg: "Launch goby *.launch files, or a platform of a deployment file (goby launch fleet.yml --platform bot1)",
             external_command: "goby_launch"
             include_binary_flag: false
         }];

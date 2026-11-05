@@ -167,6 +167,8 @@ goby interface list <deployment.yml> [applications|platforms|groups] [-D NAME=va
 goby interface explain <deployment.yml> <group regex> [--type_regex <regex>] [-D NAME=value] [-I <dir>] [-o HUMAN|JSON] [--output_file <path>]
 goby interface diff <a.yml> [<b.yml>] [--interface_dir_a <dir>] [--interface_dir_b <dir>] [-D NAME=value] [-I <dir>] [-o HUMAN|JSON] [--output_file <path>]
 goby interface init <directory> [--platform <name>] [--deployment_name <name>] [--output_file <path>]
+goby interface launch <deployment.yml> [--platform <name> [--instance <n>]] [--module <name>] [--output_file <file.launch> | --outdir <dir>] [-D NAME=value] [-I <dir>]
+goby interface launch_check <deployment.yml> <file.launch> [--platform <name> [--instance <n>]] [--module <name>] [-o HUMAN|JSON] [-D NAME=value] [-I <dir>]
 goby interface visualize <deployment.yml> [-D NAME=value] [-I <dir>] [--format DOT|D2] [--output_file <file>] [--expand_instances] [--no_disconnected] [--omit_interthread] [--omit_group_regex <regex>] [--omit_node_regex <regex>] [--include_terminate] [--include_coroner] [--include_all] [--splines <setting>]
 ```
 
@@ -177,6 +179,31 @@ goby interface visualize <deployment.yml> [-D NAME=value] [-I <dir>] [--format D
 - `diff` compares two deployments, or one deployment against two sets of interface files (`--interface_dir_a` and `--interface_dir_b`, e.g. two builds), and lists applications and connections added or removed and required subscriptions newly unmet or newly met. As `diff` does, it exits 0 when they are the same, 1 when they differ and 2 when a file cannot be read.
 - `init` writes a starting deployment file that runs every application declared in a directory of interface files on one platform.
 - Each takes a single interface file as a one-platform deployment.
+
+### Launch files from a deployment
+
+`goby interface launch` writes the `goby_launch` file for a platform (or one module of it, one `gobyd`) from its `run` list, so the deployment file is the one list of what runs where. `--outdir` writes one for every platform, instance and module. `goby launch fleet.yml --platform bot1 [goby_launch options]` writes the file beside the deployment (as `.fleet.bot1.launch`, so `preseed.goby` and relative paths still work) and runs it.
+
+```yaml
+platforms:
+  - name: bot
+    instances: [1, 2, 3]
+    launch:
+      flags: "-L -P -d 100"
+      defaults: { config: "<(../../gen/bot.py ${app})" }
+    run:
+      - { process: gpsd, exec: "gpsd $(../../gen/bot.py gpsd)" }
+      - { application: gobyd, hold: auto }
+      - { application: goby_liaison, plugins: [project_liaison], env: { GOBY_LIAISON_PLUGINS: libproject_liaison.so.1 } }
+      - { application: storm_manager, when: "${bot_type} =~ STORM", kill: SIGTERM }
+      - { application: goby_coroner, expected: auto }
+```
+
+- An entry runs `exec` (its application by default) with `config` and `args`; `launch: defaults` gives these, `kill` and `env` for every Goby application on the platform, with `${app}` the entry's name and `${instance}` the instance. A `process` entry is a program with no interface file, which `validate` and `visualize` ignore; it is stopped with `SIGTERM` unless `kill` says otherwise.
+- `when` runs the entry only if the condition holds when it is launched: `A =~ REGEX`, `A == B`, `A != B`, or a shell command whose exit status decides. Otherwise the line waits in `sleep infinity`. `enabled: false` writes the line as a comment.
+- `hold: auto` on `gobyd` holds publications until every application with a required intervehicle subscription, and `goby_intervehicle_portal`, has subscribed; `expected: auto` on `goby_coroner` expects every other Goby application except those marked `expected: false`. Either takes a list instead, which may include `auto`.
+- `validate` and `launch` report a Goby application listed before `gobyd` (`launch-order`), a hold list that leaves out a required intervehicle subscriber (`hold-incomplete`), an expected list that differs from what is launched (`coroner-expected`), and a line `goby_launch` would cut at a `#` (`launch-hash`) or misread at a `]` (`launch-bracket`).
+- `launch_check` compares a hand-written launch file with the deployment, for moving to generated ones: lines with no entry, entries with no line, and differing `kill` or `env`. It exits 0 when they agree and 1 when they differ.
 
 ```
 $ goby interface explain modules.yml depth

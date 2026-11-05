@@ -21,6 +21,8 @@
 // You should have received a copy of the GNU General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
+#include <filesystem>
+#include <fstream>
 #include <iomanip>
 #include <iostream>
 #include <regex>
@@ -105,6 +107,19 @@ class InterfaceInitTool : public goby::middleware::Application<protobuf::Interfa
     void run() override;
 };
 
+class InterfaceLaunchTool : public goby::middleware::Application<protobuf::InterfaceLaunchConfig>
+{
+  private:
+    void run() override;
+};
+
+class InterfaceLaunchCheckTool
+    : public goby::middleware::Application<protobuf::InterfaceLaunchCheckConfig>
+{
+  private:
+    void run() override;
+};
+
 } // namespace middleware
 } // namespace apps
 } // namespace goby
@@ -152,6 +167,12 @@ goby::apps::middleware::InterfaceTool::InterfaceTool()
                         case Config::init:
                             tool_helper.help<InterfaceInitTool>(action_for_help);
                             break;
+                        case Config::launch:
+                            tool_helper.help<InterfaceLaunchTool>(action_for_help);
+                            break;
+                        case Config::launch_check:
+                            tool_helper.help<InterfaceLaunchCheckTool>(action_for_help);
+                            break;
                         default:
                             throw(goby::Exception(
                                 "Help was expected to be handled by external tool"));
@@ -170,6 +191,10 @@ goby::apps::middleware::InterfaceTool::InterfaceTool()
                 break;
             case Config::diff: exit_code = tool_helper.run_subtool<InterfaceDiffTool>(); break;
             case Config::init: exit_code = tool_helper.run_subtool<InterfaceInitTool>(); break;
+            case Config::launch: exit_code = tool_helper.run_subtool<InterfaceLaunchTool>(); break;
+            case Config::launch_check:
+                exit_code = tool_helper.run_subtool<InterfaceLaunchCheckTool>();
+                break;
             default: throw(goby::Exception("Action was expected to be handled by external tool"));
         }
     }
@@ -298,6 +323,7 @@ void goby::apps::middleware::InterfaceValidateTool::run()
     params.report_unused = cfg.report_unused();
     params.assume_dynamic = cfg.assume_dynamic();
     auto summary = interface::validate(deployment, interface::resolve(deployment), params, issues);
+    interface::check_launch(deployment, issues);
 
     InterfaceValidation validation;
     validation.set_file(cfg.deployment_file());
@@ -424,4 +450,115 @@ void goby::apps::middleware::InterfaceInitTool::run()
     }
     write_output(deployment, cfg.output_file());
     quit(0);
+}
+
+void goby::apps::middleware::InterfaceLaunchTool::run()
+{
+    const auto& cfg = app_cfg();
+    interface::Issues issues;
+    interface::Deployment deployment;
+    if (!load(cfg.deployment_file(), load_params(cfg), deployment, issues))
+    {
+        quit(2);
+        return;
+    }
+    interface::Issues launch_issues;
+    interface::check_launch(deployment, launch_issues);
+    for (const auto& issue : launch_issues) std::cerr << issue << std::endl;
+    if (interface::has_errors(issues) || interface::has_errors(launch_issues))
+    {
+        quit(1);
+        return;
+    }
+
+    if (cfg.has_outdir())
+    {
+        std::filesystem::create_directories(cfg.outdir());
+        for (const auto& unit : interface::launch_units(deployment))
+        {
+            auto path = std::filesystem::path(cfg.outdir()) / (unit.name() + ".launch");
+            write_output(interface::render_launch(unit, cfg.deployment_file()), path.string());
+            std::filesystem::permissions(path,
+                                         std::filesystem::perms::owner_exec |
+                                             std::filesystem::perms::group_exec |
+                                             std::filesystem::perms::others_exec,
+                                         std::filesystem::perm_options::add);
+            std::cout << path.string() << std::endl;
+        }
+        quit(0);
+        return;
+    }
+
+    interface::LaunchUnit unit;
+    std::string error;
+    if (!select_unit(deployment, cfg, unit, error))
+    {
+        std::cerr << error << std::endl;
+        quit(1);
+        return;
+    }
+    write_output(interface::render_launch(unit, cfg.deployment_file()), cfg.output_file());
+    quit(0);
+}
+
+void goby::apps::middleware::InterfaceLaunchCheckTool::run()
+{
+    const auto& cfg = app_cfg();
+    interface::Issues issues;
+    interface::Deployment deployment;
+    std::ifstream launch_in(cfg.launch_file());
+    if (!load(cfg.deployment_file(), load_params(cfg), deployment, issues) || !launch_in.is_open())
+    {
+        if (!launch_in.is_open())
+            std::cerr << "cannot open " << cfg.launch_file() << std::endl;
+        quit(2);
+        return;
+    }
+    std::stringstream launch_text;
+    launch_text << launch_in.rdbuf();
+
+    interface::LaunchUnit unit;
+    std::string error;
+    if (!select_unit(deployment, cfg, unit, error))
+    {
+        std::cerr << error << std::endl;
+        quit(2);
+        return;
+    }
+
+    protobuf::InterfaceLaunchCheck result;
+    result.set_launch_file(cfg.launch_file());
+    result.set_deployment_file(cfg.deployment_file());
+    result.set_unit(unit.name());
+    for (const auto& d : interface::check_launch_file(unit, launch_text.str()))
+    {
+        auto& pb = *result.add_difference();
+        pb.set_kind(d.kind);
+        pb.set_name(d.name);
+        if (d.line_number)
+            pb.set_line(d.line_number);
+        pb.set_detail(d.detail);
+    }
+
+    std::stringstream ss;
+    if (cfg.output_format() == protobuf::InterfaceValidateConfig::JSON)
+    {
+        ss << render_json(result);
+    }
+    else
+    {
+        ss << result.launch_file() << " vs " << result.deployment_file() << " (" << result.unit()
+           << "): ";
+        if (result.difference_size() == 0)
+            ss << "no differences\n";
+        else
+            ss << result.difference_size()
+               << (result.difference_size() == 1 ? " difference\n" : " differences\n");
+        for (const auto& d : result.difference())
+            ss << "  " << std::left << std::setw(15) << d.kind() << std::setw(28) << d.name()
+               << d.detail() << "\n";
+    }
+    write_output(ss.str(), cfg.output_file());
+    // as diff(1): 0 when the same, 1 when different
+    quit(result.difference_size() ? 1 : 0);
 }

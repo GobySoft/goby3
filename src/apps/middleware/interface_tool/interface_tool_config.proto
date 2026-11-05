@@ -61,6 +61,12 @@ message InterfaceToolConfig
         init = 6 [(goby.ev).cfg = {
             short_help_msg: "Write a starter deployment file from a directory of interface files"
         }];
+        launch = 7 [(goby.ev).cfg = {
+            short_help_msg: "Write goby_launch files from a deployment file"
+        }];
+        launch_check = 8 [(goby.ev).cfg = {
+            short_help_msg: "Compare a hand-written goby_launch file with a deployment file"
+        }];
     }
     optional Action action = 2 [
         default = help,
@@ -461,4 +467,98 @@ message InterfaceDiff
     repeated InterfaceIssue newly_unmet = 7;
     // and the other way round
     repeated InterfaceIssue newly_met = 8;
+}
+
+message InterfaceLaunchConfig
+{
+    option (goby.msg).cfg.tool = {
+        is_tool: true
+        has_subtools: false
+        has_help_action: false
+    };
+
+    optional goby.middleware.protobuf.AppConfig app = 1
+        [(goby.field) = { cfg { action: DEVELOPER } }];
+
+    required string deployment_file = 10 [(goby.field) = {
+        description: "Deployment file (deployment.yml)",
+        cfg { position: { enable: true } }
+    }];
+    optional string platform = 12 [(goby.field).description =
+                                       "Platform to use, or one of its instances (e.g. bot2); needed when the deployment has more than one"];
+    optional uint32 instance = 13
+        [(goby.field).description = "With --platform, the instance (--platform bot --instance 2 is bot2)"];
+    optional string module = 16 [(goby.field).description =
+                                     "With modules, the module (one gobyd) to use"];
+    repeated string define = 14 [(goby.field) = {
+        description: "Set a variable used as ${NAME} in the deployment file, as NAME=value; overrides the environment",
+        cfg { cli_short: "D" }
+    }];
+    repeated string interface_dir = 15 [(goby.field) = {
+        description: "Search this directory for interface files, after the deployment file's own directory (also GOBY_INTERFACE_PATH, colon separated)",
+        cfg { cli_short: "I" }
+    }];
+    optional string output_file = 17
+        [(goby.field).description = "Write the launch file here instead of stdout"];
+    optional string outdir = 18 [(goby.field).description =
+                                     "Write <platform>[.<module>].launch here for every platform (and module)"];
+}
+
+message InterfaceLaunchCheckConfig
+{
+    option (goby.msg).cfg.tool = {
+        is_tool: true
+        has_subtools: false
+        has_help_action: false
+    };
+
+    optional goby.middleware.protobuf.AppConfig app = 1
+        [(goby.field) = { cfg { action: DEVELOPER } }];
+
+    required string deployment_file = 10 [(goby.field) = {
+        description: "Deployment file (deployment.yml)",
+        cfg { position: { enable: true } }
+    }];
+    required string launch_file = 11 [(goby.field) = {
+        description: "goby_launch file to compare with it",
+        cfg { position: { enable: true } }
+    }];
+    optional string platform = 12 [(goby.field).description =
+                                       "Platform to use, or one of its instances (e.g. bot2); needed when the deployment has more than one"];
+    optional uint32 instance = 13
+        [(goby.field).description = "With --platform, the instance (--platform bot --instance 2 is bot2)"];
+    optional string module = 16 [(goby.field).description =
+                                     "With modules, the module (one gobyd) to use"];
+    repeated string define = 14 [(goby.field) = {
+        description: "Set a variable used as ${NAME} in the deployment file, as NAME=value; overrides the environment",
+        cfg { cli_short: "D" }
+    }];
+    repeated string interface_dir = 15 [(goby.field) = {
+        description: "Search this directory for interface files, after the deployment file's own directory (also GOBY_INTERFACE_PATH, colon separated)",
+        cfg { cli_short: "I" }
+    }];
+    optional string output_file = 17
+        [(goby.field).description = "Write the differences here instead of stdout"];
+    optional InterfaceValidateConfig.OutputFormat output_format = 20
+        [default = HUMAN, (goby.field) = { cfg { cli_short: "o" } }];
+}
+
+// Written by 'goby interface launch_check -o JSON'
+message InterfaceLaunchCheck
+{
+    required string launch_file = 1;
+    required string deployment_file = 2;
+    // platform[.module]
+    required string unit = 3;
+
+    message Difference
+    {
+        // launched-only, not-launched, env or kill
+        required string kind = 1;
+        required string name = 2;
+        // in the launch file, when the line is there
+        optional int32 line = 3;
+        required string detail = 4;
+    }
+    repeated Difference difference = 4;
 }
