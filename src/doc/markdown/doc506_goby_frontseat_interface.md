@@ -100,7 +100,7 @@ The `goby_frontseat_interface` has one required configuration block:
 - frontseat_cfg: Passed to the frontseat driver
 	+ type: Vehicle type
 	+ require_helm: Set false if the vehicle can run missions without a helm (Default: true)
-	+ *name*: Omit: it is automatically set to `interprocess.platform`. This configuration variable exists here  exists for iFrontSeat support.
+	+ *name*: Vehicle name in the published `NodeStatus`. Defaults to `interprocess.platform`; set it when more than one vehicle shares a `gobyd`.
 	+ *origin*: Omit: it is automatically set to `app.geodesy.lat/lon_origin`. This configuration variable exists here for iFrontSeat support.
 	
 You can set `[goby.moos.protobuf.moos_helm]` if using MOOS-IvP; see above.

@@ -61,7 +61,6 @@ int indirect_subscriber_ack = 0;
 // Widgets the direct subscriber's republish_on_receive put back on its interprocess layer
 int widget_republish_count = 0;
 int direct_subscriber_ack = 0;
-int direct_subscriber_superseded = 0;
 
 std::atomic<bool> forward(true);
 std::atomic<int> zmq_reqs(0);
@@ -340,16 +339,6 @@ void direct_subscriber(const goby::zeromq::protobuf::InterProcessPortalConfig& z
 
     auto expire_callback = [&](const Subscription& s,
                                const goby::middleware::intervehicle::protobuf::ExpireData& expire) {
-        // the indirect subscriber's identical subscription to group3 replaces ours if it arrives
-        // before our MAC slot has sent it; the subscription still takes effect
-        if (expire.reason() ==
-            goby::middleware::intervehicle::protobuf::ExpireData::EXPIRED_SUPERSEDED)
-        {
-            glog.is_debug1() && glog << "Subscription superseded: " << s.ShortDebugString()
-                                     << std::endl;
-            ++direct_subscriber_superseded;
-            return;
-        }
         glog.is_die() && glog << "Subscription Expire for " << s.ShortDebugString()
                               << ", expire msg: " << expire.ShortDebugString() << std::endl;
     };
@@ -385,8 +374,7 @@ void direct_subscriber(const goby::zeromq::protobuf::InterProcessPortalConfig& z
                      << std::endl;
     }
 
-    // each of our two Sample subscriptions was either sent and acked or superseded
-    assert(direct_subscriber_ack + direct_subscriber_superseded == 2);
+    assert(direct_subscriber_ack == 2);
     // each received Widget republished exactly once
     assert(widget_republish_count == max_publish);
 }
