@@ -546,7 +546,15 @@ class PubSubAggregator : public ::clang::ast_matchers::MatchFinder::MatchCallbac
         else
         {
             const auto* group_int_expr = Result.Nodes.getNodeAs<clang::Expr>("group_int_arg");
-            if (group_int_expr)
+            clang::Expr::EvalResult numeric;
+            // a constant (e.g. GOBY_DEFINE_INTERVEHICLE_GROUP's static_cast) as its value, so it
+            // matches the numerics bound to dynamic groups
+            if (group_int_expr && !group_int_expr->isValueDependent() &&
+                group_int_expr->EvaluateAsInt(numeric, *Result.Context))
+            {
+                group_int = std::to_string(numeric.Val.getInt().getZExtValue());
+            }
+            else if (group_int_expr)
             {
                 llvm::raw_string_ostream os(group_int);
                 group_int_expr->printPretty(os, NULL, clang::PrintingPolicy(clang::LangOptions()));
@@ -754,7 +762,8 @@ int goby::clang::generate(::clang::tooling::ClangTool& Tool, std::string output_
             root_map.add_key(goby::middleware::tool::interface::layer_name(layer));
             goby::yaml::YMap layer_map(yaml_out);
 
-            auto find_most_derived_parents = [&](std::string thread) -> std::set<std::string> {
+            auto find_most_derived_parents = [&](std::string thread) -> std::set<std::string>
+            {
                 // if e.thread has parents, use them instead
                 std::set<std::string> most_derived{thread};
 
@@ -784,8 +793,9 @@ int goby::clang::generate(::clang::tooling::ClangTool& Tool, std::string output_
                 return most_derived;
             };
 
-            auto emit_pub_sub = [&](goby::yaml::YMap& map,
-                                    const std::set<std::string>& thread_and_bases) {
+            auto emit_pub_sub =
+                [&](goby::yaml::YMap& map, const std::set<std::string>& thread_and_bases)
+            {
                 {
                     map.add_key("publishes");
                     goby::yaml::YSeq publish_seq(yaml_out);
@@ -852,16 +862,16 @@ int goby::clang::generate(::clang::tooling::ClangTool& Tool, std::string output_
                         std::set<std::string> thread_and_bases{thread.first};
 
                         std::set<std::string> bases;
-                        std::function<void(std::string)> add_bases_recurse =
-                            [&](std::string thread) {
-                                std::set<std::string> new_bases;
-                                const auto& pub_bases = publish_aggregator.bases(thread);
-                                const auto& sub_bases = subscribe_aggregator.bases(thread);
-                                new_bases.insert(pub_bases.begin(), pub_bases.end());
-                                new_bases.insert(sub_bases.begin(), sub_bases.end());
-                                bases.insert(new_bases.begin(), new_bases.end());
-                                for (const auto& base : new_bases) add_bases_recurse(base);
-                            };
+                        std::function<void(std::string)> add_bases_recurse = [&](std::string thread)
+                        {
+                            std::set<std::string> new_bases;
+                            const auto& pub_bases = publish_aggregator.bases(thread);
+                            const auto& sub_bases = subscribe_aggregator.bases(thread);
+                            new_bases.insert(pub_bases.begin(), pub_bases.end());
+                            new_bases.insert(sub_bases.begin(), sub_bases.end());
+                            bases.insert(new_bases.begin(), new_bases.end());
+                            for (const auto& base : new_bases) add_bases_recurse(base);
+                        };
 
                         add_bases_recurse(thread.first);
 

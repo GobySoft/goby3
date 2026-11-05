@@ -38,7 +38,11 @@ namespace groups
 {
 constexpr goby::middleware::Group status{"dynamic_test::status"};
 constexpr goby::middleware::Group command{"dynamic_test::command"};
+constexpr std::uint32_t fleet_base{100};
 } // namespace groups
+
+GOBY_DEFINE_INTERVEHICLE_GROUP(groups, broadcast, goby::middleware::Group::broadcast_group)
+GOBY_DEFINE_INTERVEHICLE_GROUP(groups, fleet, groups::fleet_base + 5)
 
 // a helper that builds the group, as jaiabot's hub_command_group(bot_id) does
 DynamicGroup command_group(std::uint32_t id) { return DynamicGroup(groups::command, id + 100); }
@@ -65,6 +69,10 @@ class DynamicGroups : public goby::udpm::SingleThreadApplication<DynamicGroupsCo
         interprocess().publish_dynamic(status, command_group(cfg().modem_id()));
         // a member with its string from the configuration: goby_clang_tool cannot tell the group
         interprocess().publish_dynamic(status, runtime_group_);
+
+        // static groups whose numerics are constant expressions, not literals
+        interprocess().publish<groups::broadcast>(status);
+        interprocess().publish<groups::fleet>(status);
 
         // a smart pointer set above
         interprocess()
