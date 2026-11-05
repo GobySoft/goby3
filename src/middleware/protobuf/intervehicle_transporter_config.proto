@@ -27,6 +27,10 @@ message TransporterConfig
     // discard any queued messages of this type and group (to every destination) before
     // queuing this one; discarded messages are reported as EXPIRED_SUPERSEDED
     optional bool clear_pending = 40 [default = false, (dccl.field).omit = true];
+
+    // subscriptions only: also publish each received message on the inner layer (e.g.
+    // interprocess) in the subscribed group, so it can be logged or used by other subscribers
+    optional bool republish_on_receive = 50 [default = false, (dccl.field).omit = true];
     
     // message LinkConfig
     // {

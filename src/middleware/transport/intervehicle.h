@@ -379,6 +379,9 @@ class InterVehicleTransporterBase
                     throw(InvalidSubscription(ss.str()));
                 }
 
+                if (subscriber.cfg().intervehicle().republish_on_receive())
+                    func = _republishing(func, group);
+
                 using SubscriptionType =
                     IntervehicleSerializationSubscription<Data, MarshallingScheme::DCCL>;
                 std::shared_ptr<SubscriptionType> subscription;
@@ -551,6 +554,23 @@ class InterVehicleTransporterBase
         _expire_pending_ack();
 
         return static_cast<Derived*>(this)->_poll(lock);
+    }
+
+    // received messages go to func and then to the inner layer, as an outgoing publication in the
+    // same group would be (DCCL and PROTOBUF). The group's string form ("name;7", or "7" for a
+    // numeric-only group) is the identifier that publication uses, and outlives a DynamicGroup.
+    template <typename Data>
+    std::function<void(std::shared_ptr<const Data>)>
+    _republishing(std::function<void(std::shared_ptr<const Data>)> func, const Group& group)
+    {
+        return [this, func, inner_group = std::string(group)](std::shared_ptr<const Data> d)
+        {
+            if (func)
+                func(d);
+            DynamicGroup g(inner_group);
+            this->inner().template publish_dynamic<Data, MarshallingScheme::DCCL>(d, g);
+            this->inner().template publish_dynamic<Data, MarshallingScheme::PROTOBUF>(d, g);
+        };
     }
 
     // desc is only used (and required) when Data is google::protobuf::Message
