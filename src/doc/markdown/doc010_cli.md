@@ -169,6 +169,7 @@ goby interface diff <a.yml> [<b.yml>] [--interface_dir_a <dir>] [--interface_dir
 goby interface init <directory> [--platform <name>] [--deployment_name <name>] [--output_file <path>]
 goby interface launch <deployment.yml> [--platform <name> [--instance <n>]] [--module <name>] [--output_file <file.launch> | --outdir <dir>] [-D NAME=value] [-I <dir>]
 goby interface launch_check <deployment.yml> <file.launch> [--platform <name> [--instance <n>]] [--module <name>] [-o HUMAN|JSON] [-D NAME=value] [-I <dir>]
+goby interface systemd <deployment.yml> [--platform <name> [--instance <n>]] [--module <name>] [--outdir <dir> | --check [--unit_dir <dir>]] [-D NAME=value] [-I <dir>]
 goby interface visualize <deployment.yml> [-D NAME=value] [-I <dir>] [--format DOT|D2] [--output_file <file>] [--expand_instances] [--no_disconnected] [--omit_interthread] [--omit_group_regex <regex>] [--omit_node_regex <regex>] [--include_terminate] [--include_coroner] [--include_all] [--splines <setting>]
 ```
 
@@ -204,6 +205,30 @@ platforms:
 - `hold: auto` on `gobyd` holds publications until every application with a required intervehicle subscription, and `goby_intervehicle_portal`, has subscribed; `expected: auto` on `goby_coroner` expects every other Goby application except those marked `expected: false`. Either takes a list instead, which may include `auto`.
 - `validate` and `launch` report a Goby application listed before `gobyd` (`launch-order`), a hold list that leaves out a required intervehicle subscriber (`hold-incomplete`), an expected list that differs from what is launched (`coroner-expected`), and a line `goby_launch` would cut at a `#` (`launch-hash`) or misread at a `]` (`launch-bracket`).
 - `launch_check` compares a hand-written launch file with the deployment, for moving to generated ones: lines with no entry, entries with no line, and differing `kill` or `env`. It exits 0 when they agree and 1 when they differ.
+
+### systemd units from a deployment
+
+`goby interface systemd` writes the same `run` list as systemd units: a `<name>.service` for each entry and a `<deployment>-<platform>.target` that wants them all (`systemd_fleet-bot1.target` below). It prints them, or writes them to `--outdir` (one directory per platform, instance and module when no `--platform` is given). `--check` compares them with the installed units in `--unit_dir` (`/etc/systemd/system`) and exits 1 if any are missing or differ. It never installs units or reloads systemd.
+
+```yaml
+platforms:
+  - name: bot
+    instances: [1]
+    systemd:
+      ordered: true
+      defaults: { user: fleet, group: fleet }
+    run:
+      - { application: gobyd, hold: auto }
+      - { application: nav_driver, systemd: { service: "LimitCORE=infinity", condition: "ConditionPathExists=/dev/ttyUSB0" } }
+      - { application: mission_manager, when: "${fleet_mode} == autonomy" }
+      - { application: engineering_display, systemd: { skip: true } }
+      - { application: goby_coroner, expected: auto, systemd: { template: systemd/coroner.service.in, vars: { restart_sec: "5" } } }
+```
+
+- Each Goby application's service is `BindsTo` and `After` `gobyd.service` and stopped with `goby_terminate`; a `process` is stopped with its `kill` signal. A command that needs a shell (`<(...)`, a pipe, a redirect) runs under `/bin/bash -c`. Relative paths in a command are relative to the service's working directory, which `service: "WorkingDirectory=..."` sets.
+- `systemd:` on an entry, or as the platform's `systemd: defaults`, sets `user`, `group`, `description`, `wanted_by` (the target by default), a `condition` line, and text appended to the `unit`, `service` and `install` sections. `template` replaces the built-in unit with a project file, relative to the deployment, in which `${exec_start}`, `${name}`, `${unit_name}`, `${description}`, `${target}`, `${wanted_by}`, `${user}`, `${env}` and the other settings, plus any `vars`, are replaced. `skip: true` writes no unit, for an entry started some other way.
+- A platform's `systemd: target` uses an existing unit instead of generating one, and `ordered: true` starts each service after the one before it.
+- `when` is decided as the units are written, from `-D` and the environment: an entry whose condition is false gets no unit, and one that cannot be decided (a value left unset, or a shell command) gets none with a `systemd-when` warning; give it a `condition` instead. `systemd-dropped` warns when `gobyd`'s hold or `goby_coroner`'s expected names include an entry with no unit.
 
 ```
 $ goby interface explain modules.yml depth

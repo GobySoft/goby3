@@ -33,6 +33,7 @@
 #include "goby/middleware/application/tool.h"
 #include "goby/middleware/tool/interface/render_d2.h"
 #include "goby/middleware/tool/interface/render_dot.h"
+#include "goby/middleware/tool/interface/systemd.h"
 #include "goby/middleware/tool/interface/validate.h"
 
 #include "goby/apps/middleware/interface_tool/interface_tool_config.pb.h"
@@ -120,6 +121,12 @@ class InterfaceLaunchCheckTool
     void run() override;
 };
 
+class InterfaceSystemdTool : public goby::middleware::Application<protobuf::InterfaceSystemdConfig>
+{
+  private:
+    void run() override;
+};
+
 } // namespace middleware
 } // namespace apps
 } // namespace goby
@@ -173,6 +180,9 @@ goby::apps::middleware::InterfaceTool::InterfaceTool()
                         case Config::launch_check:
                             tool_helper.help<InterfaceLaunchCheckTool>(action_for_help);
                             break;
+                        case Config::systemd:
+                            tool_helper.help<InterfaceSystemdTool>(action_for_help);
+                            break;
                         default:
                             throw(goby::Exception(
                                 "Help was expected to be handled by external tool"));
@@ -194,6 +204,9 @@ goby::apps::middleware::InterfaceTool::InterfaceTool()
             case Config::launch: exit_code = tool_helper.run_subtool<InterfaceLaunchTool>(); break;
             case Config::launch_check:
                 exit_code = tool_helper.run_subtool<InterfaceLaunchCheckTool>();
+                break;
+            case Config::systemd:
+                exit_code = tool_helper.run_subtool<InterfaceSystemdTool>();
                 break;
             default: throw(goby::Exception("Action was expected to be handled by external tool"));
         }
@@ -561,4 +574,101 @@ void goby::apps::middleware::InterfaceLaunchCheckTool::run()
     write_output(ss.str(), cfg.output_file());
     // as diff(1): 0 when the same, 1 when different
     quit(result.difference_size() ? 1 : 0);
+}
+
+void goby::apps::middleware::InterfaceSystemdTool::run()
+{
+    const auto& cfg = app_cfg();
+    interface::Issues issues;
+    interface::Deployment deployment;
+    if (!load(cfg.deployment_file(), load_params(cfg), deployment, issues))
+    {
+        quit(2);
+        return;
+    }
+
+    // one unit unless --outdir is writing them all (each into a directory of its own, since
+    // instances share service names)
+    std::vector<interface::LaunchUnit> units;
+    bool all = cfg.has_outdir() && !cfg.check() && !cfg.has_platform() && !cfg.has_module();
+    if (all)
+    {
+        units = interface::launch_units(deployment);
+    }
+    else
+    {
+        interface::LaunchUnit unit;
+        std::string error;
+        if (!select_unit(deployment, cfg, unit, error))
+        {
+            std::cerr << error << std::endl;
+            quit(1);
+            return;
+        }
+        units.push_back(unit);
+    }
+
+    interface::Issues render_issues;
+    std::vector<std::pair<std::string, std::vector<interface::SystemdUnitFile>>> rendered;
+    for (const auto& unit : units)
+        rendered.emplace_back(unit.name(),
+                              interface::render_systemd(deployment, unit, render_issues));
+    for (const auto& issue : render_issues)
+    {
+        if (issue.severity != interface::Issue::Severity::INFO)
+            std::cerr << issue << std::endl;
+    }
+    if (interface::has_errors(issues) || interface::has_errors(render_issues))
+    {
+        quit(1);
+        return;
+    }
+
+    if (cfg.check())
+    {
+        int differences = 0;
+        for (const auto& file : rendered.front().second)
+        {
+            auto installed = std::filesystem::path(cfg.unit_dir()) / file.file;
+            std::ifstream in(installed);
+            std::stringstream text;
+            if (in.is_open())
+                text << in.rdbuf();
+            if (!in.is_open())
+                std::cout << "  missing    " << installed.string() << "\n";
+            else if (text.str() != file.text)
+                std::cout << "  differs    " << installed.string() << "\n";
+            else
+                continue;
+            ++differences;
+        }
+        std::cout << rendered.front().first << " vs " << cfg.unit_dir() << ": "
+                  << (differences ? std::to_string(differences) + " unit(s) differ"
+                                  : "no differences")
+                  << std::endl;
+        quit(differences ? 1 : 0);
+        return;
+    }
+
+    if (cfg.has_outdir())
+    {
+        for (const auto& unit : rendered)
+        {
+            auto dir = std::filesystem::path(cfg.outdir()) / (all ? unit.first : "");
+            std::filesystem::create_directories(dir);
+            for (const auto& file : unit.second)
+            {
+                write_output(file.text, (dir / file.file).string());
+                std::cout << (dir / file.file).string() << std::endl;
+            }
+        }
+        quit(0);
+        return;
+    }
+
+    std::stringstream out;
+    for (const auto& file : rendered.front().second)
+        out << "# --- " << file.file << " ---\n" << file.text << "\n";
+    write_output(out.str(), "");
+    quit(0);
 }

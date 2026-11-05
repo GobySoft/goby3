@@ -1,0 +1,23 @@
+# systemd: settings on platforms and run: entries, as goby interface systemd turns them into units
+deployment: systemd_fleet
+platforms:
+  - name: bot
+    instances: [1]
+    launch:
+      defaults: { config: "/etc/fleet/bot${instance}.pb.cfg" }
+    systemd:
+      ordered: true
+      defaults: { user: fleet, group: fleet }
+    run:
+      - { application: gobyd, hold: auto }
+      - { application: nav_driver, systemd: { service: "LimitCORE=infinity", condition: "ConditionPathExists=/dev/ttyUSB0" } }
+      - { application: mission_manager, when: "${fleet_mode} == autonomy" }
+      - { process: logger, exec: "logger_tool -o /var/log/fleet | gzip > /var/log/fleet/bot${instance}.gz", kill: SIGINT }
+      - { application: engineering_display, systemd: { skip: true } }
+      - { application: goby_coroner, expected: auto, systemd: { template: systemd/coroner.service.in, vars: { restart_sec: "5" } } }
+  - name: topside
+    systemd:
+      target: fleet-topside.target
+    run:
+      - gobyd
+      - { application: hub_manager, env: { HUB_PLUGINS: libfleet_hub.so.1 }, systemd: { wanted_by: graphical.target, description: "Fleet hub" } }
