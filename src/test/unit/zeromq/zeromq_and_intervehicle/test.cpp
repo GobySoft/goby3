@@ -47,6 +47,10 @@ using namespace goby::test::zeromq::protobuf;
 
 int publish_count = 0;
 const int max_publish = 100;
+
+// Sample.x is encoded to one decimal place (1.2), so an ack or expire callback that is handed the
+// message decoded from the link instead of the one published sees a different value (#374)
+const double unrounded_x = 1.234;
 std::array<int, 4> ipc_receive_count = {{0, 0, 0, 0}};
 
 std::array<int, 2> direct_ack_receive_count = {{0, 0}};
@@ -98,6 +102,7 @@ void direct_publisher(const goby::zeromq::protobuf::InterProcessPortalConfig& zm
     {
         auto s1 = std::make_shared<Sample>();
         s1->set_a(a - 10);
+        s1->set_x(unrounded_x);
 
         goby::middleware::protobuf::TransporterConfig sample_publisher_cfg;
         auto* sample_buffer_cfg = sample_publisher_cfg.mutable_intervehicle()->mutable_buffer();
@@ -108,6 +113,7 @@ void direct_publisher(const goby::zeromq::protobuf::InterProcessPortalConfig& zm
                                 const goby::middleware::intervehicle::protobuf::AckData& ack) {
             glog.is_debug1() && glog << "Ack for " << s.ShortDebugString()
                                      << ", ack msg: " << ack.ShortDebugString() << std::endl;
+            assert(s.x() == unrounded_x);
             ++direct_ack_receive_count[s.group() - 1];
         };
 
@@ -116,6 +122,7 @@ void direct_publisher(const goby::zeromq::protobuf::InterProcessPortalConfig& zm
                                        expire) {
             glog.is_debug1() && glog << "Expire for " << s.ShortDebugString()
                                      << ", expire msg: " << expire.ShortDebugString() << std::endl;
+            assert(s.x() == unrounded_x);
 
             switch (expire.reason())
             {
@@ -137,6 +144,7 @@ void direct_publisher(const goby::zeromq::protobuf::InterProcessPortalConfig& zm
 
         auto s2 = std::make_shared<Sample>();
         s2->set_a(a++);
+        s2->set_x(unrounded_x);
         intervehicle.publish<group2>(s2, sample_publisher);
         glog.is(DEBUG1) && glog << "Published group2: " << s2->ShortDebugString() << std::endl;
 
@@ -220,6 +228,7 @@ void indirect_publisher(const goby::zeromq::protobuf::InterProcessPortalConfig& 
     {
         auto s1 = std::make_shared<Sample>();
         s1->set_a(a++ - 10);
+        s1->set_x(unrounded_x);
 
         goby::middleware::protobuf::TransporterConfig sample_publisher_cfg;
         auto* sample_buffer_cfg = sample_publisher_cfg.mutable_intervehicle()->mutable_buffer();
@@ -230,6 +239,7 @@ void indirect_publisher(const goby::zeromq::protobuf::InterProcessPortalConfig& 
                                 const goby::middleware::intervehicle::protobuf::AckData& ack) {
             glog.is_debug1() && glog << "Ack for " << s.ShortDebugString()
                                      << ", ack msg: " << ack.ShortDebugString() << std::endl;
+            assert(s.x() == unrounded_x);
             ++indirect_ack_receive_count;
         };
 
