@@ -77,6 +77,11 @@ struct VehicleFix
     double heading{NAN}; // degrees
     double speed{NAN};   // m/s
     double depth{NAN};   // m
+    double pitch{NAN};   // degrees
+    double roll{NAN};    // degrees
+    double altitude{NAN}; // m
+    double x{NAN};        // m, local
+    double y{NAN};        // m, local
     goby::middleware::frontseat::protobuf::VehicleType type{
         goby::middleware::frontseat::protobuf::UNKNOWN};
 };
@@ -119,12 +124,19 @@ class LiaisonMap : public goby::zeromq::LiaisonContainerWithComms<LiaisonMap, Ma
         Wt::WTableRow* row{nullptr};
         enum Column
         {
-            COLUMN_NAME = 0,
-            COLUMN_HEADING = 1,
-            COLUMN_SPEED = 2,
-            COLUMN_DEPTH = 3,
-            COLUMN_AGE = 4,
-            COLUMN_COUNT = 5
+            COLUMN_NAME,
+            COLUMN_HEADING,
+            COLUMN_SPEED,
+            COLUMN_DEPTH,
+            COLUMN_PITCH,
+            COLUMN_ROLL,
+            COLUMN_ALTITUDE,
+            COLUMN_LAT,
+            COLUMN_LON,
+            COLUMN_X,
+            COLUMN_Y,
+            COLUMN_AGE,
+            COLUMN_COUNT
         };
         std::array<Wt::WText*, COLUMN_COUNT> cells{};
     };
@@ -143,6 +155,7 @@ class LiaisonMap : public goby::zeromq::LiaisonContainerWithComms<LiaisonMap, Ma
 
     void update_map();
     void add_vehicle_ui(const std::string& name, Vehicle& vehicle);
+    void show_column(int column);
     void update_vehicle_ui(const std::string& name, Vehicle& vehicle, bool stale,
                            std::chrono::steady_clock::duration age);
     std::string row_style(const std::string& name, const Vehicle& vehicle) const;
@@ -176,6 +189,8 @@ class LiaisonMap : public goby::zeromq::LiaisonContainerWithComms<LiaisonMap, Ma
     Wt::WLeafletMap* map_{nullptr};
     std::string js_setup_;
     Wt::WTable* vehicle_table_{nullptr};
+    // columns only some sources fill are hidden until a vehicle has a value for them
+    std::array<bool, Vehicle::COLUMN_COUNT> column_shown_{};
     Wt::WText* waiting_text_{nullptr};
     Wt::WComboBox* follow_box_{nullptr};
     Wt::WPushButton* pause_button_{nullptr};

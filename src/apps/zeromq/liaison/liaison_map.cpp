@@ -598,10 +598,19 @@ void goby::apps::zeromq::LiaisonMap::create_vehicle_list(Wt::WContainerWidget* p
     vehicle_table_ = parent->addNew<Wt::WTable>();
     vehicle_table_->setStyleClass("map-vehicles");
     vehicle_table_->setHeaderCount(1);
-    const std::array<const char*, Vehicle::COLUMN_COUNT> headers{"Vehicle", "Hdg", "Spd (m/s)",
-                                                                 "Depth (m)", "Age"};
+    const std::array<const char*, Vehicle::COLUMN_COUNT> headers{
+        "Vehicle", "Hdg (\u00b0)", "Spd (m/s)", "Depth (m)", "Pitch (\u00b0)", "Roll (\u00b0)",
+        "Alt (m)", "Lat",          "Lon",       "X (m)",     "Y (m)",          "Age"};
+    column_shown_.fill(true);
+    for (int column : {Vehicle::COLUMN_PITCH, Vehicle::COLUMN_ROLL, Vehicle::COLUMN_ALTITUDE,
+                       Vehicle::COLUMN_X, Vehicle::COLUMN_Y})
+        column_shown_[column] = false;
     for (int column = 0; column < Vehicle::COLUMN_COUNT; ++column)
-        vehicle_table_->elementAt(0, column)->addNew<Wt::WText>(headers[column]);
+    {
+        vehicle_table_->elementAt(0, column)->addNew<Wt::WText>(
+            Wt::WString::fromUTF8(headers[column]));
+        vehicle_table_->elementAt(0, column)->setHidden(!column_shown_[column]);
+    }
 
     waiting_text_ = parent->addNew<Wt::WText>("Waiting for vehicle positions.");
     waiting_text_->setStyleClass("map-waiting");
@@ -744,6 +753,7 @@ void goby::apps::zeromq::LiaisonMap::add_vehicle_ui(const std::string& name, Veh
     {
         auto* cell = vehicle.row->elementAt(column);
         vehicle.cells[column] = cell->addNew<Wt::WText>();
+        cell->setHidden(!column_shown_[column]);
         cell->clicked().connect([this, name]() { centre_on(name); });
     }
     vehicle.cells[Vehicle::COLUMN_NAME]->setText(Wt::WString::fromUTF8(name));
@@ -752,6 +762,13 @@ void goby::apps::zeromq::LiaisonMap::add_vehicle_ui(const std::string& name, Veh
     follow_box_->insertItem(index + 1, Wt::WString::fromUTF8(name));
     waiting_text_->hide();
     vehicle.fix_changed = true;
+}
+
+void goby::apps::zeromq::LiaisonMap::show_column(int column)
+{
+    column_shown_[column] = true;
+    for (int row = 0; row < vehicle_table_->rowCount(); ++row)
+        vehicle_table_->elementAt(row, column)->setHidden(false);
 }
 
 void goby::apps::zeromq::LiaisonMap::update_vehicle_ui(const std::string& name, Vehicle& vehicle,
@@ -775,6 +792,18 @@ void goby::apps::zeromq::LiaisonMap::update_vehicle_ui(const std::string& name, 
         vehicle.cells[Vehicle::COLUMN_HEADING]->setText(format_heading(fix.heading));
         vehicle.cells[Vehicle::COLUMN_SPEED]->setText(format_number("%.1f", fix.speed));
         vehicle.cells[Vehicle::COLUMN_DEPTH]->setText(format_number("%.1f", fix.depth));
+        vehicle.cells[Vehicle::COLUMN_LAT]->setText(format_number("%.6f", fix.lat));
+        vehicle.cells[Vehicle::COLUMN_LON]->setText(format_number("%.6f", fix.lon));
+        for (auto [column, value] :
+             {std::make_pair(Vehicle::COLUMN_PITCH, fix.pitch),
+              std::make_pair(Vehicle::COLUMN_ROLL, fix.roll),
+              std::make_pair(Vehicle::COLUMN_ALTITUDE, fix.altitude),
+              std::make_pair(Vehicle::COLUMN_X, fix.x), std::make_pair(Vehicle::COLUMN_Y, fix.y)})
+        {
+            vehicle.cells[column]->setText(format_number("%.1f", value));
+            if (!std::isnan(value) && !column_shown_[column])
+                show_column(column);
+        }
         vehicle.cells[Vehicle::COLUMN_NAME]->setToolTip(Wt::WString::fromUTF8(
             goby::middleware::frontseat::protobuf::VehicleType_Name(fix.type) + " " +
             format_number("%.6f", fix.lat) + ", " + format_number("%.6f", fix.lon)));
@@ -978,8 +1007,19 @@ void goby::apps::zeromq::MapCommsThread::subscribe(const Source& source)
                 fix.lat = status.global_fix().lat();
                 fix.lon = status.global_fix().lon();
                 fix.depth = status.global_fix().depth();
+                if (status.global_fix().has_altitude())
+                    fix.altitude = status.global_fix().altitude();
+                if (status.has_local_fix())
+                {
+                    fix.x = status.local_fix().x();
+                    fix.y = status.local_fix().y();
+                }
                 if (status.pose().has_heading())
                     fix.heading = status.pose().heading();
+                if (status.pose().has_pitch())
+                    fix.pitch = status.pose().pitch();
+                if (status.pose().has_roll())
+                    fix.roll = status.pose().roll();
                 fix.speed = status.speed().over_ground();
                 fix.type = status.type();
                 post(fix);
