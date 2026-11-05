@@ -25,12 +25,16 @@
 #define GOBY_MIDDLEWARE_TOOL_INTERFACE_MODEL_H
 
 #include <algorithm>
+#include <cctype>
+#include <cstdint>
 #include <cstdlib>
 #include <filesystem>
 #include <fstream>
+#include <functional>
 #include <map>
 #include <memory>
 #include <ostream>
+#include <regex>
 #include <set>
 #include <sstream>
 #include <string>
@@ -38,6 +42,7 @@
 
 #include <yaml-cpp/yaml.h>
 
+#include "goby/middleware/group.h"
 #include "goby/middleware/tool/interface/pubsub_entry.h"
 
 namespace goby
@@ -166,7 +171,11 @@ struct Application
     }
 
     /// \brief Add the contents of one interface file (a root node with application: and the layers)
-    void merge(const YAML::Node& yaml, PublishIndexer& indexer);
+    /// \brief Turns one entry from an interface file into the entries a deployment sees (a
+    /// dynamic group with its bound numerics, or the publications a bind says it stands for)
+    using Binder = std::function<std::vector<PubSubEntry>(PubSubEntry)>;
+
+    void merge(const YAML::Node& yaml, PublishIndexer& indexer, const Binder& binder = Binder());
 
   private:
     std::string most_derived(const std::string& thread) const
@@ -175,15 +184,20 @@ struct Application
         return it == threads.end() ? thread : it->second->most_derived_name();
     }
 
-    void insert(std::set<PubSubEntry>& entries, PubSubEntry entry, PublishIndexer& indexer)
+    void insert(std::set<PubSubEntry>& entries, PubSubEntry entry, PublishIndexer& indexer,
+                const Binder& binder)
     {
-        auto result = entries.insert(entry);
-        if (result.second && entry.direction == PubSubEntry::Direction::PUBLISH)
-            result.first->publish_index = indexer.next(entry.layer);
+        for (auto& bound : binder ? binder(entry) : std::vector<PubSubEntry>{entry})
+        {
+            auto result = entries.insert(bound);
+            if (result.second && bound.direction == PubSubEntry::Direction::PUBLISH)
+                result.first->publish_index = indexer.next(bound.layer);
+        }
     }
 };
 
-inline void Application::merge(const YAML::Node& yaml, PublishIndexer& indexer)
+inline void Application::merge(const YAML::Node& yaml, PublishIndexer& indexer,
+                               const Binder& binder)
 {
     using Direction = PubSubEntry::Direction;
 
@@ -233,12 +247,12 @@ inline void Application::merge(const YAML::Node& yaml, PublishIndexer& indexer)
                 insert(thread.interthread_publishes,
                        PubSubEntry(Layer::INTERTHREAD, Direction::PUBLISH, p,
                                    thread.most_derived_name()),
-                       indexer);
+                       indexer, binder);
             for (const auto& s : thread_yaml.second["subscribes"])
                 insert(thread.interthread_subscribes,
                        PubSubEntry(Layer::INTERTHREAD, Direction::SUBSCRIBE, s,
                                    thread.most_derived_name()),
-                       indexer);
+                       indexer, binder);
         }
     }
 
@@ -252,13 +266,13 @@ inline void Application::merge(const YAML::Node& yaml, PublishIndexer& indexer)
         {
             PubSubEntry entry(layer, Direction::PUBLISH, p);
             entry.thread = most_derived(entry.thread);
-            insert(publishes[layer], entry, indexer);
+            insert(publishes[layer], entry, indexer, binder);
         }
         for (const auto& s : layer_node["subscribes"])
         {
             PubSubEntry entry(layer, Direction::SUBSCRIBE, s);
             entry.thread = most_derived(entry.thread);
-            insert(subscribes[layer], entry, indexer);
+            insert(subscribes[layer], entry, indexer, binder);
         }
     }
 
@@ -288,6 +302,8 @@ struct Module
 struct Platform
 {
     std::string name;
+    // the name in the deployment file; differs from name for one of a platform's instances
+    std::string base_name;
     std::vector<Module> modules;
 
     bool has_modules() const { return !(modules.size() == 1 && modules.front().not_a_module); }
@@ -310,10 +326,39 @@ struct LoadParams
     std::string goby_interfaces_dir;
     // ${NAME} values; these override the environment
     std::map<std::string, std::string> defines;
+    // load each of a platform's instances: as <name><instance>; otherwise a platform with
+    // instances: is loaded once, its binds taking the numerics of every instance
+    bool expand_instances{true};
 };
 
 namespace detail
 {
+/// \brief One bind: entry of a platform or of an application in its run: list
+struct Bind
+{
+    std::string location;
+    int uses{0};
+
+    // numeric: { group: <name or glob>, numeric: <values>, layer: <optional> }
+    std::regex group_pattern;
+    std::vector<std::string> numerics;
+    bool has_layer{false};
+    Layer layer{Layer::UNKNOWN};
+
+    // publication: { dynamic: { layer, scheme, type }, publishes: [...], subscribes: [...] }
+    bool is_publication{false};
+    std::string select_scheme;
+    std::string select_type;
+    struct Concrete
+    {
+        std::string group;
+        std::string scheme;
+        std::string type;
+    };
+    std::vector<Concrete> publishes;
+    std::vector<Concrete> subscribes;
+};
+
 // one entry of a platform's or module's run: list (or of the older interfaces: list)
 struct RunRef
 {
@@ -327,6 +372,7 @@ struct RunRef
     std::string location;
     // an interfaces: entry that names its application, which merges it into that application
     bool merge_intended{false};
+    std::vector<std::shared_ptr<Bind>> binds;
 };
 
 struct ModuleRef
@@ -334,6 +380,14 @@ struct ModuleRef
     std::string name;
     std::vector<RunRef> run;
     bool not_a_module{false};
+};
+
+struct PlatformRef
+{
+    std::string location;
+    std::vector<ModuleRef> modules;
+    std::vector<std::shared_ptr<Bind>> binds;
+    std::vector<std::uint32_t> instances;
 };
 
 /// \brief Replace ${NAME} and ${NAME:-default} from \c defines, then the environment
@@ -372,6 +426,13 @@ inline std::string expand_variables(const std::string& text,
             name = expr.substr(0, sep);
             fallback = expr.substr(sep + 2);
             has_fallback = true;
+        }
+
+        if (name == "instance")
+        {
+            out += text.substr(i, close - i + 1);
+            i = close;
+            continue;
         }
 
         auto define_it = defines.find(name);
@@ -434,6 +495,348 @@ inline std::vector<std::string> read_list(const YAML::Node& node)
     return values;
 }
 
+inline bool layer_from_name(const std::string& name, Layer& layer)
+{
+    for (auto l :
+         {Layer::INTERTHREAD, Layer::INTERPROCESS, Layer::INTERMODULE, Layer::INTERVEHICLE})
+    {
+        if (layer_name(l) == name)
+        {
+            layer = l;
+            return true;
+        }
+    }
+    return false;
+}
+
+// "*" matches any run of characters; everything else is literal
+inline std::regex glob_regex(const std::string& glob)
+{
+    std::string re;
+    for (char c : glob)
+    {
+        if (c == '*')
+            re += ".*";
+        else if (std::string("\\^$.|?+()[]{}").find(c) != std::string::npos)
+            re += std::string("\\") + c;
+        else
+            re += c;
+    }
+    return std::regex(re);
+}
+
+// integer arithmetic (+, -, *, parentheses) on non-negative literals
+class Arithmetic
+{
+  public:
+    explicit Arithmetic(std::string text) : text_(std::move(text)) {}
+
+    bool evaluate(long long& value)
+    {
+        pos_ = 0;
+        if (!expr(value))
+            return false;
+        skip_space();
+        return pos_ == text_.size();
+    }
+
+  private:
+    void skip_space()
+    {
+        while (pos_ < text_.size() && std::isspace(static_cast<unsigned char>(text_[pos_]))) ++pos_;
+    }
+    bool accept(char c)
+    {
+        skip_space();
+        if (pos_ < text_.size() && text_[pos_] == c)
+        {
+            ++pos_;
+            return true;
+        }
+        return false;
+    }
+    bool expr(long long& value)
+    {
+        if (!term(value))
+            return false;
+        for (;;)
+        {
+            long long rhs;
+            if (accept('+'))
+            {
+                if (!term(rhs))
+                    return false;
+                value += rhs;
+            }
+            else if (accept('-'))
+            {
+                if (!term(rhs))
+                    return false;
+                value -= rhs;
+            }
+            else
+                return true;
+        }
+    }
+    bool term(long long& value)
+    {
+        if (!factor(value))
+            return false;
+        long long rhs;
+        while (accept('*'))
+        {
+            if (!factor(rhs))
+                return false;
+            value *= rhs;
+        }
+        return true;
+    }
+    bool factor(long long& value)
+    {
+        if (accept('('))
+            return expr(value) && accept(')');
+        skip_space();
+        std::size_t start = pos_;
+        while (pos_ < text_.size() && std::isdigit(static_cast<unsigned char>(text_[pos_]))) ++pos_;
+        if (pos_ == start || pos_ - start > 10)
+            return false;
+        value = std::stoll(text_.substr(start, pos_ - start));
+        return true;
+    }
+
+    std::string text_;
+    std::size_t pos_{0};
+};
+
+/// \brief Evaluate a bind's numeric: "5", "151-153", or arithmetic with ${instance}, once per
+/// instance given
+inline bool eval_numeric(const std::string& text, const std::vector<std::uint32_t>& instances,
+                         std::set<std::uint32_t>& values, std::string& error)
+{
+    static const std::regex range("\\s*([0-9]+)\\s*-\\s*([0-9]+)\\s*");
+    static const std::string instance_var = "${instance}";
+    auto in_range = [](long long v) { return v >= 0 && v <= Group::maximum_valid_group; };
+
+    std::smatch m;
+    if (std::regex_match(text, m, range))
+    {
+        auto first = std::stoll(m[1]), last = std::stoll(m[2]);
+        if (!in_range(first) || !in_range(last) || last < first || last - first > 100000)
+        {
+            error = "'" + text + "' is not a valid range of group numbers";
+            return false;
+        }
+        for (auto v = first; v <= last; ++v) values.insert(v);
+        return true;
+    }
+
+    bool uses_instance = text.find(instance_var) != std::string::npos;
+    if (uses_instance && instances.empty())
+    {
+        error = "'" + text + "' uses ${instance}, but its platform has no instances:";
+        return false;
+    }
+    for (auto instance : uses_instance ? instances : std::vector<std::uint32_t>{0})
+    {
+        std::string expanded = text;
+        for (auto pos = expanded.find(instance_var); pos != std::string::npos;
+             pos = expanded.find(instance_var, pos))
+            expanded.replace(pos, instance_var.size(), std::to_string(instance));
+        long long value;
+        if (!Arithmetic(expanded).evaluate(value) || !in_range(value))
+        {
+            error = "'" + text + "' is not a group number, a range (a-b) or arithmetic on " +
+                    "${instance}";
+            return false;
+        }
+        values.insert(value);
+    }
+    return true;
+}
+
+inline std::vector<std::shared_ptr<Bind>> read_binds(const YAML::Node& node,
+                                                     const std::string& location, Issues& issues)
+{
+    std::vector<std::shared_ptr<Bind>> binds;
+    if (!node)
+        return binds;
+    if (!node.IsSequence())
+    {
+        add_issue(issues, Issue::Severity::ERROR, "deployment-schema", "bind: must be a sequence",
+                  location);
+        return binds;
+    }
+
+    int index = 0;
+    for (const auto& entry : node)
+    {
+        auto bind = std::make_shared<Bind>();
+        bind->location = location + "[" + std::to_string(index++) + "]";
+        auto fail = [&](const std::string& msg)
+        { add_issue(issues, Issue::Severity::ERROR, "deployment-schema", msg, bind->location); };
+
+        if (!entry.IsMap())
+        {
+            fail("a bind must be a map");
+            continue;
+        }
+        static const std::set<std::string> keys{"group",   "numeric",   "layer",
+                                                "dynamic", "publishes", "subscribes"};
+        bool ok = true;
+        for (const auto& kv : entry)
+        {
+            if (!keys.count(kv.first.as<std::string>()))
+            {
+                fail("unknown key '" + kv.first.as<std::string>() + "'");
+                ok = false;
+            }
+        }
+        if (!ok)
+            continue;
+
+        if (entry["dynamic"])
+        {
+            bind->is_publication = true;
+            auto select = entry["dynamic"];
+            if (!select.IsMap())
+            {
+                fail("dynamic: selects a dynamic publication or subscription by layer, scheme "
+                     "and type");
+                continue;
+            }
+            if (select["layer"])
+            {
+                bind->has_layer = layer_from_name(select["layer"].as<std::string>(), bind->layer);
+                if (!bind->has_layer)
+                {
+                    fail("unknown layer '" + select["layer"].as<std::string>() + "'");
+                    continue;
+                }
+            }
+            if (select["scheme"])
+                bind->select_scheme = select["scheme"].as<std::string>();
+            if (select["type"])
+                bind->select_type = select["type"].as<std::string>();
+
+            for (auto kind : {"publishes", "subscribes"})
+            {
+                auto& concrete =
+                    std::string(kind) == "publishes" ? bind->publishes : bind->subscribes;
+                for (const auto& c : entry[kind])
+                {
+                    if (!c.IsMap() || !c["group"])
+                    {
+                        fail(std::string(kind) + " entries need group: (and type:, scheme: if "
+                                                 "they differ from the dynamic entry's)");
+                        ok = false;
+                        continue;
+                    }
+                    concrete.push_back({c["group"].as<std::string>(),
+                                        c["scheme"] ? c["scheme"].as<std::string>() : "",
+                                        c["type"] ? c["type"].as<std::string>() : ""});
+                }
+            }
+            if (!ok)
+                continue;
+            if (bind->publishes.empty() && bind->subscribes.empty())
+            {
+                fail("a dynamic: bind needs publishes: or subscribes:");
+                continue;
+            }
+        }
+        else
+        {
+            if (!entry["group"] || !entry["numeric"])
+            {
+                fail("a bind needs group: and numeric:, or dynamic: with publishes: or "
+                     "subscribes:");
+                continue;
+            }
+            bind->group_pattern = glob_regex(entry["group"].as<std::string>());
+            bind->numerics = read_list(entry["numeric"]);
+            if (entry["layer"])
+            {
+                bind->has_layer = layer_from_name(entry["layer"].as<std::string>(), bind->layer);
+                if (!bind->has_layer)
+                {
+                    fail("unknown layer '" + entry["layer"].as<std::string>() + "'");
+                    continue;
+                }
+            }
+            for (const auto& numeric : bind->numerics)
+            {
+                std::set<std::uint32_t> values;
+                std::string error;
+                if (!eval_numeric(numeric, {1}, values, error))
+                {
+                    fail(error);
+                    ok = false;
+                }
+            }
+            if (!ok)
+                continue;
+        }
+        binds.push_back(bind);
+    }
+    return binds;
+}
+
+inline Application::Binder make_binder(std::vector<std::shared_ptr<Bind>> binds,
+                                       std::vector<std::uint32_t> instances)
+{
+    return [binds, instances](PubSubEntry e) -> std::vector<PubSubEntry>
+    {
+        if (!e.dynamic)
+            return {e};
+
+        for (const auto& bind : binds)
+        {
+            if (bind->has_layer && bind->layer != e.layer)
+                continue;
+
+            if (!bind->is_publication)
+            {
+                if (!e.numeric_runtime || !std::regex_match(e.group, bind->group_pattern))
+                    continue;
+                for (const auto& numeric : bind->numerics)
+                {
+                    std::string error;
+                    eval_numeric(numeric, instances, e.bound_numerics, error);
+                }
+                ++bind->uses;
+                return {e};
+            }
+
+            if (!e.unresolved() && !e.numeric_runtime)
+                continue;
+            if ((!bind->select_scheme.empty() && bind->select_scheme != e.scheme) ||
+                (!bind->select_type.empty() && bind->select_type != e.type))
+                continue;
+            const auto& concrete =
+                e.direction == PubSubEntry::Direction::PUBLISH ? bind->publishes : bind->subscribes;
+            if (concrete.empty())
+                continue;
+
+            ++bind->uses;
+            std::vector<PubSubEntry> bound;
+            for (const auto& c : concrete)
+            {
+                PubSubEntry b = e;
+                b.group = c.group;
+                if (!c.scheme.empty())
+                    b.scheme = c.scheme;
+                if (!c.type.empty())
+                    b.type = c.type;
+                b.numeric_runtime = false;
+                b.expr.clear();
+                bound.push_back(b);
+            }
+            return bound;
+        }
+        return {e};
+    };
+}
+
 inline std::vector<RunRef> read_run(const YAML::Node& node, bool legacy,
                                     const std::string& location, Issues& issues)
 {
@@ -456,8 +859,9 @@ inline std::vector<RunRef> read_run(const YAML::Node& node, bool legacy,
         }
         else if (entry.IsMap())
         {
-            static const std::set<std::string> legacy_keys{"file", "application"};
-            static const std::set<std::string> run_keys{"application", "file", "name", "plugins"};
+            static const std::set<std::string> legacy_keys{"file", "application", "bind"};
+            static const std::set<std::string> run_keys{"application", "file", "name", "plugins",
+                                                        "bind"};
             const auto& allowed = legacy ? legacy_keys : run_keys;
             bool bad_key = false;
             for (const auto& kv : entry)
@@ -475,6 +879,7 @@ inline std::vector<RunRef> read_run(const YAML::Node& node, bool legacy,
 
             if (entry["file"])
                 ref.file = entry["file"].as<std::string>();
+            ref.binds = read_binds(entry["bind"], ref.location + ".bind", issues);
             if (legacy)
             {
                 if (entry["application"])
@@ -630,6 +1035,115 @@ class InterfaceFinder
     std::set<std::string> reported_shadowed_;
 };
 
+/// \brief Apply a deployment's necessity: list, which sets the necessity of the subscriptions
+/// it selects whatever the code said
+inline void apply_necessity_overrides(const YAML::Node& node, Deployment& deployment,
+                                      Issues& issues)
+{
+    if (!node)
+        return;
+    if (!node.IsSequence())
+    {
+        add_issue(issues, Issue::Severity::ERROR, "deployment-schema",
+                  "necessity: must be a sequence", "necessity");
+        return;
+    }
+
+    static const std::vector<std::string> selectors{"platform", "module", "application", "thread",
+                                                    "layer",    "group",  "type"};
+    int index = 0;
+    for (const auto& entry : node)
+    {
+        std::string location = "necessity[" + std::to_string(index++) + "]";
+        if (!entry.IsMap() || !entry["set"])
+        {
+            add_issue(issues, Issue::Severity::ERROR, "deployment-schema",
+                      "a necessity override needs set: required|recommended|optional", location);
+            continue;
+        }
+        auto set_name = entry["set"].as<std::string>();
+        if (set_name != "required" && set_name != "recommended" && set_name != "optional")
+        {
+            add_issue(issues, Issue::Severity::ERROR, "deployment-schema",
+                      "set: must be required, recommended or optional", location);
+            continue;
+        }
+        std::map<std::string, std::regex> select;
+        bool ok = true;
+        for (const auto& kv : entry)
+        {
+            auto key = kv.first.as<std::string>();
+            if (key == "set")
+                continue;
+            if (std::find(selectors.begin(), selectors.end(), key) == selectors.end())
+            {
+                add_issue(issues, Issue::Severity::ERROR, "deployment-schema",
+                          "unknown key '" + key + "'", location);
+                ok = false;
+                continue;
+            }
+            try
+            {
+                select[key] = std::regex(kv.second.as<std::string>());
+            }
+            catch (const std::regex_error& e)
+            {
+                add_issue(issues, Issue::Severity::ERROR, "deployment-schema",
+                          key + ": is not a valid regex: " + e.what(), location);
+                ok = false;
+            }
+        }
+        if (!ok)
+            continue;
+
+        auto matches = [&](const std::string& key, const std::string& value)
+        {
+            auto it = select.find(key);
+            return it == select.end() || std::regex_match(value, it->second);
+        };
+
+        int uses = 0;
+        auto apply = [&](std::set<PubSubEntry>& subs, const Platform& platform,
+                         const Module& module, const Application& app)
+        {
+            if (!(matches("platform", platform.name) || matches("platform", platform.base_name)) ||
+                !matches("module", module.name) || !matches("application", app.name))
+                return;
+            std::set<PubSubEntry> updated;
+            for (auto e : subs)
+            {
+                if (matches("thread", e.thread) && matches("layer", layer_name(e.layer)) &&
+                    matches("group", e.group) && matches("type", e.type))
+                {
+                    e.necessity = necessity_from_name(set_name);
+                    e.necessity_overridden = true;
+                    ++uses;
+                }
+                updated.insert(e);
+            }
+            subs = updated;
+        };
+
+        for (auto& platform : deployment.platforms)
+        {
+            for (auto& module : platform.modules)
+            {
+                for (auto& app_p : module.applications)
+                {
+                    auto& app = app_p.second;
+                    for (auto& thread_p : app.threads)
+                        apply(thread_p.second->interthread_subscribes, platform, module, app);
+                    for (auto& layer_p : app.subscribes)
+                        apply(layer_p.second, platform, module, app);
+                }
+            }
+        }
+        if (uses == 0)
+            add_issue(issues, Issue::Severity::WARNING, "necessity-unused",
+                      "this override matches no subscription", location);
+    }
+}
+
 inline std::vector<std::string> search_dirs(const std::string& deployment_path,
                                             const LoadParams& params)
 {
@@ -693,7 +1207,7 @@ inline Deployment load_deployment(const std::string& path, Issues& issues,
                   "${" + name + "} has no value (set it with -D " + name + "=value)");
 
     detail::InterfaceFinder finder(detail::search_dirs(path, params));
-    std::map<std::string, std::vector<detail::ModuleRef>> platform_refs;
+    std::map<std::string, detail::PlatformRef> platform_refs;
 
     if (!deploy_yaml.IsMap() || !deploy_yaml["deployment"])
     {
@@ -703,7 +1217,7 @@ inline Deployment load_deployment(const std::string& path, Issues& issues,
             detail::RunRef ref;
             ref.file = path;
             ref.location = "application";
-            platform_refs["goby_platform"].push_back({"nomodule", {ref}, true});
+            platform_refs["goby_platform"].modules.push_back({"nomodule", {ref}, true});
         }
         else
         {
@@ -736,6 +1250,22 @@ inline Deployment load_deployment(const std::string& path, Issues& issues,
                 continue;
             }
             auto platform_name = platform["name"].as<std::string>();
+            auto& platform_ref = platform_refs[platform_name];
+            platform_ref.location = location;
+            platform_ref.binds = detail::read_binds(platform["bind"], location + ".bind", issues);
+            if (auto instances_node = platform["instances"])
+            {
+                for (const auto& instance : detail::read_list(instances_node))
+                {
+                    std::set<std::uint32_t> values;
+                    std::string error;
+                    if (!detail::eval_numeric(instance, {}, values, error))
+                        add_issue(issues, Issue::Severity::ERROR, "deployment-schema", error,
+                                  location + ".instances");
+                    platform_ref.instances.insert(platform_ref.instances.end(), values.begin(),
+                                                  values.end());
+                }
+            }
 
             if (auto modules_node = platform["modules"])
             {
@@ -754,7 +1284,7 @@ inline Deployment load_deployment(const std::string& path, Issues& issues,
                         continue;
                     }
                     module_ref.name = module["name"].as<std::string>();
-                    platform_refs[platform_name].push_back(module_ref);
+                    platform_ref.modules.push_back(module_ref);
                 }
             }
             else
@@ -767,7 +1297,7 @@ inline Deployment load_deployment(const std::string& path, Issues& issues,
                               location);
                     continue;
                 }
-                platform_refs[platform_name] = {module_ref};
+                platform_ref.modules = {module_ref};
             }
         }
     }
@@ -808,11 +1338,11 @@ inline Deployment load_deployment(const std::string& path, Issues& issues,
     };
 
     auto merge = [&](Application& app, const YAML::Node& yaml, const std::string& file,
-                     const detail::RunRef& ref)
+                     const detail::RunRef& ref, const Application::Binder& binder)
     {
         try
         {
-            app.merge(yaml, deployment.indexer);
+            app.merge(yaml, deployment.indexer, binder);
         }
         catch (const std::exception& e)
         {
@@ -821,11 +1351,11 @@ inline Deployment load_deployment(const std::string& path, Issues& issues,
         }
     };
 
-    for (const auto& platform_p : platform_refs)
+    auto load_platform = [&](const std::string& name, const detail::PlatformRef& platform_ref,
+                             const std::vector<std::uint32_t>& instances, Platform& platform)
     {
-        Platform platform;
-        platform.name = platform_p.first;
-        for (const auto& module_ref : platform_p.second)
+        platform.name = name;
+        for (const auto& module_ref : platform_ref.modules)
         {
             Module module;
             module.name = module_ref.name;
@@ -854,7 +1384,10 @@ inline Deployment load_deployment(const std::string& path, Issues& issues,
                                   "list plugins under plugins:)",
                               ref.location);
                 }
-                merge(it->second, yaml, file, ref);
+                auto binds = ref.binds;
+                binds.insert(binds.end(), platform_ref.binds.begin(), platform_ref.binds.end());
+                auto binder = detail::make_binder(binds, instances);
+                merge(it->second, yaml, file, ref, binder);
 
                 for (const auto& plugin : ref.plugins)
                 {
@@ -863,14 +1396,56 @@ inline Deployment load_deployment(const std::string& path, Issues& issues,
                     auto plugin_file = locate(ref, is_file ? "" : plugin, is_file ? plugin : "");
                     YAML::Node plugin_yaml;
                     if (!plugin_file.empty() && load_interface(plugin_file, ref, plugin_yaml))
-                        merge(it->second, plugin_yaml, plugin_file, ref);
+                        merge(it->second, plugin_yaml, plugin_file, ref, binder);
                 }
             }
             platform.modules.push_back(std::move(module));
         }
         std::stable_sort(platform.modules.begin(), platform.modules.end(),
                          [](const Module& a, const Module& b) { return a.name < b.name; });
-        deployment.platforms.push_back(std::move(platform));
+    };
+
+    for (const auto& platform_p : platform_refs)
+    {
+        const auto& ref = platform_p.second;
+        if (ref.instances.empty() || !params.expand_instances)
+        {
+            Platform platform;
+            platform.base_name = platform_p.first;
+            load_platform(platform_p.first, ref, ref.instances, platform);
+            deployment.platforms.push_back(std::move(platform));
+        }
+        else
+        {
+            for (auto instance : ref.instances)
+            {
+                Platform platform;
+                platform.base_name = platform_p.first;
+                load_platform(platform_p.first + std::to_string(instance), ref, {instance},
+                              platform);
+                deployment.platforms.push_back(std::move(platform));
+            }
+        }
+    }
+    std::stable_sort(deployment.platforms.begin(), deployment.platforms.end(),
+                     [](const Platform& a, const Platform& b) { return a.name < b.name; });
+
+    detail::apply_necessity_overrides(deploy_yaml["necessity"], deployment, issues);
+
+    std::vector<std::shared_ptr<detail::Bind>> all_binds;
+    for (const auto& platform_p : platform_refs)
+    {
+        const auto& ref = platform_p.second;
+        all_binds.insert(all_binds.end(), ref.binds.begin(), ref.binds.end());
+        for (const auto& module_ref : ref.modules)
+            for (const auto& run_ref : module_ref.run)
+                all_binds.insert(all_binds.end(), run_ref.binds.begin(), run_ref.binds.end());
+    }
+    for (const auto& bind : all_binds)
+    {
+        if (bind->uses == 0)
+            add_issue(issues, Issue::Severity::WARNING, "bind-unused",
+                      "this bind matches no dynamic publication or subscription", bind->location);
     }
 
     return deployment;

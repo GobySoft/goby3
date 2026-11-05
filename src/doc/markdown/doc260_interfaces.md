@@ -17,10 +17,16 @@ Goby's groups, types and schemes are known at compile time, so the publish/subsc
 - Static metadata only: nothing reads it at run time.
 - Drawn bold (required), tapered (recommended) or solid; a required subscription without a publisher is drawn red.
 
+## Dynamic groups
+
+- What `-gen` can tell about a `DynamicGroup`: the whole group (`dynamic: true`), its string but not its numeric (`numeric: runtime`), or neither (`group: "*"`, with `expr`).
+- How it follows a group back to where it is made: a literal, a member's initializer, a local or global variable, a helper function's return value, a smart pointer's `reset(new DynamicGroup(...))`.
+
 ## Deployment files
 
 - `deployment:` name; `platforms:` each with `name:` and either `run:` or `modules:` (each with `name:` and `run:`).
-- `run:` entries: an application name, or `{ application, name, plugins, file }`.
+- `run:` entries: an application name, or `{ application, name, plugins, file, bind }`.
+- `instances:`, `bind:` and the top-level `necessity:` overrides.
 - Where interface files are found; `${NAME}` variables.
 - The older `interfaces:` list of files.
 

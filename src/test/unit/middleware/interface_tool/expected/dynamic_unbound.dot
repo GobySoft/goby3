@@ -1,0 +1,50 @@
+digraph dynamic_unbound { 
+	splines=ortho
+	newrank=true
+	subgraph cluster_0 {
+		label=<<b>bot</b>>
+		fontcolor="#006400"
+		penwidth=2
+		pencolor="#00640020"
+		subgraph cluster_1 {
+			label=<<b>mission_manager</b>>
+			fontcolor="#104e8b"
+			penwidth=2
+			pencolor="#104e8b20"
+			bot_nomodule_mission_manager_MissionManager[penwidth=2,color="#551a8b20"]
+		}
+	}
+	subgraph cluster_2 {
+		label=<<b>hub</b>>
+		fontcolor="#006400"
+		penwidth=2
+		pencolor="#00640020"
+		subgraph cluster_3 {
+			label=<<b>engineering_display</b>>
+			fontcolor="#104e8b"
+			penwidth=2
+			pencolor="#104e8b20"
+			hub_nomodule_engineering_display_Display[penwidth=2,color="#551a8b20"]
+		}
+		subgraph cluster_4 {
+			label=<<b>hub_manager</b>>
+			fontcolor="#104e8b"
+			penwidth=2
+			pencolor="#104e8b20"
+			hub_nomodule_hub_manager_HubManager[penwidth=2,color="#551a8b20"]
+		}
+		hub_nomodule_hub_manager_HubManager_no_subscribers__35_104e8b [label="",style=invis] 
+hub_nomodule_hub_manager_HubManager->hub_nomodule_hub_manager_HubManager_no_subscribers__35_104e8b[fontsize=7,headlabel="P0",taillabel="P0",xlabel=<P0[* (DynamicGroup(cfg().group()))]>,color="#104e8b",style=dashed,tooltip="P0: * (DynamicGroup(cfg().group())) | PROTOBUF | google::protobuf::Message [dynamic]",labeltooltip="P0: * (DynamicGroup(cfg().group())) | PROTOBUF | google::protobuf::Message [dynamic]",headtooltip="P0: * (DynamicGroup(cfg().group())) | PROTOBUF | google::protobuf::Message [dynamic]",penwidth=0.5,arrowhead=vee,arrowsize=0.3]
+		hub_nomodule_engineering_display_Display_no_publishers_red  
+hub_nomodule_engineering_display_Display_no_publishers_red->hub_nomodule_engineering_display_Display[fontsize=7,headlabel="P1",taillabel="P1",xlabel=<P1[engineering]>,color="red",style=bold,tooltip="P1: fleet::engineering | PROTOBUF | fleet::protobuf::Engineering",labeltooltip="P1: fleet::engineering | PROTOBUF | fleet::protobuf::Engineering",headtooltip="P1: fleet::engineering | PROTOBUF | fleet::protobuf::Engineering",penwidth=0.5,arrowhead=vee,arrowsize=0.3]
+	}
+	hub_nomodule_hub_manager_HubManager->bot_nomodule_mission_manager_MissionManager[fontsize=7,headlabel="V0",taillabel="V0",xlabel=<V0[hub_command;?]>,color="#006400",style="bold,dashed",tooltip="V0: fleet::hub_command;? | DCCL | fleet::protobuf::Command [dynamic]",labeltooltip="V0: fleet::hub_command;? | DCCL | fleet::protobuf::Command [dynamic]",headtooltip="V0: fleet::hub_command;? | DCCL | fleet::protobuf::Command [dynamic]",penwidth=0.5,arrowhead=vee,arrowsize=0.3]
+	bot_nomodule_mission_manager_MissionManager
+ [label=<<font color="#551a8b">MissionManager</font><br/>>,shape=box,style=solid]
+	hub_nomodule_engineering_display_Display
+ [label=<<font color="#551a8b">Display</font><br/>>,shape=box,style=solid]
+	hub_nomodule_engineering_display_Display_no_publishers_red
+ [label=<<font color="#104e8b" point-size="10">P1: </font><b><font point-size="10">fleet::engineering</font></b><br/><font point-size="6">PROTOBUF</font><br/><font point-size="8">fleet::protobuf::Engineering</font><br/>>,penwidth=0]
+	hub_nomodule_hub_manager_HubManager
+ [label=<<font color="#551a8b">HubManager</font><br/><font color="#104e8b" point-size="10">P0: </font><b><font point-size="10">* (DynamicGroup(cfg().group()))</font></b><br/><font point-size="6">PROTOBUF</font><br/><font point-size="8">google::protobuf::Message</font><br/><font color="#006400" point-size="10">V0: </font><b><font point-size="10">fleet::hub_command;?</font></b><br/><font point-size="6">DCCL</font><br/><font point-size="8">fleet::protobuf::Command</font><br/>>,shape=box,style=solid]
+}
