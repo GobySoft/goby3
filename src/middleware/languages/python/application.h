@@ -594,12 +594,12 @@ inline void define_python_module(py::module_& m, const std::string& app_name)
         return;                                                                                  \
     }
 
-#define GOBY_PYTHON_IF_SUBSCRIPTION(SCHEME, LAYER_ENUM, LAYER_FUNCTION, GROUP, GROUP_KEY, TYPE)  \
+#define GOBY_PYTHON_IF_SUBSCRIPTION(SCHEME, LAYER_ENUM, LAYER_FUNCTION, GROUP, GROUP_KEY, TYPE, NECESSITY) \
     if (id == goby::middleware::python::Identifier{                                              \
                   goby::middleware::python::PubSubLayer::LAYER_ENUM, TYPE::descriptor()->name(), \
                   goby::middleware::MarshallingScheme::SCHEME, GROUP_KEY})                       \
     {                                                                                            \
-        LAYER_FUNCTION().subscribe<GROUP>(                                                       \
+        LAYER_FUNCTION().subscribe<GROUP, goby::middleware::Necessity::NECESSITY>(               \
             [callback](const TYPE& pb)                                                           \
             {                                                                                    \
                 std::vector<char> bytes = goby::middleware::SerializerParserHelper<              \

@@ -45,6 +45,8 @@ import yaml
 LAYERS = ("interthread", "interprocess", "intermodule")
 SUPPORTED_SCHEMES = ("PROTOBUF",)
 ENTRY_KEYS = ("group", "scheme", "type")
+SUBSCRIPTION_KEYS = ENTRY_KEYS + ("necessity",)
+NECESSITIES = ("required", "recommended", "optional")
 PORTAL_KEYS = ("alias", "publishes", "subscribes")
 APPLICATION_KEYS = ("name", "cpp_type", "config")
 CONFIG_KEYS = ("scheme", "type")
@@ -68,6 +70,7 @@ class Entry:
     group: str
     scheme: str
     type: str
+    necessity: str = "optional"
 
     @property
     def layer_enum(self) -> str:
@@ -181,10 +184,17 @@ def _collect_portal(layer: str, portal, interface: Interface, where: str) -> Non
             continue
         if not isinstance(entries, list):
             raise InterfaceError(f"'{where}.{kind}' must be a list")
+        allowed = SUBSCRIPTION_KEYS if kind == "subscribes" else ENTRY_KEYS
         for entry in entries:
             entry_where = f"{where}.{kind}"
-            _check_keys(entry, ENTRY_KEYS, ENTRY_KEYS, entry_where)
+            _check_keys(entry, ENTRY_KEYS, allowed, entry_where)
             _check_scheme(entry["scheme"], entry_where)
+            necessity = entry.get("necessity", "optional")
+            if necessity not in NECESSITIES:
+                raise InterfaceError(
+                    f"'{entry_where}.necessity' is '{necessity}'. Supported values are: "
+                    f"{', '.join(NECESSITIES)}"
+                )
             destination.append(
                 Entry(
                     layer=layer,
@@ -192,6 +202,7 @@ def _collect_portal(layer: str, portal, interface: Interface, where: str) -> Non
                     group=to_cpp_scoping(str(entry["group"])),
                     scheme=entry["scheme"],
                     type=to_cpp_scoping(str(entry["type"])),
+                    necessity=necessity,
                 )
             )
 
@@ -335,13 +346,14 @@ def generate_cpp(interface: Interface, includes: Sequence[str], module: str, sou
     ]
     for entry in interface.cpp_subscribes:
         lines.append(
-            '        GOBY_PYTHON_IF_SUBSCRIPTION({}, {}, {}, {}, "{}", {})'.format(
+            '        GOBY_PYTHON_IF_SUBSCRIPTION({}, {}, {}, {}, "{}", {}, {})'.format(
                 entry.scheme,
                 entry.layer_enum,
                 entry.accessor,
                 entry.group,
                 entry.group,
                 entry.type,
+                entry.necessity.upper(),
             )
         )
     lines += [

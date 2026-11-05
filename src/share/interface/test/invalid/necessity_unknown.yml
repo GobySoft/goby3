@@ -1,0 +1,14 @@
+# necessity is one of required, recommended or optional
+application:
+  name: BadDemo
+  cpp_type: goby::zeromq::SingleThreadApplication
+  config:
+    scheme: PROTOBUF
+    type: project.config.protobuf.BadDemoConfig
+
+interprocess:
+  subscribes:
+    - group: project::groups::nav
+      scheme: PROTOBUF
+      type: project.protobuf.NavigationReport
+      necessity: essential

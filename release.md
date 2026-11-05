@@ -12,6 +12,10 @@
 ### Interface tools
 
 - Added `goby interface visualize`, which draws a deployment's publish/subscribe graph from the interface files `goby_clang_tool -gen` writes. It needs only yaml-cpp, so it is built without LLVM. `goby_clang_tool -viz` remains and draws the same graph from the same code, which now lives in `goby/middleware/tool/interface/`.
+- Added `goby interface validate`, which checks that every required subscription in a deployment has a publisher in scope, with human or JSON output. `goby_validate_interfaces()` (from `find_package(GOBY)`) runs it as a CTest test.
+- Deployment files can list what each platform or module `run`s by application name; the interface files are found beside the deployment, then with `-I` or `GOBY_INTERFACE_PATH`, then in Goby's own `share/goby/interfaces`. `plugins`, `name` and `file` handle plugins, repeated applications and files off the search path. The `interfaces:` file list still works.
+- `subscribe_dynamic()` and `subscribe_type_regex()` take a `Necessity` template parameter, as `subscribe()` does, so subscriptions made through them can be required. It defaults to `OPTIONAL`. Python and Julia `interface.yml` subscriptions take `necessity: required|recommended|optional`.
+- A type-regex subscription now matches any type published to its group in `goby_clang_tool` and `goby interface` output, since the regex is known only at run time.
 
 ### Bugs
 

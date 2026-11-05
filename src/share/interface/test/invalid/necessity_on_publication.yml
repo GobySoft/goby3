@@ -1,0 +1,14 @@
+# necessity describes a subscription; a publication has none
+application:
+  name: BadDemo
+  cpp_type: goby::zeromq::SingleThreadApplication
+  config:
+    scheme: PROTOBUF
+    type: project.config.protobuf.BadDemoConfig
+
+interprocess:
+  publishes:
+    - group: project::groups::nav
+      scheme: PROTOBUF
+      type: project.protobuf.NavigationReport
+      necessity: required
