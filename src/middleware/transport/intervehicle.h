@@ -30,6 +30,7 @@
 #include <set>
 #include <sys/types.h>
 #include <thread>
+#include <type_traits>
 #include <unistd.h>
 
 #include <google/protobuf/io/zero_copy_stream_impl.h>
@@ -261,6 +262,35 @@ class InterVehicleTransporterBase
             SubscriptionAction::UNSUBSCRIBE);
     }
 
+    /// \brief Subscribe to a DCCL type known only at run time, given by its descriptor
+    ///
+    /// \param f Callback function or lambda that is called upon receipt of the subscribed data
+    /// \param desc Descriptor of the DCCL message to subscribe to (e.g. from dccl::DynamicProtobufManager)
+    /// \param group group to subscribe to (typically a DynamicGroup)
+    /// \param subscriber Optional metadata that controls the subscription or sets callbacks to monitor the subscription result
+    void subscribe_dynamic(std::function<void(std::shared_ptr<const google::protobuf::Message>)> f,
+                           const google::protobuf::Descriptor* desc, const Group& group,
+                           const Subscriber<google::protobuf::Message>& subscriber =
+                               Subscriber<google::protobuf::Message>())
+    {
+        static_cast<Derived*>(this)->template _subscribe<google::protobuf::Message>(
+            f, group, subscriber, SubscriptionAction::SUBSCRIBE, desc);
+    }
+
+    /// \brief Unsubscribe from a DCCL type known only at run time, given by its descriptor
+    ///
+    /// \param desc Descriptor of the DCCL message to unsubscribe from
+    /// \param group group to unsubscribe from
+    /// \param subscriber Optional metadata that controls the subscription
+    void unsubscribe_dynamic(const google::protobuf::Descriptor* desc, const Group& group,
+                             const Subscriber<google::protobuf::Message>& subscriber =
+                                 Subscriber<google::protobuf::Message>())
+    {
+        static_cast<Derived*>(this)->template _subscribe<google::protobuf::Message>(
+            std::function<void(std::shared_ptr<const google::protobuf::Message>)>(), group,
+            subscriber, SubscriptionAction::UNSUBSCRIBE, desc);
+    }
+
   protected:
     template <typename Data>
     std::shared_ptr<goby::middleware::protobuf::SerializerTransporterMessage>
@@ -317,9 +347,10 @@ class InterVehicleTransporterBase
     template <typename Data>
     std::shared_ptr<intervehicle::protobuf::Subscription>
     _set_up_subscribe(std::function<void(std::shared_ptr<const Data> d)> func, const Group& group,
-                      const Subscriber<Data>& subscriber, SubscriptionAction action)
+                      const Subscriber<Data>& subscriber, SubscriptionAction action,
+                      const google::protobuf::Descriptor* desc = nullptr)
     {
-        auto dccl_id = SerializerParserHelper<Data, MarshallingScheme::DCCL>::id();
+        auto dccl_id = _dccl_id<Data>(desc);
 
         switch (action)
         {
@@ -344,9 +375,14 @@ class InterVehicleTransporterBase
                     throw(InvalidSubscription(ss.str()));
                 }
 
-                auto subscription = std::make_shared<
-                    IntervehicleSerializationSubscription<Data, MarshallingScheme::DCCL>>(
-                    func, group, subscriber);
+                using SubscriptionType =
+                    IntervehicleSerializationSubscription<Data, MarshallingScheme::DCCL>;
+                std::shared_ptr<SubscriptionType> subscription;
+                if constexpr (std::is_same_v<Data, google::protobuf::Message>)
+                    subscription = std::make_shared<SubscriptionType>(func, desc->full_name(),
+                                                                      group, subscriber);
+                else
+                    subscription = std::make_shared<SubscriptionType>(func, group, subscriber);
 
                 this->subscriptions_[dccl_id][group] = subscription;
             }
@@ -370,7 +406,7 @@ class InterVehicleTransporterBase
         }
 
         auto dccl_subscription =
-            this->template _serialize_subscription<Data>(group, subscriber, action);
+            this->template _serialize_subscription<Data>(group, subscriber, action, desc);
         using intervehicle::protobuf::Subscription;
         // insert pending subscription
         auto subscription_publication = intervehicle::serialize_publication(
@@ -459,9 +495,10 @@ class InterVehicleTransporterBase
     template <typename Data>
     std::shared_ptr<intervehicle::protobuf::Subscription>
     _serialize_subscription(const Group& group, const Subscriber<Data>& subscriber,
-                            SubscriptionAction action)
+                            SubscriptionAction action,
+                            const google::protobuf::Descriptor* desc = nullptr)
     {
-        auto dccl_id = SerializerParserHelper<Data, MarshallingScheme::DCCL>::id();
+        auto dccl_id = _dccl_id<Data>(desc);
         auto dccl_subscription = std::make_shared<intervehicle::protobuf::Subscription>();
         dccl_subscription->mutable_header()->set_src(0);
 
@@ -477,7 +514,7 @@ class InterVehicleTransporterBase
                                           ? intervehicle::protobuf::Subscription::SUBSCRIBE
                                           : intervehicle::protobuf::Subscription::UNSUBSCRIBE);
 
-        _set_protobuf_metadata<Data>(dccl_subscription->mutable_metadata());
+        _set_protobuf_metadata<Data>(dccl_subscription->mutable_metadata(), desc);
         *dccl_subscription->mutable_intervehicle() = subscriber.cfg().intervehicle();
         return dccl_subscription;
     }
@@ -512,10 +549,31 @@ class InterVehicleTransporterBase
         return static_cast<Derived*>(this)->_poll(lock);
     }
 
-    template <typename Data> void _set_protobuf_metadata(protobuf::SerializerProtobufMetadata* meta)
+    // desc is only used (and required) when Data is google::protobuf::Message
+    template <typename Data> static int _dccl_id(const google::protobuf::Descriptor* desc)
     {
-        meta->set_protobuf_name(SerializerParserHelper<Data, MarshallingScheme::DCCL>::type_name());
-        _insert_file_desc_with_dependencies(Data::descriptor()->file(), meta);
+        if constexpr (std::is_same_v<Data, google::protobuf::Message>)
+            return SerializerParserHelper<google::protobuf::Message, MarshallingScheme::DCCL>::id(
+                desc);
+        else
+            return SerializerParserHelper<Data, MarshallingScheme::DCCL>::id();
+    }
+
+    template <typename Data>
+    void _set_protobuf_metadata(protobuf::SerializerProtobufMetadata* meta,
+                                const google::protobuf::Descriptor* desc)
+    {
+        if constexpr (std::is_same_v<Data, google::protobuf::Message>)
+        {
+            meta->set_protobuf_name(std::string(desc->full_name()));
+            _insert_file_desc_with_dependencies(desc->file(), meta);
+        }
+        else
+        {
+            meta->set_protobuf_name(
+                SerializerParserHelper<Data, MarshallingScheme::DCCL>::type_name());
+            _insert_file_desc_with_dependencies(Data::descriptor()->file(), meta);
+        }
     }
 
     template <typename Data>
@@ -647,7 +705,8 @@ class InterVehicleForwarder
 
     template <typename Data>
     void _subscribe(std::function<void(std::shared_ptr<const Data> d)> func, const Group& group,
-                    const Subscriber<Data>& subscriber, typename Base::SubscriptionAction action)
+                    const Subscriber<Data>& subscriber, typename Base::SubscriptionAction action,
+                    const google::protobuf::Descriptor* desc = nullptr)
     {
         try
         {
@@ -655,7 +714,7 @@ class InterVehicleForwarder
                 .template publish<intervehicle::groups::modem_subscription_forward_tx,
                                   intervehicle::protobuf::Subscription,
                                   MarshallingScheme::PROTOBUF>(
-                    this->_set_up_subscribe(func, group, subscriber, action));
+                    this->_set_up_subscribe(func, group, subscriber, action, desc));
         }
         catch (const InvalidUnsubscription& e)
         {
@@ -720,11 +779,12 @@ class InterVehiclePortal
 
     template <typename Data>
     void _subscribe(std::function<void(std::shared_ptr<const Data> d)> func, const Group& group,
-                    const Subscriber<Data>& subscriber, typename Base::SubscriptionAction action)
+                    const Subscriber<Data>& subscriber, typename Base::SubscriptionAction action,
+                    const google::protobuf::Descriptor* desc = nullptr)
     {
         try
         {
-            auto dccl_subscription = this->_set_up_subscribe(func, group, subscriber, action);
+            auto dccl_subscription = this->_set_up_subscribe(func, group, subscriber, action, desc);
 
             this->innermost().template publish<intervehicle::groups::modem_subscription_forward_tx>(
                 dccl_subscription);

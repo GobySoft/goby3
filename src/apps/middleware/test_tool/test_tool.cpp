@@ -154,11 +154,13 @@ make_endpoints(const goby::apps::middleware::protobuf::TestFile& file,
                const goby::apps::middleware::protobuf::TestRunConfig& cfg)
 {
     using goby::middleware::tool::PubSubTestEndpoint;
+    using goby::middleware::tool::PubSubTestInterVehicleEndpoint;
     using goby::middleware::tool::PubSubTestPortalEndpoint;
     std::vector<std::unique_ptr<PubSubTestEndpoint>> endpoints;
     for (const auto& ep : file.endpoint())
     {
         const bool interprocess = ep.layer() == goby::middleware::protobuf::LAYER_INTERPROCESS;
+        const bool intervehicle = ep.layer() == goby::middleware::protobuf::LAYER_INTERVEHICLE;
         const std::string client = cfg.app().name() + "." + ep.name();
         if (ep.has_zeromq())
         {
@@ -168,7 +170,12 @@ make_endpoints(const goby::apps::middleware::protobuf::TestFile& file,
             merged.MergeFrom(ep.zeromq());
             if (!merged.has_client_name())
                 merged.set_client_name(client);
-            if (interprocess)
+            if (intervehicle)
+                endpoints.push_back(
+                    std::make_unique<
+                        PubSubTestInterVehicleEndpoint<goby::zeromq::InterProcessPortal<>, Config>>(
+                        ep.name(), merged));
+            else if (interprocess)
                 endpoints.push_back(
                     std::make_unique<
                         PubSubTestPortalEndpoint<goby::zeromq::InterProcessPortal<>, Config>>(
@@ -187,7 +194,12 @@ make_endpoints(const goby::apps::middleware::protobuf::TestFile& file,
             merged.MergeFrom(ep.udpm());
             if (!merged.has_client_name())
                 merged.set_client_name(client);
-            if (interprocess)
+            if (intervehicle)
+                endpoints.push_back(
+                    std::make_unique<
+                        PubSubTestInterVehicleEndpoint<goby::udpm::InterProcessPortal<>, Config>>(
+                        ep.name(), merged));
+            else if (interprocess)
                 endpoints.push_back(
                     std::make_unique<
                         PubSubTestPortalEndpoint<goby::udpm::InterProcessPortal<>, Config>>(

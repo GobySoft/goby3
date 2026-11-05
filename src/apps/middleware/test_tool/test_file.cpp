@@ -352,7 +352,7 @@ void goby::apps::middleware::load_test_libraries(const protobuf::TestFile& file,
 
 void goby::apps::middleware::validate_test_file(const protobuf::TestFile& file, Issues& issues)
 {
-    std::set<std::string> endpoint_names;
+    std::set<std::string> endpoint_names, intervehicle_names;
     for (int i = 0, n = file.endpoint_size(); i < n; ++i)
     {
         const auto& ep = file.endpoint(i);
@@ -361,10 +361,13 @@ void goby::apps::middleware::validate_test_file(const protobuf::TestFile& file, 
             add_issue(issues, loc + ".name", "must not be empty");
         else if (!endpoint_names.insert(ep.name()).second)
             add_issue(issues, loc + ".name", "duplicate endpoint name '" + ep.name() + "'");
-        if (ep.layer() != goby::middleware::protobuf::LAYER_INTERPROCESS &&
-            ep.layer() != goby::middleware::protobuf::LAYER_INTERMODULE)
+        if (ep.layer() == goby::middleware::protobuf::LAYER_INTERVEHICLE)
+            intervehicle_names.insert(ep.name());
+        else if (ep.layer() != goby::middleware::protobuf::LAYER_INTERPROCESS &&
+                 ep.layer() != goby::middleware::protobuf::LAYER_INTERMODULE)
             add_issue(issues, loc + ".layer",
-                      "only LAYER_INTERPROCESS and LAYER_INTERMODULE are supported");
+                      "only LAYER_INTERPROCESS, LAYER_INTERMODULE and LAYER_INTERVEHICLE are "
+                      "supported");
         if (ep.has_zeromq() && !test_tool_has_zeromq())
             add_issue(issues, loc + ".zeromq", "this build of goby has no zeromq support");
     }
@@ -432,6 +435,9 @@ void goby::apps::middleware::validate_test_file(const protobuf::TestFile& file, 
     }
 
     auto test_issues =
-        goby::middleware::tool::PubSubTestValidator(file.test(), endpoint_names).validate();
+        goby::middleware::tool::PubSubTestValidator(file.test(), endpoint_names)
+            .set_intervehicle_endpoints(intervehicle_names,
+                                        file.endpoint_size() ? file.endpoint(0).name() : "")
+            .validate();
     issues.insert(issues.end(), test_issues.begin(), test_issues.end());
 }

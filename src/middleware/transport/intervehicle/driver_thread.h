@@ -153,6 +153,8 @@ class ModemDriverThread
     void _expire_value(const goby::time::SteadyClock::time_point now,
                        const goby::acomms::DynamicBuffer<buffer_data_type>::Value& value,
                        intervehicle::protobuf::ExpireData::ExpireReason reason);
+    void _discard_superseded(
+        const std::vector<goby::acomms::DynamicBuffer<buffer_data_type>::Value>& values);
 
     subbuffer_id_type _create_buffer_id(unsigned dccl_id, unsigned group);
 
@@ -207,6 +209,10 @@ class ModemDriverThread
 
     goby::middleware::protobuf::SerializerTransporterKey subscription_key_;
     std::set<modem_id_type> subscription_subbuffers_;
+    // last subscription queued per destination for each subscriber, so a newer one can replace it
+    std::map<modem_id_type,
+             std::vector<std::pair<intervehicle::protobuf::Subscription, buffer_data_type>>>
+        queued_subscriptions_;
 
     goby::acomms::DynamicBuffer<buffer_data_type> buffer_;
 

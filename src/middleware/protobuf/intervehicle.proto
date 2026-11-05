@@ -176,6 +176,7 @@ message ExpireData
         EXPIRED_NO_SUBSCRIBERS = 1;
         EXPIRED_TIME_TO_LIVE_EXCEEDED = 2;
         EXPIRED_BUFFER_OVERFLOW = 3;
+        EXPIRED_SUPERSEDED = 4;
     }
     required ExpireReason reason = 3;
 
