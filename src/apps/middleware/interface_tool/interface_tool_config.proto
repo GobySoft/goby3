@@ -44,7 +44,7 @@ message InterfaceToolConfig
             full_help_msg: "Usage: \"goby interface help [action]\"\n"
         }];
         visualize = 1 [(goby.ev).cfg = {
-            short_help_msg: "Draw a deployment's publish/subscribe graph"
+            short_help_msg: "Draw a deployment's publish/subscribe graph (Graphviz or D2)"
         }];
         validate = 2 [(goby.ev).cfg = {
             short_help_msg: "Check that every required subscription in a deployment has a publisher"
@@ -76,6 +76,18 @@ message InterfaceVisualizeConfig
     }];
     optional string output_file = 11
         [(goby.field).description = "Write the graph here instead of stdout"];
+
+    enum Format
+    {
+        DOT = 1;
+        D2 = 2;
+    }
+    optional Format format = 14 [
+        default = DOT,
+        (goby.field) = {
+            description: "Graphviz (render with dot) or D2 (render with d2, https://d2lang.com)"
+        }
+    ];
     repeated string define = 12 [(goby.field) = {
         description: "Set a variable used as ${NAME} in the deployment file, as NAME=value; overrides the environment",
         cfg { cli_short: "D" }

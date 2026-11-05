@@ -29,6 +29,7 @@
 #include <vector>
 
 #include "actions.h"
+#include "goby/middleware/tool/interface/render_d2.h"
 #include "goby/middleware/tool/interface/render_dot.h"
 
 int goby::clang::visualize(const std::vector<std::string>& yamls, const VisualizeParameters& params)
@@ -53,9 +54,15 @@ int goby::clang::visualize(const std::vector<std::string>& yamls, const Visualiz
     if (interface::has_errors(issues))
         return EXIT_FAILURE;
 
+    if (params.format != "dot" && params.format != "d2")
+    {
+        std::cerr << "-format must be dot or d2" << std::endl;
+        return EXIT_FAILURE;
+    }
+
     std::string output_file = params.output_file;
     if (output_file.empty())
-        output_file = deployment.name + ".dot";
+        output_file = deployment.name + "." + params.format;
 
     std::string file_name(params.output_directory + "/" + output_file);
     std::ofstream ofs(file_name.c_str());
@@ -65,16 +72,29 @@ int goby::clang::visualize(const std::vector<std::string>& yamls, const Visualiz
         return EXIT_FAILURE;
     }
 
-    interface::DotParams dot_params;
-    dot_params.filter.omit_group_regex = params.omit_group_regex;
-    dot_params.filter.omit_node_regex = params.omit_node_regex;
-    dot_params.filter.include_coroner = params.include_coroner;
-    dot_params.filter.include_terminate = params.include_terminate;
-    dot_params.filter.include_internal = params.include_internal;
-    dot_params.filter.omit_interthread = params.omit_interthread;
-    dot_params.omit_disconnected = params.omit_disconnected;
-    dot_params.splines = params.dot_splines;
+    interface::ViewFilter::Params filter;
+    filter.omit_group_regex = params.omit_group_regex;
+    filter.omit_node_regex = params.omit_node_regex;
+    filter.include_coroner = params.include_coroner;
+    filter.include_terminate = params.include_terminate;
+    filter.include_internal = params.include_internal;
+    filter.omit_interthread = params.omit_interthread;
 
-    interface::write_dot(ofs, deployment, interface::resolve(deployment), dot_params);
+    auto resolution = interface::resolve(deployment);
+    if (params.format == "d2")
+    {
+        interface::D2Params d2_params;
+        d2_params.filter = filter;
+        d2_params.omit_disconnected = params.omit_disconnected;
+        interface::write_d2(ofs, deployment, resolution, d2_params);
+    }
+    else
+    {
+        interface::DotParams dot_params;
+        dot_params.filter = filter;
+        dot_params.omit_disconnected = params.omit_disconnected;
+        dot_params.splines = params.dot_splines;
+        interface::write_dot(ofs, deployment, resolution, dot_params);
+    }
     return 0;
 }
