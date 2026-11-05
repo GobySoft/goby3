@@ -49,6 +49,18 @@ message InterfaceToolConfig
         validate = 2 [(goby.ev).cfg = {
             short_help_msg: "Check that every required subscription in a deployment has a publisher"
         }];
+        list = 3 [(goby.ev).cfg = {
+            short_help_msg: "List a deployment's platforms, applications or groups"
+        }];
+        explain = 4 [(goby.ev).cfg = {
+            short_help_msg: "Show who publishes and subscribes to groups, and why a subscription is unmet"
+        }];
+        diff = 5 [(goby.ev).cfg = {
+            short_help_msg: "Compare the connections of two deployments, or of one against two sets of interface files"
+        }];
+        init = 6 [(goby.ev).cfg = {
+            short_help_msg: "Write a starter deployment file from a directory of interface files"
+        }];
     }
     optional Action action = 2 [
         default = help,
@@ -177,7 +189,21 @@ message InterfaceValidateConfig
                                               "threads whose name matches this regex"];
 }
 
-// Report written by 'goby interface validate -o JSON'
+// Reports written with -o JSON
+
+// a publication or subscription, and where in the deployment it is made
+message InterfaceEndpoint
+{
+    optional string platform = 1;
+    optional string module = 2;
+    optional string application = 3;
+    optional string thread = 4;
+    optional string layer = 5;
+    optional string group = 6;
+    optional string scheme = 7;
+    optional string type = 8;
+    optional string necessity = 9;
+}
 
 message InterfaceIssue
 {
@@ -193,20 +219,8 @@ message InterfaceIssue
     optional string location = 4 [(goby.field).description =
                                       "Position in the deployment file, e.g. platforms[0].run[2]"];
 
-    message Subject
-    {
-        optional string platform = 1;
-        optional string module = 2;
-        optional string application = 3;
-        optional string thread = 4;
-        optional string layer = 5;
-        optional string group = 6;
-        optional string scheme = 7;
-        optional string type = 8;
-        optional string necessity = 9;
-    }
-    optional Subject subject = 5 [(goby.field).description =
-                                      "The publication or subscription the issue is about"];
+    optional InterfaceEndpoint subject = 5 [(goby.field).description =
+                                                "The publication or subscription the issue is about"];
 }
 
 message InterfaceValidation
@@ -224,4 +238,227 @@ message InterfaceValidation
         optional int32 required_met = 5;
     }
     optional Summary summary = 4;
+}
+
+message InterfaceListConfig
+{
+    option (goby.msg).cfg.tool = {
+        is_tool: true
+        has_subtools: false
+        has_help_action: false
+    };
+
+    optional goby.middleware.protobuf.AppConfig app = 1
+        [(goby.field) = { cfg { action: DEVELOPER } }];
+
+    required string deployment_file = 10 [(goby.field) = {
+        description: "Deployment file (deployment.yml), or a single interface file",
+        cfg { position: { enable: true } }
+    }];
+    enum What
+    {
+        applications = 1;
+        platforms = 2;
+        groups = 3;
+    }
+    optional What what = 11 [
+        default = applications,
+        (goby.field) = {
+            description: "applications (with their threads and publish/subscribe counts per layer), platforms, or groups (with their publishers and subscribers)",
+            cfg { position: { enable: true } }
+        }
+    ];
+    repeated string define = 14 [(goby.field) = {
+        description: "Set a variable used as ${NAME} in the deployment file, as NAME=value; overrides the environment",
+        cfg { cli_short: "D" }
+    }];
+    repeated string interface_dir = 15 [(goby.field) = {
+        description: "Search this directory for interface files, after the deployment file's own directory (also GOBY_INTERFACE_PATH, colon separated)",
+        cfg { cli_short: "I" }
+    }];
+    optional string output_file = 16
+        [(goby.field).description = "Write the list here instead of stdout"];
+    optional InterfaceValidateConfig.OutputFormat output_format = 20
+        [default = HUMAN, (goby.field) = { cfg { cli_short: "o" } }];
+}
+
+message InterfaceExplainConfig
+{
+    option (goby.msg).cfg.tool = {
+        is_tool: true
+        has_subtools: false
+        has_help_action: false
+    };
+
+    optional goby.middleware.protobuf.AppConfig app = 1
+        [(goby.field) = { cfg { action: DEVELOPER } }];
+
+    required string deployment_file = 10 [(goby.field) = {
+        description: "Deployment file (deployment.yml), or a single interface file",
+        cfg { position: { enable: true } }
+    }];
+    required string group_regex = 11 [(goby.field) = {
+        description: "Explain the groups matching this regex",
+        cfg { position: { enable: true } }
+    }];
+    optional string type_regex = 12
+        [(goby.field).description = "Only entries whose type matches this regex"];
+    repeated string define = 14 [(goby.field) = {
+        description: "Set a variable used as ${NAME} in the deployment file, as NAME=value; overrides the environment",
+        cfg { cli_short: "D" }
+    }];
+    repeated string interface_dir = 15 [(goby.field) = {
+        description: "Search this directory for interface files, after the deployment file's own directory (also GOBY_INTERFACE_PATH, colon separated)",
+        cfg { cli_short: "I" }
+    }];
+    optional string output_file = 16
+        [(goby.field).description = "Write the explanation here instead of stdout"];
+    optional InterfaceValidateConfig.OutputFormat output_format = 20
+        [default = HUMAN, (goby.field) = { cfg { cli_short: "o" } }];
+}
+
+message InterfaceDiffConfig
+{
+    option (goby.msg).cfg.tool = {
+        is_tool: true
+        has_subtools: false
+        has_help_action: false
+    };
+
+    optional goby.middleware.protobuf.AppConfig app = 1
+        [(goby.field) = { cfg { action: DEVELOPER } }];
+
+    required string deployment_file = 10 [(goby.field) = {
+        description: "Deployment file before",
+        cfg { position: { enable: true } }
+    }];
+    optional string deployment_file_b = 11 [(goby.field) = {
+        description: "Deployment file after; the same file if omitted (compare two sets of interface files with --interface_dir_a and --interface_dir_b)",
+        cfg { position: { enable: true } }
+    }];
+    repeated string define = 14 [(goby.field) = {
+        description: "Set a variable used as ${NAME} in the deployment file, as NAME=value; overrides the environment",
+        cfg { cli_short: "D" }
+    }];
+    repeated string interface_dir = 15 [(goby.field) = {
+        description: "Search this directory for interface files, for both deployments, after each deployment file's own directory and its --interface_dir_a or --interface_dir_b (also GOBY_INTERFACE_PATH, colon separated)",
+        cfg { cli_short: "I" }
+    }];
+    repeated string interface_dir_a = 16 [(goby.field).description =
+                                              "Search this directory for the first deployment's interface files"];
+    repeated string interface_dir_b = 17 [(goby.field).description =
+                                              "Search this directory for the second deployment's interface files"];
+    optional string output_file = 18
+        [(goby.field).description = "Write the differences here instead of stdout"];
+    optional InterfaceValidateConfig.OutputFormat output_format = 20
+        [default = HUMAN, (goby.field) = { cfg { cli_short: "o" } }];
+}
+
+message InterfaceInitConfig
+{
+    option (goby.msg).cfg.tool = {
+        is_tool: true
+        has_subtools: false
+        has_help_action: false
+    };
+
+    optional goby.middleware.protobuf.AppConfig app = 1
+        [(goby.field) = { cfg { action: DEVELOPER } }];
+
+    required string directory = 10 [(goby.field) = {
+        description: "Directory of interface files (<target>_interface.yml) to start from",
+        cfg { position: { enable: true } }
+    }];
+    optional string platform = 11
+        [default = "platform", (goby.field).description = "Name of the one platform written"];
+    optional string deployment_name = 12
+        [(goby.field).description = "Name of the deployment; the directory's name if omitted"];
+    optional string output_file = 13
+        [(goby.field).description = "Write the deployment file here instead of stdout"];
+}
+
+// Written by 'goby interface list -o JSON'
+message InterfaceList
+{
+    required string file = 1;
+
+    message Platform
+    {
+        required string name = 1;
+        repeated string module = 2;
+        optional int32 applications = 3;
+    }
+    message LayerCount
+    {
+        required string layer = 1;
+        optional int32 publishes = 2;
+        optional int32 subscribes = 3;
+    }
+    message Application
+    {
+        required string platform = 1;
+        optional string module = 2;
+        required string name = 3;
+        repeated string thread = 4;
+        repeated LayerCount count = 5;
+    }
+    message Group
+    {
+        required string layer = 1;
+        required string group = 2;
+        repeated InterfaceEndpoint publisher = 3;
+        repeated InterfaceEndpoint subscriber = 4;
+    }
+    repeated Platform platform = 2;
+    repeated Application application = 3;
+    repeated Group group = 4;
+}
+
+// Written by 'goby interface explain -o JSON'
+message InterfaceExplanation
+{
+    required string file = 1;
+    required string group_regex = 2;
+    optional string type_regex = 3;
+
+    message Subscription
+    {
+        required InterfaceEndpoint subscriber = 1;
+        repeated InterfaceEndpoint publisher = 2;
+        // reached by a publisher whose group certainly matches
+        required bool met = 3;
+        // why it is not met, or what it depends on
+        repeated string reason = 4;
+        optional bool necessity_set_by_deployment = 5;
+    }
+    message Publication
+    {
+        required InterfaceEndpoint publisher = 1;
+        repeated InterfaceEndpoint subscriber = 2;
+        repeated string note = 3;
+    }
+    repeated Subscription subscription = 4;
+    repeated Publication publication = 5;
+}
+
+// Written by 'goby interface diff -o JSON'
+message InterfaceDiff
+{
+    required string file_a = 1;
+    required string file_b = 2;
+
+    message Connection
+    {
+        required InterfaceEndpoint publisher = 1;
+        required InterfaceEndpoint subscriber = 2;
+    }
+    repeated string application_added = 3
+        [(goby.field).description = "platform/[module/]application"];
+    repeated string application_removed = 4;
+    repeated Connection connection_added = 5;
+    repeated Connection connection_removed = 6;
+    // required subscriptions without a publisher in the second deployment but not the first
+    repeated InterfaceIssue newly_unmet = 7;
+    // and the other way round
+    repeated InterfaceIssue newly_met = 8;
 }

@@ -1,0 +1,18 @@
+# a later controller: no longer needs nav::depth, and publishes its status
+application: controller
+interprocess:
+  publishes:
+    - group: nav::command
+      scheme: PROTOBUF
+      type: nav::protobuf::Command
+      thread: Controller
+    - group: controller::status
+      scheme: PROTOBUF
+      type: controller::protobuf::Status
+      thread: Controller
+  subscribes:
+    - group: nav::fix
+      scheme: PROTOBUF
+      type: nav::protobuf::Fix
+      necessity: required
+      thread: Controller

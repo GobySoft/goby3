@@ -936,6 +936,22 @@ inline bool read_applications(const YAML::Node& node, const std::string& locatio
     return true;
 }
 
+/// \brief The application an interface file declares, or "" if it is not one (generated
+/// interface files start with "application: <name>")
+inline std::string declared_application(const std::string& path)
+{
+    try
+    {
+        auto yaml = YAML::LoadFile(path);
+        if (yaml.IsMap() && yaml["application"] && yaml["application"].IsScalar())
+            return yaml["application"].as<std::string>();
+    }
+    catch (const std::exception&)
+    {
+    }
+    return "";
+}
+
 /// \brief Finds interface files by path, or by the application: they declare
 class InterfaceFinder
 {
@@ -1011,21 +1027,6 @@ class InterfaceFinder
                 index_[application].push_back(file.string());
             }
         }
-    }
-
-    // generated interface files start with "application: <name>"; anything else is skipped
-    static std::string declared_application(const std::string& path)
-    {
-        try
-        {
-            auto yaml = YAML::LoadFile(path);
-            if (yaml.IsMap() && yaml["application"] && yaml["application"].IsScalar())
-                return yaml["application"].as<std::string>();
-        }
-        catch (const std::exception&)
-        {
-        }
-        return "";
     }
 
     std::vector<std::string> dirs_;
