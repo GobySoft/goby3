@@ -302,6 +302,25 @@ struct Module
 
 using KeyValues = std::vector<std::pair<std::string, std::string>>;
 
+/// \brief systemd: settings, on a run: entry or as a platform's defaults
+struct SystemdSettings
+{
+    // a project unit file, with ${var}s, in place of the built-in unit
+    std::optional<std::string> unit_template;
+    std::optional<std::string> user;
+    std::optional<std::string> group;
+    std::optional<std::string> wanted_by;
+    std::optional<std::string> description;
+    // a systemd Condition...= line, checked when the unit starts
+    std::optional<std::string> condition;
+    // appended to the [Unit], [Service] and [Install] sections of the built-in unit
+    std::optional<std::string> unit;
+    std::optional<std::string> service;
+    std::optional<std::string> install;
+    std::map<std::string, std::string> vars;
+    bool skip{false};
+};
+
 /// \brief How one run: entry is started by goby_launch
 struct LaunchEntry
 {
@@ -325,6 +344,7 @@ struct LaunchEntry
     std::optional<std::vector<std::string>> expected;
     // expected: false, leaving this entry out of an automatic expected list
     bool not_expected{false};
+    SystemdSettings systemd;
     std::string location;
 };
 
@@ -339,6 +359,16 @@ struct LaunchSettings
     KeyValues env;
 };
 
+/// \brief A platform's systemd: settings
+struct PlatformSystemd
+{
+    // an existing umbrella unit to use instead of a generated <deployment>-<platform>.target
+    std::optional<std::string> target;
+    // start each unit after the one before it in run:, rather than all at once after gobyd
+    bool ordered{false};
+    SystemdSettings defaults;
+};
+
 struct Platform
 {
     std::string name;
@@ -348,6 +378,7 @@ struct Platform
     // every run: entry, in order, including processes
     std::vector<LaunchEntry> launch;
     LaunchSettings launch_settings;
+    PlatformSystemd systemd;
 
     bool has_modules() const { return !(modules.size() == 1 && modules.front().not_a_module); }
 };
@@ -355,6 +386,8 @@ struct Platform
 struct Deployment
 {
     std::string name;
+    // the deployment file, which relative paths in it (such as unit templates) are relative to
+    std::string file;
     std::vector<Platform> platforms;
     // continues numbering after the loaded publications, for placeholders added when drawing
     PublishIndexer indexer;
@@ -433,6 +466,7 @@ struct PlatformRef
     std::vector<std::shared_ptr<Bind>> binds;
     std::vector<std::uint32_t> instances;
     LaunchSettings launch_settings;
+    PlatformSystemd systemd;
 };
 
 /// \brief Replace ${NAME} and ${NAME:-default} from \c defines, then the environment
@@ -912,6 +946,9 @@ inline KeyValues read_env(const YAML::Node& node, const std::string& location, I
     return env;
 }
 
+inline SystemdSettings read_systemd_settings(const YAML::Node& node, const std::string& location,
+                                             Issues& issues);
+
 // the launch keys of a run: entry
 inline bool read_launch(const YAML::Node& entry, RunRef& ref, Issues& issues)
 {
@@ -942,6 +979,7 @@ inline bool read_launch(const YAML::Node& entry, RunRef& ref, Issues& issues)
     text("kill", launch.kill);
     text("when", launch.when);
     launch.env = read_env(entry["env"], ref.location + ".env", issues);
+    launch.systemd = read_systemd_settings(entry["systemd"], ref.location + ".systemd", issues);
     if (entry["enabled"])
         launch.enabled = entry["enabled"].as<bool>();
     if (launch.kill && !valid_kill(*launch.kill))
@@ -1032,8 +1070,99 @@ inline LaunchSettings for_instance(LaunchSettings settings,
     return settings;
 }
 
+inline SystemdSettings read_systemd_settings(const YAML::Node& node, const std::string& location,
+                                             Issues& issues)
+{
+    SystemdSettings settings;
+    if (!node)
+        return settings;
+    if (!node.IsMap())
+    {
+        add_issue(issues, Issue::Severity::ERROR, "deployment-schema", "systemd: must be a map",
+                  location);
+        return settings;
+    }
+    for (const auto& kv : node)
+    {
+        auto key = kv.first.as<std::string>();
+        auto text = [&]() { return kv.second.as<std::string>(); };
+        if (key == "template")
+            settings.unit_template = text();
+        else if (key == "user")
+            settings.user = text();
+        else if (key == "group")
+            settings.group = text();
+        else if (key == "wanted_by")
+            settings.wanted_by = text();
+        else if (key == "description")
+            settings.description = text();
+        else if (key == "condition")
+            settings.condition = text();
+        else if (key == "unit")
+            settings.unit = text();
+        else if (key == "service")
+            settings.service = text();
+        else if (key == "install")
+            settings.install = text();
+        else if (key == "skip")
+            settings.skip = kv.second.as<bool>();
+        else if (key == "vars" && kv.second.IsMap())
+        {
+            for (const auto& var : kv.second)
+                settings.vars[var.first.as<std::string>()] = var.second.as<std::string>();
+        }
+        else
+            add_issue(issues, Issue::Severity::ERROR, "deployment-schema",
+                      "unknown key '" + key + "'", location);
+    }
+    return settings;
+}
+
+inline PlatformSystemd read_platform_systemd(const YAML::Node& node, const std::string& location,
+                                             Issues& issues)
+{
+    PlatformSystemd systemd;
+    if (!node)
+        return systemd;
+    if (!node.IsMap())
+    {
+        add_issue(issues, Issue::Severity::ERROR, "deployment-schema",
+                  "systemd: must be a map (target:, ordered:, defaults:)", location);
+        return systemd;
+    }
+    for (const auto& kv : node)
+    {
+        auto key = kv.first.as<std::string>();
+        if (key == "target")
+            systemd.target = kv.second.as<std::string>();
+        else if (key == "ordered")
+            systemd.ordered = kv.second.as<bool>();
+        else if (key == "defaults")
+            systemd.defaults = read_systemd_settings(kv.second, location + ".defaults", issues);
+        else
+            add_issue(issues, Issue::Severity::ERROR, "deployment-schema",
+                      "unknown key '" + key + "'", location);
+    }
+    return systemd;
+}
+
+inline SystemdSettings for_instance(SystemdSettings settings,
+                                    const std::vector<std::uint32_t>& instances)
+{
+    for (auto* field : {&settings.unit_template, &settings.user, &settings.group,
+                        &settings.wanted_by, &settings.description, &settings.condition,
+                        &settings.unit, &settings.service, &settings.install})
+    {
+        if (*field)
+            **field = with_instance(**field, instances);
+    }
+    for (auto& kv : settings.vars) kv.second = with_instance(kv.second, instances);
+    return settings;
+}
+
 inline LaunchEntry for_instance(LaunchEntry entry, const std::vector<std::uint32_t>& instances)
 {
+    entry.systemd = for_instance(entry.systemd, instances);
     for (auto* field : {&entry.exec, &entry.config, &entry.args, &entry.when})
     {
         if (*field)
@@ -1068,8 +1197,9 @@ inline std::vector<RunRef> read_run(const YAML::Node& node, bool legacy,
         {
             static const std::set<std::string> legacy_keys{"file", "application", "bind"};
             static const std::set<std::string> run_keys{
-                "application", "file", "name", "plugins", "bind",    "process", "exec",    "config",
-                "args",        "env",  "kill", "when",    "enabled", "hold",    "expected"};
+                "application", "file",   "name",     "plugins", "bind", "process",
+                "exec",        "config", "args",     "env",     "kill", "when",
+                "enabled",     "hold",   "expected", "systemd"};
             const auto& allowed = legacy ? legacy_keys : run_keys;
             bool bad_key = false;
             for (const auto& kv : entry)
@@ -1395,6 +1525,7 @@ inline Deployment load_deployment(const std::string& path, Issues& issues,
                                   const LoadParams& params = LoadParams())
 {
     Deployment deployment;
+    deployment.file = path;
 
     auto defines = params.defines;
     if (!params.goby_interfaces_dir.empty() && !defines.count("GOBY_INTERFACES_DIR"))
@@ -1468,6 +1599,8 @@ inline Deployment load_deployment(const std::string& path, Issues& issues,
             platform_ref.binds = detail::read_binds(platform["bind"], location + ".bind", issues);
             platform_ref.launch_settings =
                 detail::read_launch_settings(platform["launch"], location + ".launch", issues);
+            platform_ref.systemd =
+                detail::read_platform_systemd(platform["systemd"], location + ".systemd", issues);
             if (auto instances_node = platform["instances"])
             {
                 for (const auto& instance : detail::read_list(instances_node))
@@ -1571,6 +1704,8 @@ inline Deployment load_deployment(const std::string& path, Issues& issues,
     {
         platform.name = name;
         platform.launch_settings = detail::for_instance(platform_ref.launch_settings, instances);
+        platform.systemd = platform_ref.systemd;
+        platform.systemd.defaults = detail::for_instance(platform_ref.systemd.defaults, instances);
         for (const auto& module_ref : platform_ref.modules)
         {
             Module module;

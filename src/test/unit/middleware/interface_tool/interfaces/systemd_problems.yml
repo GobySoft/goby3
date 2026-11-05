@@ -1,0 +1,8 @@
+# systemd: settings goby interface systemd refuses
+deployment: systemd_problems
+platforms:
+  - name: bot
+    run:
+      - gobyd
+      - { application: nav_driver, systemd: { template: systemd/no_such.service.in } }
+      - { application: mission_manager, systemd: { restart: always } }

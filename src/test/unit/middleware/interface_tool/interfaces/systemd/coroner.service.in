@@ -1,0 +1,12 @@
+[Unit]
+Description=${description}
+PartOf=${target}
+
+[Service]
+User=${user}
+ExecStart=${exec_start}
+Restart=always
+RestartSec=${restart_sec}
+
+[Install]
+WantedBy=${wanted_by}
