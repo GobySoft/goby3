@@ -37,6 +37,7 @@
 #include "goby/acomms/amac/mac_manager.h"
 #include "goby/acomms/buffer/dynamic_buffer.h"
 #include "goby/acomms/modemdriver/driver_base.h"
+#include "goby/acomms/modemdriver/driver_exception.h"
 #include "goby/acomms/protobuf/modem_driver_status.pb.h"
 #include "goby/middleware/application/thread.h"
 #include "goby/middleware/group.h"
@@ -193,7 +194,10 @@ class ModemDriverThread
     }
 
     void _publish_subscription_report(const intervehicle::protobuf::Subscription& changed);
+    void _create_driver();
     bool _try_driver_startup();
+    // returns false if the failure should instead terminate the portal
+    bool _restart_on_failure(const goby::acomms::ModemDriverException& e);
     void _publish_modem_report();
 
   private:
@@ -226,9 +230,9 @@ class ModemDriverThread
     const goby::time::SteadyClock::duration modem_report_interval_;
 
     bool driver_started_{false};
-    goby::acomms::protobuf::ModemDriverStatus::Status startup_failure_status_{
+    goby::acomms::protobuf::ModemDriverStatus::Status failure_status_{
         goby::acomms::protobuf::ModemDriverStatus::NOMINAL};
-    goby::time::SteadyClock::time_point next_startup_attempt_;
+    goby::time::SteadyClock::time_point next_restart_attempt_;
 };
 
 } // namespace intervehicle

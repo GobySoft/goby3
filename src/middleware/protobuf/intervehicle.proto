@@ -46,13 +46,22 @@ message PortalConfig
             (dccl.field) = { units { base_dimensions: "T" } }
         ];
 
-        optional double startup_retry_interval = 22 [
-            (goby.field).description =
-                "If set, a driver that fails to start up is retried at this "
-                "interval while the portal's other links keep running. If "
-                "omitted, a driver startup failure terminates the portal.",
-            (dccl.field) = { units { base_dimensions: "T" } }
-        ];
+        message RestartOnFailure
+        {
+            optional double interval = 1 [
+                default = 60,
+                (goby.field).description =
+                    "Time from a driver failure to the next attempt to "
+                    "start a new driver",
+                (dccl.field) = { units { base_dimensions: "T" } }
+            ];
+        }
+        optional RestartOnFailure restart_on_failure = 22
+            [(goby.field).description =
+                 "If set, a driver that fails, at startup or while running, is "
+                 "replaced by a new one after restart_on_failure.interval, "
+                 "while the portal's other links keep running. If omitted, a "
+                 "driver failure terminates the portal."];
     }
 
     repeated LinkConfig link = 1;

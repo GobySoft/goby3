@@ -176,6 +176,43 @@ goby::middleware::intervehicle::ModemDriverThread<ImplementationTag>::ModemDrive
             [this](const std::shared_ptr<const intervehicle::protobuf::Subscription>& subscription)
             { _accept_subscription(*subscription); });
 
+    _create_driver();
+
+    mac_.signal_initiate_transmission.connect(
+        [&](const goby::acomms::protobuf::ModemTransmission& msg)
+        {
+            protobuf::ModemTransmissionWithLinkID msg_with_id;
+            msg_with_id.set_link_modem_id(this->cfg().modem_id());
+            *msg_with_id.mutable_data() = msg;
+            interprocess_->template publish<groups::mac_initiate_transmission>(msg_with_id);
+        });
+
+    mac_.signal_slot_start.connect(
+        [&](const goby::acomms::protobuf::ModemTransmission& msg)
+        {
+            protobuf::ModemTransmissionWithLinkID msg_with_id;
+            msg_with_id.set_link_modem_id(this->cfg().modem_id());
+            *msg_with_id.mutable_data() = msg;
+            interprocess_->template publish<groups::mac_slot_start>(msg_with_id);
+        });
+
+    mac_.startup(this->cfg().mac());
+
+    subscription_key_.set_marshalling_scheme(MarshallingScheme::DCCL);
+    subscription_key_.set_type(intervehicle::protobuf::Subscription::descriptor()->full_name());
+    subscription_key_.set_group_numeric(
+        goby::middleware::intervehicle::groups::subscription_forward.numeric());
+
+    _try_driver_startup();
+
+    // a driver waiting to restart must not hold up the portal's other links
+    goby::glog.is_debug1() && goby::glog << group(glog_group_) << "Driver ready" << std::endl;
+    interthread_->template publish<groups::modem_driver_ready, bool>(true);
+}
+
+template <typename ImplementationTag>
+void goby::middleware::intervehicle::ModemDriverThread<ImplementationTag>::_create_driver()
+{
     if (this->cfg().driver().has_driver_name())
     {
         std::map<std::string, void*>::const_iterator driver_it =
@@ -304,37 +341,6 @@ goby::middleware::intervehicle::ModemDriverThread<ImplementationTag>::ModemDrive
                                          { this->_data_request(msg); });
 
     goby::acomms::bind(mac_, *driver_);
-
-    mac_.signal_initiate_transmission.connect(
-        [&](const goby::acomms::protobuf::ModemTransmission& msg)
-        {
-            protobuf::ModemTransmissionWithLinkID msg_with_id;
-            msg_with_id.set_link_modem_id(this->cfg().modem_id());
-            *msg_with_id.mutable_data() = msg;
-            interprocess_->template publish<groups::mac_initiate_transmission>(msg_with_id);
-        });
-
-    mac_.signal_slot_start.connect(
-        [&](const goby::acomms::protobuf::ModemTransmission& msg)
-        {
-            protobuf::ModemTransmissionWithLinkID msg_with_id;
-            msg_with_id.set_link_modem_id(this->cfg().modem_id());
-            *msg_with_id.mutable_data() = msg;
-            interprocess_->template publish<groups::mac_slot_start>(msg_with_id);
-        });
-
-    mac_.startup(this->cfg().mac());
-
-    subscription_key_.set_marshalling_scheme(MarshallingScheme::DCCL);
-    subscription_key_.set_type(intervehicle::protobuf::Subscription::descriptor()->full_name());
-    subscription_key_.set_group_numeric(
-        goby::middleware::intervehicle::groups::subscription_forward.numeric());
-
-    _try_driver_startup();
-
-    // a driver still retrying startup must not hold up the portal's other links
-    goby::glog.is_debug1() && goby::glog << group(glog_group_) << "Driver ready" << std::endl;
-    interthread_->template publish<groups::modem_driver_ready, bool>(true);
 }
 
 template <typename ImplementationTag>
@@ -348,27 +354,44 @@ bool goby::middleware::intervehicle::ModemDriverThread<ImplementationTag>::_try_
     }
     catch (const goby::acomms::ModemDriverException& e)
     {
-        if (!this->cfg().has_startup_retry_interval() ||
-            e.status() == goby::acomms::protobuf::ModemDriverStatus::INVALID_CONFIGURATION)
+        if (!_restart_on_failure(e))
             throw;
-
-        const auto retry_interval = goby::time::convert_duration<goby::time::SteadyClock::duration>(
-            this->cfg().startup_retry_interval_with_units());
-        goby::glog.is_warn() && goby::glog << group(glog_group_) << "Driver failed to start up ("
-                                           << e.what() << "), retrying in "
-                                           << this->cfg().startup_retry_interval() << " s"
-                                           << std::endl;
-        startup_failure_status_ = e.status();
-        next_startup_attempt_ = goby::time::SteadyClock::now() + retry_interval;
         return false;
     }
 
-    if (startup_failure_status_ != goby::acomms::protobuf::ModemDriverStatus::NOMINAL)
+    if (failure_status_ != goby::acomms::protobuf::ModemDriverStatus::NOMINAL)
         goby::glog.is_warn() && goby::glog << group(glog_group_)
                                            << "Driver started up after previous failure."
                                            << std::endl;
     driver_started_ = true;
-    startup_failure_status_ = goby::acomms::protobuf::ModemDriverStatus::NOMINAL;
+    failure_status_ = goby::acomms::protobuf::ModemDriverStatus::NOMINAL;
+    return true;
+}
+
+template <typename ImplementationTag>
+bool goby::middleware::intervehicle::ModemDriverThread<ImplementationTag>::_restart_on_failure(
+    const goby::acomms::ModemDriverException& e)
+{
+    if (!this->cfg().has_restart_on_failure() ||
+        e.status() == goby::acomms::protobuf::ModemDriverStatus::INVALID_CONFIGURATION)
+        return false;
+
+    goby::glog.is_warn() &&
+        goby::glog << group(glog_group_) << "Driver failed (" << e.what() << "), restarting in "
+                   << this->cfg().restart_on_failure().interval() << " s" << std::endl;
+
+    // a fresh driver, as shutting down the failed one would talk to the modem
+    goby::acomms::unbind(mac_, *driver_);
+    driver_.reset();
+    _create_driver();
+    // values awaiting these acks stay in buffer_ and are resent after ack_timeout
+    pending_ack_.clear();
+
+    driver_started_ = false;
+    failure_status_ = e.status();
+    next_restart_attempt_ = goby::time::SteadyClock::now() +
+                            goby::time::convert_duration<goby::time::SteadyClock::duration>(
+                                this->cfg().restart_on_failure().interval_with_units());
     return true;
 }
 
@@ -387,7 +410,7 @@ void goby::middleware::intervehicle::ModemDriverThread<ImplementationTag>::_publ
         report.set_modem_id(_id_within_subnet(this->cfg().driver().modem_id()));
         report.set_time_with_units(goby::time::SystemClock::now<goby::time::MicroTime>());
         report.set_link_state(goby::acomms::protobuf::ModemReport::LINK_NOT_AVAILABLE);
-        report.set_driver_status(startup_failure_status_);
+        report.set_driver_status(failure_status_);
     }
     interprocess_->template publish<groups::modem_report>(report_with_id);
 }
@@ -406,17 +429,25 @@ void goby::middleware::intervehicle::ModemDriverThread<ImplementationTag>::loop(
     }
 
     if (driver_started_ ||
-        (goby::time::SteadyClock::now() >= next_startup_attempt_ && _try_driver_startup()))
+        (goby::time::SteadyClock::now() >= next_restart_attempt_ && _try_driver_startup()))
     {
-        driver_->do_work();
-        mac_.do_work();
+        try
+        {
+            driver_->do_work();
+            mac_.do_work();
+        }
+        catch (const goby::acomms::ModemDriverException& e)
+        {
+            if (!_restart_on_failure(e))
+                throw;
+        }
     }
 
     auto now = goby::time::SteadyClock::now();
     if (now > next_modem_report_time_ + modem_report_interval_)
     {
         _publish_modem_report();
-        // a startup attempt can block for longer than the interval; don't publish a burst after it
+        // a restart attempt can block for longer than the interval; don't publish a burst after it
         next_modem_report_time_ = now;
     }
 }
