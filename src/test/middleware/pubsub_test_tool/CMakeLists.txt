@@ -9,4 +9,11 @@ if(build_apps)
   add_test(NAME goby_test_middleware_pubsub_test_tool
     COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/run.sh ${goby_BIN_DIR} ${CMAKE_CURRENT_SOURCE_DIR} ${args})
   set_tests_properties(goby_test_middleware_pubsub_test_tool PROPERTIES TIMEOUT 240)
+
+  if(build_zeromq)
+    add_test(NAME goby_test_middleware_intervehicle_supersede
+      COMMAND ${goby_BIN_DIR}/goby test run ${CMAKE_CURRENT_SOURCE_DIR}/intervehicle_supersede.pb.cfg)
+    set_tests_properties(goby_test_middleware_intervehicle_supersede PROPERTIES
+      TIMEOUT 60 ENVIRONMENT "PATH=${goby_BIN_DIR}:$ENV{PATH}")
+  endif()
 endif()
