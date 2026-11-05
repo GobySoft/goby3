@@ -206,12 +206,23 @@ goby::apps::zeromq::Liaison::Liaison()
             throw(std::runtime_error("No valid docroot found for Goby Liaison. Set docroot to the "
                                      "valid path to what is normally /usr/share/goby/liaison"));
 
-        std::string static_resources = "/css,/fonts,/images,/resources";
+        std::string static_resources = "/css,/fonts,/images,/resources,/leaflet,/tiles";
+
+        // docroot wt_config.xml points WLeafletMap at the bundled Leaflet, so the map works offline
+        std::string wt_config_param;
+        const std::string user_params = " " + cfg().additional_wt_http_params() + " ";
+        const bool user_wt_config = getenv("WT_CONFIG_XML") ||
+                                    user_params.find(" --config") != std::string::npos ||
+                                    user_params.find(" -c ") != std::string::npos;
+        const std::string docroot_wt_config = doc_root + "/wt_config.xml";
+        if (!user_wt_config && std::filesystem::exists(docroot_wt_config, ec))
+            wt_config_param = " --config " + docroot_wt_config;
 
         std::vector<std::string> wt_argv_vec;
         std::string str = " --docroot " + doc_root + ";" + static_resources + " --http-port " +
                           goby::util::as<std::string>(cfg().http_port()) + " --http-address " +
-                          cfg().http_address() + " " + cfg().additional_wt_http_params();
+                          cfg().http_address() + wt_config_param + " " +
+                          cfg().additional_wt_http_params();
         boost::split(wt_argv_vec, str, boost::is_any_of(" "));
 
         glog.is(DEBUG1) && glog << "setting Wt cfg to: " << std::flush;

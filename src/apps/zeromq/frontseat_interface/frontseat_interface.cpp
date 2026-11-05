@@ -134,7 +134,8 @@ load_driver(const goby::apps::zeromq::protobuf::FrontSeatInterfaceConfig& cfg)
     }
 
     auto frontseat_cfg = cfg.frontseat_cfg();
-    frontseat_cfg.set_name(cfg.interprocess().platform());
+    if (!frontseat_cfg.has_name())
+        frontseat_cfg.set_name(cfg.interprocess().platform());
     frontseat_cfg.mutable_origin()->set_lat_with_units(cfg.app().geodesy().lat_origin_with_units());
     frontseat_cfg.mutable_origin()->set_lon_with_units(cfg.app().geodesy().lon_origin_with_units());
 

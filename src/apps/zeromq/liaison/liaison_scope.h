@@ -317,7 +317,7 @@ class ScopeCommsThread : public goby::zeromq::LiaisonCommsThread<LiaisonScope>
             {
                 auto pb_msg = dccl::DynamicProtobufManager::new_protobuf_message<
                     std::shared_ptr<google::protobuf::Message>>(type);
-                pb_msg->ParseFromArray(&data[0], data.size());
+                pb_msg->ParseFromArray(data.data(), data.size());
                 scope_->post_to_wt([=]() { scope_->inbox(gr, pb_msg); });
             }
             catch (const std::exception& e)
