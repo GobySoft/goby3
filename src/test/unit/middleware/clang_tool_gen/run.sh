@@ -1,6 +1,6 @@
 #!/bin/bash
 # Runs goby_clang_tool -gen on dynamic_groups.cpp and checks what it records for each way the
-# fixture makes a DynamicGroup.
+# fixture makes a DynamicGroup, and the numerics of static groups defined with constant expressions.
 #
 # Usage: run.sh <goby bin dir> <this directory> <build dir with compile_commands.json>
 set -u
@@ -35,6 +35,10 @@ expect "group=dynamic_test::command;scheme=PROTOBUF;type=$status;dynamic=true;nu
 expect "group=\"*\";scheme=PROTOBUF;type=$status;dynamic=true;expr=this->runtime_group_"
 expect "group=dynamic_test::command;scheme=PROTOBUF;type=$status;necessity=required;dynamic=true;numeric=runtime"
 expect "group=dynamic_test::local;scheme=PROTOBUF;type=$status;necessity=optional;dynamic=true"
+
+# constant numerics are recorded as their values
+expect "group=groups::broadcast;0;scheme=PROTOBUF;type=$status"
+expect "group=groups::fleet;105;scheme=PROTOBUF;type=$status"
 
 # Goby's own forwarding calls pass a const Group&, not a DynamicGroup, and are not recorded
 # (publications are repeated on the interthread layer as inner=true)
