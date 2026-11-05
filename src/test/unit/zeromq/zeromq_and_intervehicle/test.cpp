@@ -58,7 +58,7 @@ int indirect_ack_receive_count = 0;
 std::array<int, 2> direct_no_sub_receive_count = {{0, 0}};
 
 int indirect_subscriber_ack = 0;
-// Widgets the direct subscriber's republish_received put back on its interprocess layer
+// Widgets the direct subscriber's republish_on_receive put back on its interprocess layer
 int widget_republish_count = 0;
 int direct_subscriber_ack = 0;
 
@@ -352,12 +352,12 @@ void direct_subscriber(const goby::zeromq::protobuf::InterProcessPortalConfig& z
 
     goby::middleware::protobuf::TransporterConfig widget_subscriber_cfg;
     widget_subscriber_cfg.mutable_intervehicle()->add_publisher_id(1);
-    widget_subscriber_cfg.mutable_intervehicle()->set_republish_received(true);
+    widget_subscriber_cfg.mutable_intervehicle()->set_republish_on_receive(true);
     goby::middleware::Subscriber<Widget> widget_subscriber(widget_subscriber_cfg);
     intervehicle.subscribe<null, Widget>(&handle_widget, widget_subscriber_cfg);
 
     // the publisher is on another platform, so Widgets in this group on this interprocess layer
-    // can only come from republish_received (#237)
+    // can only come from republish_on_receive (#237)
     zmq.subscribe<null, Widget>([](const Widget&) { ++widget_republish_count; });
     zmq.ready();
 

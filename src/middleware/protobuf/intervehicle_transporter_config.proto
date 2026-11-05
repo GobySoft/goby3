@@ -30,7 +30,7 @@ message TransporterConfig
 
     // subscriptions only: also publish each received message on the inner layer (e.g.
     // interprocess) in the subscribed group, so it can be logged or used by other subscribers
-    optional bool republish_received = 50 [default = false, (dccl.field).omit = true];
+    optional bool republish_on_receive = 50 [default = false, (dccl.field).omit = true];
     
     // message LinkConfig
     // {

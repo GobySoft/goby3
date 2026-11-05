@@ -375,7 +375,7 @@ class InterVehicleTransporterBase
                     throw(InvalidSubscription(ss.str()));
                 }
 
-                if (subscriber.cfg().intervehicle().republish_received())
+                if (subscriber.cfg().intervehicle().republish_on_receive())
                     func = _republishing(func, group);
 
                 using SubscriptionType =
