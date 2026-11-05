@@ -151,10 +151,12 @@ class InterProcessTransporterBase
     ///
     /// \tparam Data data type to subscribe to.
     /// \tparam scheme Marshalling scheme id (typically MarshallingScheme::MarshallingSchemeEnum). Can usually be inferred from the Data type.
+    /// \tparam necessity How important is this subscription (is it required?)
     /// \param f Callback function or lambda that is called upon receipt of the subscribed data
     /// \param group group to subscribe to (typically a DynamicGroup)
     /// \param subscriber Optional metadata that controls the subscription or sets callbacks to monitor the subscription result. Typically unnecessary for interprocess and inner layers.
-    template <typename Data, int scheme = InterProcessTransporterBase::scheme<Data>()>
+    template <typename Data, int scheme = InterProcessTransporterBase::scheme<Data>(),
+              Necessity necessity = Necessity::OPTIONAL>
     void subscribe_dynamic(std::function<void(const Data&)> f, const Group& group,
                            const Subscriber<Data>& subscriber = Subscriber<Data>())
     {
@@ -167,10 +169,12 @@ class InterProcessTransporterBase
     ///
     /// \tparam Data data type to subscribe to.
     /// \tparam scheme Marshalling scheme id (typically MarshallingScheme::MarshallingSchemeEnum). Can usually be inferred from the Data type.
+    /// \tparam necessity How important is this subscription (is it required?)
     /// \param f Callback function or lambda that is called upon receipt of the subscribed data
     /// \param group group to subscribe to (typically a DynamicGroup)
     /// \param subscriber Optional metadata that controls the subscription or sets callbacks to monitor the subscription result. Typically unnecessary for interprocess and inner layers.
-    template <typename Data, int scheme = InterProcessTransporterBase::scheme<Data>()>
+    template <typename Data, int scheme = InterProcessTransporterBase::scheme<Data>(),
+              Necessity necessity = Necessity::OPTIONAL>
     void subscribe_dynamic(std::function<void(std::shared_ptr<const Data>)> f, const Group& group,
                            const Subscriber<Data>& subscriber = Subscriber<Data>())
     {
@@ -216,11 +220,13 @@ class InterProcessTransporterBase
     /// The marshalling scheme must implement SerializerParserHelper::parse() to use this method.
     /// \tparam Data data type to publish. Can usually be inferred from the \c data parameter.
     /// \tparam scheme Marshalling scheme id (typically MarshallingScheme::MarshallingSchemeEnum). Can usually be inferred from the Data type.
+    /// \tparam necessity How important is this subscription (is it required?)
     /// \param group group to subscribe to (typically a DynamicGroup)
     /// \param f Callback function or lambda that is called upon receipt of any messages matching the given group and type regex
     /// \param type_regex C++ regex to match type names (within the given scheme)
     /// \return Shared pointer to SerializationSubscriptionRegex for later modification of regex parameters
-    template <typename Data, int scheme = InterProcessTransporterBase::scheme<Data>()>
+    template <typename Data, int scheme = InterProcessTransporterBase::scheme<Data>(),
+              Necessity necessity = Necessity::OPTIONAL>
     std::shared_ptr<SerializationSubscriptionRegex> subscribe_type_regex(
         std::function<void(std::shared_ptr<const Data>, const std::string& type)> f,
         const Group& group, const std::string& type_regex = ".*")
@@ -248,10 +254,12 @@ class InterProcessTransporterBase
     /// \tparam group group to publish this message to (reference to constexpr Group)
     /// \tparam Data data type to publish. Can usually be inferred from the \c data parameter.
     /// \tparam scheme Marshalling scheme id (typically MarshallingScheme::MarshallingSchemeEnum). Can usually be inferred from the Data type.
+    /// \tparam necessity How important is this subscription (is it required?)
     /// \param f Callback function or lambda that is called upon receipt of any messages matching the given group and type regex
     /// \param type_regex C++ regex to match type names (within the given scheme)
     template <const Group& group, typename Data,
-              int scheme = InterProcessTransporterBase::scheme<Data>()>
+              int scheme = InterProcessTransporterBase::scheme<Data>(),
+              Necessity necessity = Necessity::OPTIONAL>
     void subscribe_type_regex(
         std::function<void(std::shared_ptr<const Data>, const std::string& type)> f,
         const std::string& type_regex = ".*")

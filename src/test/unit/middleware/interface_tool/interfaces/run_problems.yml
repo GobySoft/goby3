@@ -1,0 +1,8 @@
+deployment: problems
+platforms:
+  - name: auv
+    run:
+      - controller
+      - controller
+      - no_such_application
+      - { application: nav_driver, colour: blue }

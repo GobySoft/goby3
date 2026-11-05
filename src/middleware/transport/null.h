@@ -65,13 +65,13 @@ class NullTransporter : public StaticTransporterInterface<NullTransporter, NullT
     {
     }
 
-    template <typename Data, int scheme = scheme<Data>()>
+    template <typename Data, int scheme = scheme<Data>(), Necessity necessity = Necessity::OPTIONAL>
     void subscribe_dynamic(std::function<void(const Data&)> f, const Group& group,
                            const Subscriber<Data>& subscriber = Subscriber<Data>())
     {
     }
 
-    template <typename Data, int scheme = scheme<Data>()>
+    template <typename Data, int scheme = scheme<Data>(), Necessity necessity = Necessity::OPTIONAL>
     void subscribe_dynamic(std::function<void(std::shared_ptr<const Data>)> f, const Group& group,
                            const Subscriber<Data>& subscriber = Subscriber<Data>())
     {

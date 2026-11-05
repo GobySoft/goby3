@@ -1,0 +1,5 @@
+# needs -I ../interfaces (or GOBY_INTERFACE_PATH) to find its interface files
+deployment: elsewhere
+platforms:
+  - name: auv
+    run: [nav_driver, controller, payload]
