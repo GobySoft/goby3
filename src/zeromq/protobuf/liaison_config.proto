@@ -275,6 +275,11 @@ message ProtobufMapConfig
                 "Whether an overlay starts switched on. The first base layer starts "
                 "selected. The browser then remembers the viewer's choice"
         ];
+        optional int32 max_native_zoom = 11 [
+            (goby.field).description =
+                "Highest zoom the server has tiles for; beyond it, up to max_zoom, "
+                "its tiles are enlarged rather than left blank"
+        ];
         optional int32 tile_size = 10 [
             default = 256,
             (goby.field).description =
@@ -286,7 +291,7 @@ message ProtobufMapConfig
         (goby.field).description =
             "Base layers (the first starts selected) and overlays, drawn above "
             "the base in order, offered in the map's layer control. If empty: "
-            "GEBCO bathymetry and OpenStreetMap bases, with the NOAA chart and "
+            "GEBCO bathymetry, OpenStreetMap and Esri Ocean bases, with the NOAA chart and "
             "OpenSeaMap seamark overlays"
     ];
     optional bool blank_background = 6 [

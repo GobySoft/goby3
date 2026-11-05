@@ -89,6 +89,14 @@ google::protobuf::RepeatedPtrField<TileLayer> default_tile_layers()
 
     layers.Add()->set_name("OpenStreetMap"); // the field defaults
 
+    auto* esri = layers.Add();
+    esri->set_name("Esri Ocean");
+    esri->set_url_template("https://server.arcgisonline.com/ArcGIS/rest/services/Ocean/"
+                           "World_Ocean_Base/MapServer/tile/{z}/{y}/{x}");
+    esri->set_attribution("Tiles &copy; Esri &mdash; Sources: GEBCO, NOAA, CHS, OSU, UNH, CSUMB, "
+                          "National Geographic, DeLorme, NAVTEQ, and Esri");
+    esri->set_max_native_zoom(16);
+
     auto* noaa = layers.Add();
     noaa->set_name("NOAA chart");
     noaa->set_url_template("https://gis.charttools.noaa.gov/arcgis/rest/services/MCS/"
@@ -180,7 +188,7 @@ std::string depth_gauge_svg(double depth)
 
     std::ostringstream svg;
     svg << std::fixed << std::setprecision(1)
-        << "<svg width=\"26\" height=\"42\" viewBox=\"-1 -1 26 42\">"
+        << "<svg width=\"40\" height=\"32\" viewBox=\"-1 -1 40 32\">"
         << "<title>depth " << depth << " m</title>"
         << "<rect width=\"" << width << "\" height=\"" << height << "\" fill=\"#eef3f7\"/>"
         << "<rect width=\"" << width << "\" height=\"" << std::min(height, y(depth))
@@ -190,9 +198,10 @@ std::string depth_gauge_svg(double depth)
     for (double tick : {10.0, 100.0, 1000.0})
         svg << "<line x1=\"" << width << "\" x2=\"" << width + 3 << "\" y1=\"" << y(tick)
             << "\" y2=\"" << y(tick) << "\" stroke=\"#4b5a68\" stroke-width=\"0.8\"/>";
-    svg << "<text x=\"" << width / 2 << "\" y=\"" << height + 9
-        << "\" text-anchor=\"middle\" font-size=\"9\" class=\"map-depth-value\">"
-        << std::setprecision(depth < 10 ? 1 : 0) << depth << "</text></svg>";
+    // the value sits beside the bar at the depth it marks, kept inside the gauge's height
+    svg << "<text x=\"" << width + 4 << "\" y=\"" << std::clamp(y(depth) + 3, 8.0, height)
+        << "\" font-size=\"9\" class=\"map-depth-value\">" << std::setprecision(depth < 10 ? 1 : 0)
+        << depth << "</text></svg>";
     return svg.str();
 }
 
@@ -554,11 +563,14 @@ void goby::apps::zeromq::LiaisonMap::create_controls(Wt::WContainerWidget* paren
 
     if (map_cfg_.enc_upload())
     {
-        controls->addNew<Wt::WText>("Add ENC:");
-        enc_upload_ = controls->addNew<Wt::WFileUpload>();
+        // grouped so the label wraps with its button
+        auto* enc = controls->addNew<Wt::WContainerWidget>();
+        enc->setStyleClass("map-enc");
+        enc->addNew<Wt::WText>("Add ENC:");
+        enc_upload_ = enc->addNew<Wt::WFileUpload>();
         enc_upload_->addStyleClass("map-enc-upload");
         enc_upload_->setFilters(".000,.zip");
-        enc_status_ = controls->addNew<Wt::WText>();
+        enc_status_ = enc->addNew<Wt::WText>();
         enc_status_->setStyleClass("map-enc-status");
         enc_upload_->changed().connect(
             [this]()
@@ -605,6 +617,8 @@ std::string goby::apps::zeromq::LiaisonMap::tile_layers_js() const
         options["attribution"] = Wt::Json::Value(Wt::WString::fromUTF8(layer.attribution()));
         options["minZoom"] = Wt::Json::Value(layer.min_zoom());
         options["maxZoom"] = Wt::Json::Value(layer.max_zoom());
+        if (layer.has_max_native_zoom())
+            options["maxNativeZoom"] = Wt::Json::Value(layer.max_native_zoom());
         options["opacity"] = Wt::Json::Value(layer.opacity());
         if (layer.has_wms())
         {
