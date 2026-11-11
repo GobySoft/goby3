@@ -567,9 +567,12 @@ void goby::apps::middleware::InterfaceLaunchCheckTool::run()
         else
             ss << result.difference_size()
                << (result.difference_size() == 1 ? " difference\n" : " differences\n");
+        std::size_t name_width = 0;
         for (const auto& d : result.difference())
-            ss << "  " << std::left << std::setw(15) << d.kind() << std::setw(28) << d.name()
-               << d.detail() << "\n";
+            name_width = std::max(name_width, d.name().size());
+        for (const auto& d : result.difference())
+            ss << "  " << std::left << std::setw(15) << d.kind()
+               << std::setw(static_cast<int>(name_width) + 2) << d.name() << d.detail() << "\n";
     }
     write_output(ss.str(), cfg.output_file());
     // as diff(1): 0 when the same, 1 when different
