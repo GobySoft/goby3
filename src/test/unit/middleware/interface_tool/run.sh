@@ -1,7 +1,8 @@
 #!/bin/bash
 # Checks 'goby interface' against the deployments in interfaces/: each case in cases.txt is drawn
 # and compared with expected/<case>.dot, by 'goby interface visualize' and, when it was built,
-# by 'goby_clang_tool -viz', which shares the same code.
+# by 'goby_clang_tool -viz', which shares the same code. Then 'goby interface validate' is checked
+# for its exit codes and the problems it reports.
 #
 # Usage: run.sh <goby bin dir> <this directory> [update]
 #   update: rewrite expected/ from the current output instead of comparing
@@ -54,6 +55,39 @@ while IFS='|' read -r name deployment goby_flags clang_flags; do
         compare "$name" "$work/$name.clang.dot" "goby_clang_tool -viz"
     fi
 done < "$dir/cases.txt"
+
+# validate: exit 0 when valid, 1 on errors (or warnings with --strict), 2 when unreadable
+check 1 goby interface validate fleet.yml
+expect_output "required-unmet  *auv/controller \[interprocess\] no publisher for nav::depth"
+expect_output "2/3 required met"
+check 1 goby interface validate modules.yml
+expect_output "auv/vehicle/controller \[interprocess\] no publisher for nav::depth"
+check 0 goby interface validate goby_gps_interface.yml
+check 0 goby interface validate warning_only.yml
+expect_output "recommended-unmet"
+check 1 goby interface validate warning_only.yml --strict
+check 1 goby interface validate run_problems.yml
+expect_output "application-duplicate"
+expect_output "unknown key 'colour'"
+expect_output "no interface file declares application no_such_application"
+check 1 goby interface validate run_features.yml
+expect_output "recommended-unmet  *topside/topside_display"
+expect_output "5 applications"
+check 1 goby interface validate run_features.yml -D CONTROLLER=nope
+expect_output "no interface file declares application nope"
+check 1 goby interface validate fleet.yml -o JSON
+expect_output '"code": "required-unmet"'
+expect_output '"necessity": "required"'
+expect_output '"required_met": 2'
+check 2 goby interface validate no_such_deployment.yml
+
+# interface files are found beside the deployment, then with -I or GOBY_INTERFACE_PATH
+pushd "$work" > /dev/null
+check 1 goby interface validate "$dir/deployments/elsewhere.yml"
+expect_output "no interface file declares application nav_driver"
+check 0 goby interface validate "$dir/deployments/elsewhere.yml" -I "$dir/interfaces"
+GOBY_INTERFACE_PATH="$dir/interfaces" check 0 goby interface validate "$dir/deployments/elsewhere.yml"
+popd > /dev/null
 
 check 1 goby interface visualize missing_interface.yml
 expect_output "interface-missing"

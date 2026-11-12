@@ -22,6 +22,8 @@ end
 #end
 
 const ENTRY_KEYS = ("group", "scheme", "type")
+const SUBSCRIPTION_KEYS = ("group", "scheme", "type", "necessity")
+const NECESSITIES = ("required", "recommended", "optional")
 const PORTAL_KEYS = ("alias", "publishes", "subscribes")
 const APPLICATION_KEYS = ("name", "cpp_type", "config")
 const CONFIG_KEYS = ("scheme", "type")
@@ -90,11 +92,15 @@ function collect_layer(layer::String, layer_yaml)
 
     if haskey(layer_yaml, "subscribes")
         for s in layer_yaml["subscribes"]
-            check_keys(s, ENTRY_KEYS, ENTRY_KEYS, "$(layer).subscribes")
+            check_keys(s, ENTRY_KEYS, SUBSCRIPTION_KEYS, "$(layer).subscribes")
             check_scheme(s["scheme"])
+            necessity = string(get(s, "necessity", "optional"))
+            if !(necessity in NECESSITIES)
+                throw(InvalidInterfaceError("'$(layer).subscribes.necessity' is '$(necessity)'. Supported values are: $(join(NECESSITIES, ", "))"))
+            end
             t = to_cpp_scoping(s["type"])
             g = to_cpp_scoping(string(s["group"]))
-            push!(subscribe, (macro_call = "GOBY_JULIA_IF_SUBSCRIPTION($(s["scheme"]), $(layer_enum), $(layer_function), $(g), \"$(g)\", $(t))",
+            push!(subscribe, (macro_call = "GOBY_JULIA_IF_SUBSCRIPTION($(s["scheme"]), $(layer_enum), $(layer_function), $(g), \"$(g)\", $(t), $(uppercase(necessity)))",
                               key = (layer, s["scheme"], t, g),
                               accessor = layer_function))
         end

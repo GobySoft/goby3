@@ -146,7 +146,9 @@ using goby::middleware::tool::interface::PubSubEntry;
     }
     else if (method == "subscribe_type_regex")
     {
-        auto subscribe_regex_parameters_matcher = callee(base_pubsub_parameters_matcher);
+        auto subscribe_regex_parameters_matcher = callee(cxxMethodDecl(
+            base_pubsub_parameters_matcher,
+            anyOf(hasTemplateArgument(3, templateArgument().bind("necessity_arg")), anything())));
         return cxxMemberCallExpr(expr().bind("pubsub_call_expr"), calling_thread_matcher,
                                  subscribe_regex_parameters_matcher, containing_class_matcher);
     }

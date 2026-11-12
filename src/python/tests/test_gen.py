@@ -202,7 +202,8 @@ class GenerateCppTest(unittest.TestCase):
         )
         self.assertIn(
             "GOBY_PYTHON_IF_SUBSCRIPTION(PROTOBUF, INTERPROCESS, interprocess, "
-            'project::groups::modem_rx, "project::groups::modem_rx", project::protobuf::CommsRx)',
+            'project::groups::modem_rx, "project::groups::modem_rx", project::protobuf::CommsRx, '
+            "OPTIONAL)",
             self.cpp,
         )
 

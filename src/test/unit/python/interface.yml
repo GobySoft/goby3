@@ -18,6 +18,7 @@ interprocess:
     - group: goby::test::python::groups::rx
       scheme: PROTOBUF
       type: goby.test.python.protobuf.CommsRx
+      necessity: required
 
 interthread:
   publishes:

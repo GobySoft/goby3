@@ -22,6 +22,7 @@
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
 #include <cstdlib>
+#include <filesystem>
 #include <fstream>
 #include <iostream>
 #include <string>
@@ -34,9 +35,20 @@ int goby::clang::visualize(const std::vector<std::string>& yamls, const Visualiz
 {
     namespace interface = goby::middleware::tool::interface;
 
+    interface::LoadParams load_params;
+    std::error_code ec;
+    auto exe = std::filesystem::read_symlink("/proc/self/exe", ec);
+    if (!ec)
+        load_params.goby_interfaces_dir =
+            (exe.parent_path().parent_path() / "share" / "goby" / "interfaces").string();
+
     interface::Issues issues;
-    auto deployment = interface::load_deployment(yamls.at(0), issues);
-    for (const auto& issue : issues) std::cerr << issue << std::endl;
+    auto deployment = interface::load_deployment(yamls.at(0), issues, load_params);
+    for (const auto& issue : issues)
+    {
+        if (issue.severity != interface::Issue::Severity::INFO)
+            std::cerr << issue << std::endl;
+    }
     if (interface::has_errors(issues))
         return EXIT_FAILURE;
 

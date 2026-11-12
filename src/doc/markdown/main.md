@@ -25,6 +25,7 @@ If you're looking for more detail on various Goby applications, see the followin
   * (for MOOS users) [MOOS applications](doc600_moos.md)
   * (for ROS users) [goby_ros_gateway](https://github.com/GobySoft/goby_ros_gateway) ROS package.
   * (for Julia and Python users) [Applications in other languages](doc250_languages.md)
+  * [Interfaces and deployments](doc260_interfaces.md): checking and drawing the publish/subscribe graph of a system
 
 ## Developer manual
 
