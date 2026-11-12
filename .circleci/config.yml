@@ -191,8 +191,9 @@ job-template-deb-amd64: &job-template-deb-amd64
           export NEWVERSION="$(echo ../*.orig.tar.xz | sed 's/.*_\(.*\)\.orig\.tar\.xz/\1/')"
           quilt new 01-patch-version
           quilt add CMakeLists.txt
-          export NEWVERSION_PATCH=$(echo $NEWVERSION | cut -d . -f 3)
-          sed -i "s/^set(GOBY_VERSION_PATCH *\".*\"/set(GOBY_VERSION_PATCH \"${NEWVERSION_PATCH}\"/" CMakeLists.txt
+          # keep CMakeLists.txt's version, which leads the last tag between a release's version bump and its tag
+          export NEWVERSION_SUFFIX="$(echo ${NEWVERSION} | grep -o '+.*' || true)"
+          sed -i "s/^set(GOBY_VERSION_PATCH *\"\([^\"+]*\)[^\"]*\"/set(GOBY_VERSION_PATCH \"\1${NEWVERSION_SUFFIX}\"/" CMakeLists.txt
           quilt refresh                  
     - run: &run-build-pkg
         name: Build the Debian package 
