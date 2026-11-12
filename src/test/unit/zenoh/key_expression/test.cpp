@@ -19,7 +19,7 @@
 // GNU General Public License for more details.
 //
 // You should have received a copy of the GNU General Public License
-// along with this software.  If not, see <http://www.gnu.org/licenses/>.
+// along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
 // Tests the mapping between Goby interprocess identifiers and Zenoh key expressions. A publisher
 // writes a key and a subscriber reads it back, so any character that survives escaping but not

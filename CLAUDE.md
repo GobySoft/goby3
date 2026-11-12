@@ -17,6 +17,12 @@ Guidance for Claude when working in this repository.
 - When in doubt leave the documentation unwritten, but provide an outline for the human developers to use to fill out the rest of the document.
 - Prefer figures to text when an idea can be better explained graphically.
 
+## Release notes
+
+- Add an entry to `release.md` under the upcoming version for each user-visible change, in the existing sections (Middleware, Acomms, Interface tools, Bugs, ...).
+- One short bullet per change: what changed, and the option or command that controls it. Leave out implementation detail and rationale; the PR and docs carry those.
+- Link the issue or PR, e.g. `([#429](https://github.com/GobySoft/goby3/pull/429))`.
+
 ## Dependencies
 
 - Do not add dependencies to the minimal build: the apt package list of the `amd64-resolute-minimal-build` job in `.circleci/config.yml` is the floor, and everything must compile with only those packages.

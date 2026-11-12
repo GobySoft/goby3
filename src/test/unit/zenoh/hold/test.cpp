@@ -19,7 +19,7 @@
 // GNU General Public License for more details.
 //
 // You should have received a copy of the GNU General Public License
-// along with this software.  If not, see <http://www.gnu.org/licenses/>.
+// along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
 // Tests that the hold actually holds. A portal configured to wait for a client that does not exist
 // yet must keep hold_state() true and must not put anything on the wire; once that client
