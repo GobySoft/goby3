@@ -39,6 +39,10 @@ message GobyToolConfig
             short_help_msg: "Run, validate or visualize publish/subscribe test files",
             external_command: "goby_test_tool"
         }];
+        interface = 4 [(goby.ev).cfg = {
+            short_help_msg: "Visualize the publish/subscribe interfaces of a deployment",
+            external_command: "goby_interface_tool"
+        }];
 
         // middleware/transport
         zeromq = 10 [(goby.ev).cfg = {

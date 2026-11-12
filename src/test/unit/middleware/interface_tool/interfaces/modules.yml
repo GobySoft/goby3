@@ -1,0 +1,12 @@
+# payload publishes nav::depth on interprocess in its own module, so it does not reach controller
+deployment: modules
+platforms:
+  - name: auv
+    modules:
+      - name: vehicle
+        interfaces:
+          - nav_driver_interface.yml
+          - controller_interface.yml
+      - name: payload
+        interfaces:
+          - payload_interface.yml

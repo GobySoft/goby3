@@ -1,0 +1,57 @@
+application: nav_driver
+intervehicle:
+  publishes:
+    - group: nav::status;1
+      scheme: DCCL
+      type: nav::protobuf::Status
+      thread: nav::Driver
+interprocess:
+  publishes:
+    - group: nav::fix
+      scheme: PROTOBUF
+      type: nav::protobuf::Fix
+      thread: nav::Driver
+    - group: nav::status;1
+      scheme: DCCL
+      type: nav::protobuf::Status
+      thread: nav::Driver
+      inner: true
+    - group: nav::status;1
+      scheme: PROTOBUF
+      type: nav::protobuf::Status
+      thread: nav::Driver
+      inner: true
+  subscribes:
+    - group: nav::command
+      scheme: PROTOBUF
+      type: nav::protobuf::Command
+      necessity: recommended
+      thread: nav::Driver
+interthread:
+  threads:
+    - name: nav::Driver
+      known: true
+      bases:
+        - goby::middleware::SimpleThread<nav::Config>
+      publishes:
+        - group: nav::raw_out
+          scheme: CXX_OBJECT
+          type: std::string
+      subscribes:
+        - group: nav::raw_in
+          scheme: CXX_OBJECT
+          type: std::string
+          necessity: optional
+    - name: nav::SerialThread
+      known: true
+      bases:
+        - goby::middleware::SimpleThread<nav::Config>
+      publishes:
+        - group: nav::raw_in
+          scheme: CXX_OBJECT
+          type: std::string
+      subscribes:
+        - group: nav::raw_out
+          scheme: CXX_OBJECT
+          type: std::string
+          necessity: optional

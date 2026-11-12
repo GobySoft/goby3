@@ -157,6 +157,31 @@ run:
 - `load_shared_library` entries, `include` paths and fixture `cwd` resolve relative to the file that declares them. Libraries can also be given with `-l` or `GOBY_TOOL_LOAD_SHARED_LIBRARY` as for `publish` and `subscribe`.
 - In CMake, `find_package(GOBY)` sets `GOBY_EXECUTABLE` to the `goby` tool from the same build or installation as the libraries, e.g. `add_test(NAME nav COMMAND ${GOBY_EXECUTABLE} test run nav.yml)`.
 
+## goby interface
+
+Works with the publish/subscribe interface files that `goby_clang_tool -gen` writes for each application (`<target>_interface.yml`, see `cmake_modules/GobyClangTool.cmake`), and the deployment files that place those applications on platforms and modules:
+
+```
+goby interface visualize <deployment.yml> [--output_file <file.dot>] [--no_disconnected] [--omit_interthread] [--omit_group_regex <regex>] [--omit_node_regex <regex>] [--include_terminate] [--include_coroner] [--include_all] [--splines <setting>]
+```
+
+- `visualize` writes the deployment as a Graphviz graph, e.g. `goby interface visualize fleet.yml | dot -Tsvg -o fleet.svg`. A single interface file is drawn as a one-platform deployment. `goby_clang_tool -viz` draws the same graph.
+
+```yaml
+deployment: fleet
+platforms:
+  - name: auv
+    interfaces:
+      - goby_gps_interface.yml
+      - nav_interface.yml
+      - { file: plugin_interface.yml, application: goby_moos_gateway }
+  - name: topside
+    modules:
+      - { name: shore, interfaces: [goby_liaison_interface.yml] }
+```
+
+Interface files are found relative to the current directory. A platform lists its `interfaces` directly or groups them into `modules`, each one `gobyd`. Connections are matched within each layer's scope: interthread within an application, interprocess within a module, intermodule across the modules of a platform, and intervehicle between platforms.
+
 ## goby zeromq
 
 This function is for launching and interfacing with the ZeroMQ *interprocess* applications.

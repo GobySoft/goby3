@@ -9,12 +9,18 @@
 - Factored the `goby <impl> publish` and `goby <impl> subscribe` applications into `goby::middleware::tool::PublishToolApplication` and `SubscribeToolApplication`, removing the near-identical copies carried by `goby_zeromq_tool` and `goby_udpm_tool`. `goby <impl> publish` takes `--settle_seconds`, the time to wait before publishing; it defaults to 0 for ZeroMQ and UDPM.
 - Factored the Poller wakeup handshake into `goby::middleware::detail::notify_poller()`, used by the interthread subscription store and by the UDPM and Zenoh portals: take the poll mutex, then signal the condition variable. The ZeroMQ read thread cannot block on that mutex, since the main thread may hold it while waiting on the read thread's reply to a subscribe request, so it tries the mutex instead and retries from its poll loop while the mutex is held.
 
+### Interface tools
+
+- Added `goby interface visualize`, which draws a deployment's publish/subscribe graph from the interface files `goby_clang_tool -gen` writes. It needs only yaml-cpp, so it is built without LLVM. `goby_clang_tool -viz` remains and draws the same graph from the same code, which now lives in `goby/middleware/tool/interface/`.
+
 ### Language bindings
 
 - `goby_gen_cpp` (Python) and `goby_gen_cpp` / `goby_gen_julia` (Julia) no longer print a "Generating ... from ..." line for each file they write, so a build that generates bindings is quiet. `--verbose` (Python) or `verbose=true` (Julia) prints them.
 
 ### Bugs
 
+- Fixed interprocess connections in deployment diagrams crossing module boundaries. Each module is its own `gobyd`, so an interprocess publication now reaches only subscribers in its own module; intermodule still spans the platform. Previously such edges were drawn to a node in the publisher's module that did not exist.
+- Fixed `goby_clang_tool -viz --omit-interthread` drawing every interthread subscription as unpublished, and `-omit-node-regex` leaving edges to omitted nodes.
 - Fixed a lost wakeup in the ZeroMQ interprocess portal. Its read thread signalled the Poller's condition variable without first taking the poll mutex, so a signal raised between the poller's last unsuccessful poll and its `wait()` had no waiter and was dropped, leaving data sitting in the inproc socket until some later event polled it. Applications that poll without a loop frequency (`loop_freq_hertz` of 0, which never times out) were the most exposed. The interthread layer and the UDPM portal already took the mutex.
 
 ### Zenoh Support

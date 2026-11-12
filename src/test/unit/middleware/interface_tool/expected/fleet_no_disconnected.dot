@@ -1,0 +1,55 @@
+digraph fleet { 
+	splines=ortho
+	newrank=true
+	subgraph cluster_0 {
+		label=<<b>auv</b>>
+		fontcolor="#006400"
+		penwidth=2
+		pencolor="#00640020"
+		subgraph cluster_1 {
+			label=<<b>controller</b>>
+			fontcolor="#104e8b"
+			penwidth=2
+			pencolor="#104e8b20"
+			auv_nomodule_controller_Controller[penwidth=2,color="#551a8b20"]
+		}
+		auv_nomodule_controller_Controller->auv_nomodule_nav_driver_nav_58__58_Driver[fontsize=7,headlabel="P3",taillabel="P3",xlabel=<P3[command]>,color="#104e8b",style=tapered,tooltip="P3: nav::command | PROTOBUF | nav::protobuf::Command",labeltooltip="P3: nav::command | PROTOBUF | nav::protobuf::Command",headtooltip="P3: nav::command | PROTOBUF | nav::protobuf::Command",penwidth=0.5,arrowhead=vee,arrowsize=0.3]
+		subgraph cluster_2 {
+			label=<<b>nav_driver</b>>
+			fontcolor="#104e8b"
+			penwidth=2
+			pencolor="#104e8b20"
+			auv_nomodule_nav_driver_nav_58__58_Driver->auv_nomodule_nav_driver_nav_58__58_SerialThread[fontsize=7,headlabel="T0",taillabel="T0",xlabel=<T0[raw_out]>,color="#551a8b",style=solid,tooltip="T0: nav::raw_out | CXX_OBJECT | std::string",labeltooltip="T0: nav::raw_out | CXX_OBJECT | std::string",headtooltip="T0: nav::raw_out | CXX_OBJECT | std::string",penwidth=0.5,arrowhead=vee,arrowsize=0.3]
+			auv_nomodule_nav_driver_nav_58__58_Driver[penwidth=2,color="#551a8b20"]
+			auv_nomodule_nav_driver_nav_58__58_SerialThread->auv_nomodule_nav_driver_nav_58__58_Driver[fontsize=7,headlabel="T1",taillabel="T1",xlabel=<T1[raw_in]>,color="#551a8b",style=solid,tooltip="T1: nav::raw_in | CXX_OBJECT | std::string",labeltooltip="T1: nav::raw_in | CXX_OBJECT | std::string",headtooltip="T1: nav::raw_in | CXX_OBJECT | std::string",penwidth=0.5,arrowhead=vee,arrowsize=0.3]
+			auv_nomodule_nav_driver_nav_58__58_SerialThread[penwidth=2,color="#551a8b20"]
+		}
+		auv_nomodule_nav_driver_nav_58__58_Driver->auv_nomodule_controller_Controller[fontsize=7,headlabel="P0",taillabel="P0",xlabel=<P0[fix]>,color="#104e8b",style=bold,tooltip="P0: nav::fix | PROTOBUF | nav::protobuf::Fix",labeltooltip="P0: nav::fix | PROTOBUF | nav::protobuf::Fix",headtooltip="P0: nav::fix | PROTOBUF | nav::protobuf::Fix",penwidth=0.5,arrowhead=vee,arrowsize=0.3]
+		auv_nomodule_controller_Controller_no_publishers_red  
+auv_nomodule_controller_Controller_no_publishers_red->auv_nomodule_controller_Controller[fontsize=7,headlabel="P4",taillabel="P4",xlabel=<P4[depth]>,color="red",style=bold,tooltip="P4: nav::depth | PROTOBUF | nav::protobuf::Depth",labeltooltip="P4: nav::depth | PROTOBUF | nav::protobuf::Depth",headtooltip="P4: nav::depth | PROTOBUF | nav::protobuf::Depth",penwidth=0.5,arrowhead=vee,arrowsize=0.3]
+	}
+	auv_nomodule_nav_driver_nav_58__58_Driver->topside_nomodule_topside_display_Display[fontsize=7,headlabel="V0",taillabel="V0",xlabel=<V0[status;1]>,color="#006400",style=bold,tooltip="V0: nav::status;1 | DCCL | nav::protobuf::Status",labeltooltip="V0: nav::status;1 | DCCL | nav::protobuf::Status",headtooltip="V0: nav::status;1 | DCCL | nav::protobuf::Status",penwidth=0.5,arrowhead=vee,arrowsize=0.3]
+	subgraph cluster_3 {
+		label=<<b>topside</b>>
+		fontcolor="#006400"
+		penwidth=2
+		pencolor="#00640020"
+		subgraph cluster_4 {
+			label=<<b>topside_display</b>>
+			fontcolor="#104e8b"
+			penwidth=2
+			pencolor="#104e8b20"
+			topside_nomodule_topside_display_Display[penwidth=2,color="#551a8b20"]
+		}
+	}
+	auv_nomodule_controller_Controller
+ [label=<<font color="#551a8b">Controller</font><br/><font color="#104e8b" point-size="10">P3: </font><b><font point-size="10">nav::command</font></b><br/><font point-size="6">PROTOBUF</font><br/><font point-size="8">nav::protobuf::Command</font><br/>>,shape=box,style=solid]
+	auv_nomodule_controller_Controller_no_publishers_red
+ [label=<<font color="#104e8b" point-size="10">P4: </font><b><font point-size="10">nav::depth</font></b><br/><font point-size="6">PROTOBUF</font><br/><font point-size="8">nav::protobuf::Depth</font><br/>>,penwidth=0]
+	auv_nomodule_nav_driver_nav_58__58_Driver
+ [label=<<font color="#551a8b">nav::Driver</font><br/><font color="#551a8b" point-size="10">T0: </font><b><font point-size="10">nav::raw_out</font></b><br/><font point-size="6">CXX_OBJECT</font><br/><font point-size="8">std::string</font><br/><font color="#104e8b" point-size="10">P0: </font><b><font point-size="10">nav::fix</font></b><br/><font point-size="6">PROTOBUF</font><br/><font point-size="8">nav::protobuf::Fix</font><br/><font color="#006400" point-size="10">V0: </font><b><font point-size="10">nav::status;1</font></b><br/><font point-size="6">DCCL</font><br/><font point-size="8">nav::protobuf::Status</font><br/>>,shape=box,style=solid]
+	auv_nomodule_nav_driver_nav_58__58_SerialThread
+ [label=<<font color="#551a8b">nav::SerialThread</font><br/><font color="#551a8b" point-size="10">T1: </font><b><font point-size="10">nav::raw_in</font></b><br/><font point-size="6">CXX_OBJECT</font><br/><font point-size="8">std::string</font><br/>>,shape=box,style=solid]
+	topside_nomodule_topside_display_Display
+ [label=<<font color="#551a8b">Display</font><br/>>,shape=box,style=solid]
+}

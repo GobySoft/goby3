@@ -1,0 +1,25 @@
+application: controller
+interprocess:
+  publishes:
+    - group: nav::command
+      scheme: PROTOBUF
+      type: nav::protobuf::Command
+      thread: Controller
+  subscribes:
+    - group: nav::fix
+      scheme: PROTOBUF
+      type: nav::protobuf::Fix
+      necessity: required
+      thread: Controller
+    - group: nav::depth
+      scheme: PROTOBUF
+      type: nav::protobuf::Depth
+      necessity: required
+      thread: Controller
+intermodule:
+  subscribes:
+    - group: payload::science
+      scheme: PROTOBUF
+      type: payload::protobuf::Science
+      necessity: optional
+      thread: Controller
