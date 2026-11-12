@@ -171,11 +171,11 @@ struct Application
         return it == subscribes.end() ? empty : it->second;
     }
 
-    /// \brief Add the contents of one interface file (a root node with application: and the layers)
     /// \brief Turns one entry from an interface file into the entries a deployment sees (a
     /// dynamic group with its bound numerics, or the publications a bind says it stands for)
     using Binder = std::function<std::vector<PubSubEntry>(PubSubEntry)>;
 
+    /// \brief Add the contents of one interface file (a root node with application: and the layers)
     void merge(const YAML::Node& yaml, PublishIndexer& indexer, const Binder& binder = Binder());
 
   private:
