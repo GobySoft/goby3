@@ -512,6 +512,12 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         help="generated Python protobuf module (e.g. project.comms_pb2) to import; repeatable",
     )
     parser.add_argument(
+        "-v",
+        "--verbose",
+        action="store_true",
+        help="print each file as it is written",
+    )
+    parser.add_argument(
         "--print-module-name",
         action="store_true",
         help="print the default extension module name for this interface file and exit",
@@ -537,12 +543,14 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     source = os.path.abspath(args.interface)
 
     if args.cpp_out:
-        print(f"Generating {args.cpp_out} from {args.interface}")
+        if args.verbose:
+            print(f"Generating {args.cpp_out} from {args.interface}")
         with open(args.cpp_out, "w", encoding="utf-8") as handle:
             handle.write(generate_cpp(interface, args.include, module, source))
 
     if args.python_out:
-        print(f"Generating {args.python_out} from {args.interface}")
+        if args.verbose:
+            print(f"Generating {args.python_out} from {args.interface}")
         with open(args.python_out, "w", encoding="utf-8") as handle:
             handle.write(generate_python(interface, module, args.proto_module, source))
 

@@ -26,8 +26,10 @@
 #define GOBY_ACOMMS_MODEMDRIVER_IRIDIUM_DRIVER_FSM_H
 
 #include <algorithm> // for for_each
+#include <chrono>    // for seconds
 #include <iostream>  // for basic_ost...
 #include <locale>    // for locale
+#include <random>    // for mt19937
 #include <string>    // for string
 #include <utility>   // for move, pair
 #include <vector>    // for vector
@@ -152,17 +154,36 @@ struct EvSendBye : boost::statechart::event<EvSendBye>
 struct EvConfigured : boost::statechart::event<EvConfigured>
 {
 };
-struct EvSBDBeginData : boost::statechart::event<EvSBDBeginData>
+struct EvSBDCheckSignal : boost::statechart::event<EvSBDCheckSignal>
 {
-    EvSBDBeginData(std::string data = "", bool in_response_to_ring_alert = false)
-        : data_(std::move(data)), in_response_to_ring_alert_(in_response_to_ring_alert)
+    EvSBDCheckSignal(bool in_response_to_ring_alert = false)
+        : in_response_to_ring_alert_(in_response_to_ring_alert)
     {
     }
-    std::string data_;
     bool in_response_to_ring_alert_;
 };
 
+struct EvSBDSignalStrength : boost::statechart::event<EvSBDSignalStrength>
+{
+    EvSBDSignalStrength(int rssi) : rssi_(rssi) {}
+    int rssi_;
+};
+
+struct EvSBDBeginData : boost::statechart::event<EvSBDBeginData>
+{
+    EvSBDBeginData(std::string data = "") : data_(std::move(data)) {}
+    std::string data_;
+};
+
+struct EvSBDCancel : boost::statechart::event<EvSBDCancel>
+{
+};
+
 struct EvSBDSendBufferCleared : boost::statechart::event<EvSBDSendBufferCleared>
+{
+};
+
+struct EvSBDSendBufferClearFailed : boost::statechart::event<EvSBDSendBufferClearFailed>
 {
 };
 
@@ -171,6 +192,11 @@ struct EvSBDWriteReady : boost::statechart::event<EvSBDWriteReady>
 };
 struct EvSBDWriteComplete : boost::statechart::event<EvSBDWriteComplete>
 {
+};
+struct EvSBDWriteFailed : boost::statechart::event<EvSBDWriteFailed>
+{
+    EvSBDWriteFailed(int result) : result_(result) {}
+    int result_;
 };
 struct EvSBDTransmitComplete : boost::statechart::event<EvSBDTransmitComplete>
 {
@@ -185,11 +211,25 @@ struct EvSBDCheckWriteTimeout : boost::statechart::event<EvSBDCheckWriteTimeout>
 {
 };
 
+struct EvSBDSessionTimeout : boost::statechart::event<EvSBDSessionTimeout>
+{
+};
+
+struct EvSBDTrafficManagementStatus : boost::statechart::event<EvSBDTrafficManagementStatus>
+{
+};
+
+struct EvFlushEeprom : boost::statechart::event<EvFlushEeprom>
+{
+};
+
 // pre-declare
 struct Active;
 struct Command;
 struct Configure;
 struct Ready;
+struct FlushEeprom;
+struct EepromFlushed;
 struct Answer;
 struct Dial;
 struct Online;
@@ -197,9 +237,12 @@ struct OnCall;
 struct NotOnCall;
 struct SBD;
 struct SBDReady;
+struct SBDCheckSignal;
+struct SBDSignalOK;
 struct SBDClearBuffers;
 struct SBDWrite;
 struct SBDTransmit;
+struct SBDCheckTrafficManagement;
 struct SBDReceive;
 
 // state machine
@@ -213,11 +256,19 @@ struct IridiumDriverFSM : boost::statechart::state_machine<IridiumDriverFSM, Act
     };
 
   public:
+    enum class SBDBlockReason
+    {
+        NONE,
+        RETRY_BACKOFF,
+        TRAFFIC_MANAGEMENT
+    };
+
     IridiumDriverFSM(const goby::acomms::protobuf::DriverConfig& driver_cfg)
         : serial_tx_buffer_(SERIAL_BUFFER_CAPACITY),
           received_(RECEIVED_BUFFER_CAPACITY),
           driver_cfg_(driver_cfg),
-          data_out_(DATA_BUFFER_CAPACITY)
+          data_out_(DATA_BUFFER_CAPACITY),
+          rng_(std::random_device()())
     {
         ++count_;
         glog_ir_group_ = "iridiumdriver::" + goby::util::as<std::string>(count_);
@@ -251,6 +302,45 @@ struct IridiumDriverFSM : boost::statechart::state_machine<IridiumDriverFSM, Act
     const CIEVData& ciev_data() const { return ciev_data_; }
 
     void parse_ciev(const std::string& ciev);
+    // returns rssi (0 if invalid)
+    int parse_csq(const std::string& csq);
+    void parse_sbdloe(const std::string& sbdloe);
+
+    // gate on starting SBD sessions, per Iridium SBD retry and traffic management guidance
+    bool sbd_session_blocked() const { return goby::time::SteadyClock::now() < sbd_blocked_until_; }
+    std::chrono::seconds sbd_block_remaining() const
+    {
+        return std::chrono::ceil<std::chrono::seconds>(sbd_blocked_until_ -
+                                                       goby::time::SteadyClock::now());
+    }
+    SBDBlockReason sbd_block_reason() const
+    {
+        return sbd_session_blocked() ? sbd_block_reason_ : SBDBlockReason::NONE;
+    }
+    void sbd_session_succeeded()
+    {
+        sbd_consecutive_failures_ = 0;
+        sbd_blocked_until_ = goby::time::SteadyClock::time_point();
+    }
+    void sbd_session_failed();
+    void sbd_traffic_management(std::chrono::seconds remaining);
+
+    // MT messages still queued at the GSS after the last session that received one
+    int sbd_mt_queued() const { return sbd_mt_queued_; }
+    void set_sbd_mt_queued(int n) { sbd_mt_queued_ = n; }
+
+    // set when AT commands go unanswered until the state machine resets; cleared by any serial input
+    bool modem_not_responding() const { return modem_not_responding_; }
+    void set_modem_not_responding(bool not_responding) { modem_not_responding_ = not_responding; }
+
+    goby::time::SteadyClock::time_point last_sbd_session_start() const
+    {
+        return last_sbd_session_start_;
+    }
+    void set_last_sbd_session_start(goby::time::SteadyClock::time_point t)
+    {
+        last_sbd_session_start_ = t;
+    }
 
   private:
     enum
@@ -277,6 +367,14 @@ struct IridiumDriverFSM : boost::statechart::state_machine<IridiumDriverFSM, Act
     static int count_;
 
     CIEVData ciev_data_;
+
+    goby::time::SteadyClock::time_point sbd_blocked_until_;
+    SBDBlockReason sbd_block_reason_{SBDBlockReason::NONE};
+    int sbd_consecutive_failures_{0};
+    int sbd_mt_queued_{0};
+    bool modem_not_responding_{false};
+    goby::time::SteadyClock::time_point last_sbd_session_start_;
+    std::mt19937 rng_;
 };
 
 struct Active : boost::statechart::simple_state<Active, IridiumDriverFSM,
@@ -320,6 +418,19 @@ struct Command : boost::statechart::simple_state<Command, Active::orthogonal<0>,
 
     void clear_sbd_rx_buffer() { sbd_rx_buffer_.clear(); }
 
+    // commands where "ERROR" means unsupported by this modem, not a fault
+    static bool is_optional_command(const std::string& cmd)
+    {
+        static const std::string sbdst = "+SBDST=";
+        return cmd == "+SBDLOE" || cmd == "*F" || cmd.compare(0, sbdst.size(), sbdst) == 0;
+    }
+
+    static int sbd_session_timeout_seconds(const protobuf::Config& cfg)
+    {
+        return std::max<int>(SBDIX_TIMEOUT_SECONDS,
+                             cfg.sbd_session_timeout() + SBDIX_TIMEOUT_MARGIN_SECONDS);
+    }
+
     void handle_sbd_rx(const std::string& in);
 
   private:
@@ -333,9 +444,15 @@ struct Command : boost::statechart::simple_state<Command, Active::orthogonal<0>,
         COMMAND_TIMEOUT_SECONDS = 2,
         DIAL_TIMEOUT_SECONDS = 60,
         SBDIX_TIMEOUT_SECONDS = DIAL_TIMEOUT_SECONDS,
+        // margin over the modem's own +SBDST timeout so the modem normally reports it first
+        SBDIX_TIMEOUT_MARGIN_SECONDS = 10,
+        FLUSH_EEPROM_TIMEOUT_SECONDS = 10,
         TRIPLE_PLUS_TIMEOUT_SECONDS = 6,
         HANGUP_TIMEOUT_SECONDS = 10,
-        ANSWER_TIMEOUT_SECONDS = 30
+        ANSWER_TIMEOUT_SECONDS = 30,
+        // +CSQ and +SBDLOE may each take up to 10 seconds to respond
+        CSQ_TIMEOUT_SECONDS = 15,
+        SBDLOE_TIMEOUT_SECONDS = 15
     };
 
     enum
@@ -370,7 +487,15 @@ struct Ready : boost::statechart::simple_state<Ready, Command::orthogonal<0>>, S
 
     boost::statechart::result react(const EvDial&)
     {
-        if (state_downcast<const NotOnCall*>() != 0)
+        if (context<IridiumDriverFSM>().iridium_driver_cfg().device() ==
+            protobuf::DEVICE_IRIDIUM_9602_9603)
+        {
+            glog.is(goby::util::logger::WARN) &&
+                glog << group("iridiumdriver")
+                     << "Not dialing since the 9602/9603 does not support calls." << std::endl;
+            return discard_event();
+        }
+        else if (state_downcast<const NotOnCall*>() != 0)
         {
             return transit<Dial>();
         }
@@ -384,9 +509,29 @@ struct Ready : boost::statechart::simple_state<Ready, Command::orthogonal<0>>, S
     }
 
     using reactions = boost::mpl::list<boost::statechart::transition<EvRing, Answer>,
+                                       boost::statechart::transition<EvFlushEeprom, FlushEeprom>,
                                        boost::statechart::custom_reaction<EvDial>>;
 
   private:
+};
+
+struct FlushEeprom : boost::statechart::state<FlushEeprom, Command::orthogonal<0>>, StateNotify
+{
+    using reactions = boost::mpl::list<boost::statechart::transition<EvAtEmpty, EepromFlushed>>;
+
+    FlushEeprom(my_context ctx) : my_base(std::move(ctx)), StateNotify("FlushEeprom")
+    {
+        context<Command>().push_at_command("*F");
+    }
+    ~FlushEeprom() override = default;
+};
+
+// the modem no longer responds to commands until it is power cycled
+struct EepromFlushed : boost::statechart::simple_state<EepromFlushed, Command::orthogonal<0>>,
+                       StateNotify
+{
+    EepromFlushed() : StateNotify("EepromFlushed") {}
+    ~EepromFlushed() override = default;
 };
 
 struct HangingUp : boost::statechart::state<HangingUp, Command::orthogonal<0>>, StateNotify
@@ -514,13 +659,11 @@ struct SBD : boost::statechart::simple_state<SBD, Command::orthogonal<1>, SBDRea
     SBD() : StateNotify("SBD") {}
     ~SBD() override = default;
 
-    void set_data(const EvSBDBeginData& e)
-    {
-        set_data(e.data_);
-        in_response_to_ring_alert_ = e.in_response_to_ring_alert_;
-    }
+    void set_data(const EvSBDBeginData& e) { set_data(e.data_); }
     void clear_data() { data_.clear(); }
     const std::string& data() const { return data_; }
+
+    void set_in_response_to_ring_alert(bool b) { in_response_to_ring_alert_ = b; }
     bool in_response_to_ring_alert() const { return in_response_to_ring_alert_; }
 
   private:
@@ -540,7 +683,7 @@ struct SBD : boost::statechart::simple_state<SBD, Command::orthogonal<1>, SBDRea
 
   private:
     std::string data_;
-    bool in_response_to_ring_alert_;
+    bool in_response_to_ring_alert_{false};
 };
 
 /* struct SBDConfigure : boost::statechart::simple_state<SBDConfigure, SBD >, StateNotify */
@@ -559,18 +702,76 @@ struct SBD : boost::statechart::simple_state<SBD, Command::orthogonal<1>, SBDRea
 
 struct SBDReady : boost::statechart::simple_state<SBDReady, SBD>, StateNotify
 {
-    using reactions = boost::mpl::list<
-        boost::statechart::transition<EvSBDBeginData, SBDClearBuffers, SBD, &SBD::set_data>>;
+    using reactions = boost::mpl::list<boost::statechart::custom_reaction<EvSBDCheckSignal>>;
 
     SBDReady() : StateNotify("SBDReady") {}
 
     ~SBDReady() override = default;
+
+    boost::statechart::result react(const EvSBDCheckSignal& e)
+    {
+        const auto& fsm = context<IridiumDriverFSM>();
+        if (fsm.sbd_session_blocked())
+        {
+            glog.is(goby::util::logger::DEBUG1) &&
+                glog << group("iridiumdriver") << "Not starting SBD session: blocked for another "
+                     << fsm.sbd_block_remaining().count() << " s" << std::endl;
+            return discard_event();
+        }
+        context<SBD>().set_in_response_to_ring_alert(e.in_response_to_ring_alert_);
+        return transit<SBDCheckSignal>();
+    }
+};
+
+struct SBDCheckSignal : boost::statechart::state<SBDCheckSignal, SBD>, StateNotify
+{
+    using reactions = boost::mpl::list<boost::statechart::custom_reaction<EvSBDSignalStrength>>;
+
+    SBDCheckSignal(my_context ctx) : my_base(std::move(ctx)), StateNotify("SBDCheckSignal")
+    {
+        // +CIEV only reports the last known value, so query the current signal strength
+        context<Command>().push_at_command("+CSQ");
+    }
+    ~SBDCheckSignal() override = default;
+
+    boost::statechart::result react(const EvSBDSignalStrength& e)
+    {
+        const int min_rssi =
+            context<IridiumDriverFSM>().iridium_driver_cfg().sbd_min_signal_strength();
+        if (e.rssi_ >= min_rssi)
+        {
+            return transit<SBDSignalOK>();
+        }
+        else
+        {
+            glog.is(goby::util::logger::DEBUG1) &&
+                glog << group("iridiumdriver") << "Not starting SBD session: signal strength "
+                     << e.rssi_ << " is less than minimum of " << min_rssi << std::endl;
+            return transit<SBDReady>();
+        }
+    }
+};
+
+// waits for the driver to provide the data (if any) for this session
+struct SBDSignalOK : boost::statechart::state<SBDSignalOK, SBD>, StateNotify
+{
+    using reactions = boost::mpl::list<
+        boost::statechart::transition<EvSBDBeginData, SBDClearBuffers, SBD, &SBD::set_data>,
+        boost::statechart::transition<EvSBDCancel, SBDReady>>;
+
+    SBDSignalOK(my_context ctx) : my_base(std::move(ctx)), StateNotify("SBDSignalOK")
+    {
+        if (context<SBD>().in_response_to_ring_alert())
+            post_event(EvSBDBeginData()); // mailbox check
+    }
+    ~SBDSignalOK() override = default;
 };
 
 struct SBDClearBuffers : boost::statechart::state<SBDClearBuffers, SBD>, StateNotify
 {
     using reactions =
-        boost::mpl::list<boost::statechart::transition<EvSBDSendBufferCleared, SBDWrite>>;
+        boost::mpl::list<boost::statechart::transition<EvSBDSendBufferCleared, SBDWrite>,
+                         boost::statechart::custom_reaction<EvSBDSendBufferClearFailed>>;
 
     SBDClearBuffers(my_context ctx) : my_base(std::move(ctx)), StateNotify("SBDClearBuffers")
     {
@@ -579,6 +780,15 @@ struct SBDClearBuffers : boost::statechart::state<SBDClearBuffers, SBD>, StateNo
     }
 
     ~SBDClearBuffers() override = default;
+
+    boost::statechart::result react(const EvSBDSendBufferClearFailed&)
+    {
+        glog.is(goby::util::logger::WARN) &&
+            glog << group("iridiumdriver")
+                 << "Error clearing SBD message buffers (+SBDD2); abandoning SBD session"
+                 << std::endl;
+        return transit<SBDReady>();
+    }
 };
 
 struct SBDWrite : boost::statechart::state<SBDWrite, SBD>, StateNotify
@@ -616,7 +826,24 @@ struct SBDWrite : boost::statechart::state<SBDWrite, SBD>, StateNotify
         boost::statechart::in_state_reaction<EvSBDWriteReady, SBDWrite, &SBDWrite::in_state_react>,
         boost::statechart::in_state_reaction<EvSBDCheckWriteTimeout, SBDWrite,
                                              &SBDWrite::in_state_react>,
-        boost::statechart::transition<EvSBDWriteComplete, SBDTransmit>>;
+        boost::statechart::transition<EvSBDWriteComplete, SBDTransmit>,
+        boost::statechart::custom_reaction<EvSBDWriteFailed>>;
+
+    boost::statechart::result react(const EvSBDWriteFailed& e)
+    {
+        std::string reason;
+        switch (e.result_)
+        {
+            case 1: reason = "write timeout"; break;
+            case 2: reason = "checksum mismatch"; break;
+            case 3: reason = "invalid message size"; break;
+            default: reason = "unknown error"; break;
+        }
+        glog.is(goby::util::logger::WARN) &&
+            glog << group("iridiumdriver") << "Error writing SBD message (+SBDWB result "
+                 << e.result_ << ": " << reason << "); abandoning SBD session" << std::endl;
+        return transit<SBDReady>();
+    }
 
   private:
     goby::time::SteadyClock::time_point entry_time_;
@@ -624,9 +851,11 @@ struct SBDWrite : boost::statechart::state<SBDWrite, SBD>, StateNotify
 
 struct SBDTransmit : boost::statechart::state<SBDTransmit, SBD>, StateNotify
 {
-    using reactions = boost::mpl::list<boost::statechart::custom_reaction<EvSBDTransmitComplete>>;
+    using reactions = boost::mpl::list<boost::statechart::custom_reaction<EvSBDTransmitComplete>,
+                                       boost::statechart::custom_reaction<EvSBDSessionTimeout>>;
     SBDTransmit(my_context ctx) : my_base(std::move(ctx)), StateNotify("SBDTransmit")
     {
+        context<IridiumDriverFSM>().set_last_sbd_session_start(goby::time::SteadyClock::now());
         if (context<SBD>().in_response_to_ring_alert())
             context<Command>().push_at_command("+SBDIXA");
         else
@@ -668,9 +897,6 @@ struct SBDTransmit : boost::statechart::state<SBDTransmit, SBD>, StateNotify
             case 29:
             case 30:
             case 31:
-            case 33:
-            case 34:
-            case 36:
             default: return "Reserved, but indicate MO session failure if used";
             case 10: return "GSS reported that the call did not complete in the allowed time";
             case 11: return "MO message queue at the GSS is full";
@@ -678,12 +904,19 @@ struct SBDTransmit : boost::statechart::state<SBDTransmit, SBD>, StateNotify
             case 13: return "GSS reported that the session did not complete";
             case 14: return "Invalid segment size";
             case 15: return "Access is denied";
-            case 16: return "Modem has been locked and may not make SBD calls";
+            case 16: return "Modem has been locked and may not make SBD calls (see +CULK command)";
             case 17: return "Gateway not responding (local session timeout)";
             case 18: return "Connection lost (RF drop)";
             case 19: return "Link failure (A protocol error caused termination of the call)";
             case 32: return "No network service, unable to initiate call";
-            case 35: return "Iridium 9523 is busy, unable to initiate call";
+            case 33: return "Antenna fault, unable to initiate call";
+            case 34: return "Radio is disabled, unable to initiate call (see *Rn command)";
+            case 35: return "Modem is busy, unable to initiate call";
+            case 36: return "Try later, must wait 3 minutes since last registration";
+            case 37: return "SBD service is temporarily disabled";
+            case 38: return "Try later, traffic management period (see +SBDLOE command)";
+            case 64: return "Band violation (attempt to transmit outside permitted frequency band)";
+            case 65: return "PLL lock failure; hardware error during attempted transmit";
         }
     }
 
@@ -702,6 +935,7 @@ struct SBDTransmit : boost::statechart::state<SBDTransmit, SBD>, StateNotify
             glog.is(goby::util::logger::DEBUG1) && glog << group("iridiumdriver")
                                                         << "Invalid +SBDI response: " << e.sbdi_
                                                         << std::endl;
+            context<IridiumDriverFSM>().sbd_session_failed();
             return transit<SBDReady>();
         }
         else
@@ -722,11 +956,12 @@ struct SBDTransmit : boost::statechart::state<SBDTransmit, SBD>, StateNotify
                 MT_STATUS_ERROR = 2
             };
 
-            // 0-4 OK, 5-36 FAILURE
+            // 0-4 OK, 5+ FAILURE
             enum
             {
                 MO_STATUS_SUCCESS_MAX = 4,
-                MO_STATUS_FAILURE_MIN = 5
+                MO_STATUS_FAILURE_MIN = 5,
+                MO_STATUS_TRAFFIC_MANAGEMENT = 38
             };
 
             int mo_status = goby::util::as<int>(sbdi_fields[MO_STATUS]);
@@ -736,23 +971,60 @@ struct SBDTransmit : boost::statechart::state<SBDTransmit, SBD>, StateNotify
                     glog << group("iridiumdriver")
                          << "Success sending SBDIX: " << mo_status_as_string(mo_status)
                          << std::endl;
+                context<IridiumDriverFSM>().sbd_session_succeeded();
             }
             else
             {
                 glog.is(goby::util::logger::WARN) &&
-                    glog << group("iridiumdriver")
-                         << "Error sending SBD packet: " << mo_status_as_string(mo_status)
-                         << std::endl;
-                return transit<SBDReady>();
+                    glog << group("iridiumdriver") << "Error sending SBD packet (" << mo_status
+                         << "): " << mo_status_as_string(mo_status) << std::endl;
+                context<IridiumDriverFSM>().sbd_session_failed();
+                if (mo_status == MO_STATUS_TRAFFIC_MANAGEMENT)
+                    return transit<SBDCheckTrafficManagement>();
+                else
+                    return transit<SBDReady>();
             }
 
             int mt_status = goby::util::as<int>(sbdi_fields[MT_STATUS]);
+            if (mt_status == MT_STATUS_ERROR)
+                glog.is(goby::util::logger::WARN) &&
+                    glog << group("iridiumdriver")
+                         << "Error during mailbox check or MT message receive (MT status 2)"
+                         << std::endl;
+            // only follow up when a message was received, so an MT that can't be
+            // delivered (e.g. too large) doesn't cause back-to-back sessions
+            context<IridiumDriverFSM>().set_sbd_mt_queued(
+                mt_status == MT_STATUS_RECEIVED_MESSAGE
+                    ? goby::util::as<int>(sbdi_fields[MT_QUEUED])
+                    : 0);
             if (mt_status == MT_STATUS_RECEIVED_MESSAGE)
                 return transit<SBDReceive>();
             else
                 return transit<SBDReady>();
         }
     }
+
+    boost::statechart::result react(const EvSBDSessionTimeout&)
+    {
+        glog.is(goby::util::logger::WARN) &&
+            glog << group("iridiumdriver") << "Timeout waiting for +SBDIX response" << std::endl;
+        context<IridiumDriverFSM>().sbd_session_failed();
+        return transit<SBDReady>();
+    }
+};
+
+struct SBDCheckTrafficManagement : boost::statechart::state<SBDCheckTrafficManagement, SBD>,
+                                   StateNotify
+{
+    using reactions =
+        boost::mpl::list<boost::statechart::transition<EvSBDTrafficManagementStatus, SBDReady>>;
+
+    SBDCheckTrafficManagement(my_context ctx)
+        : my_base(std::move(ctx)), StateNotify("SBDCheckTrafficManagement")
+    {
+        context<Command>().push_at_command("+SBDLOE");
+    }
+    ~SBDCheckTrafficManagement() override = default;
 };
 
 struct SBDReceive : boost::statechart::state<SBDReceive, SBD>, StateNotify

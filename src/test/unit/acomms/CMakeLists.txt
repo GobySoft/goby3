@@ -23,6 +23,7 @@ add_subdirectory(udpdriver3)
 
 add_subdirectory(iridiumdriver1)
 add_subdirectory(iridiumdriver_rockblock1)
+add_subdirectory(iridiumdriver_sbd1)
 
 add_subdirectory(benthos_atm900_driver1)
 
