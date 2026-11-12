@@ -414,6 +414,7 @@ A compact DCCL-encoded `IridiumHeader` (7 bytes max) is prepended to the raw pay
 | `iridium::protobuf::Transmission::rockblock_rx` | Populated on receive when using RockBLOCK SBD mode; contains IMEI, MOMSN, GPS fix, CEP (Circular Error Probable) radius, and JWT verification flag from the RockBLOCK webhook payload |
 | `iridium::protobuf::Transmission::rockblock_tx` | Populated after an MT SBD send via RockBLOCK; indicates success/failure and the Iridium MT ID or error code |
 | `iridium::protobuf::Transmission::if_no_data_do_mailbox_check` | When true (default), an SBD mailbox check is initiated even if there is no outgoing data, allowing the driver to retrieve pending MT messages |
+| `iridium::protobuf::Report::sbd_block_reason`, `sbd_blocked_seconds` | In the `ModemReport`: whether SBD sessions are currently blocked (retry back-off or traffic management) and for how many more seconds |
 
 ### SBD session handling
 
@@ -426,6 +427,9 @@ The driver follows the Iridium SBD best practices for starting SBD sessions (`+S
 - `+SBDLOE` is queried at startup and after MO status 38. No session is started (including in response to an `SBDRING` ring alert) until the reported traffic management period has ended.
 - Sessions started by the MAC are delayed by a random time of up to `sbd_session_jitter` seconds (default 5) so that they don't fall at the top of the second or minute. Ring alert responses, acks, and retrieval of queued MT messages are not delayed.
 - When a session receives an MT message and reports more MT messages queued at the gateway, the driver retrieves them straight away with further sessions (mailbox checks, if there is no other data).
+- `sbd_min_session_interval` (default 0, off) sets a minimum time from one session to the next session started by the MAC. Iridium recommends 60 s for applications that send frequently.
+- `+SBDST` is set to `sbd_session_timeout` (default 50 s) at startup, so a stalled session ends with MO status 17 and the usual back-off.
+- On shutdown the driver waits for an SBD session in progress to finish. If `flush_eeprom_on_shutdown` is true (default false), it then sends `AT*F` so that the modem's power can be removed safely; the modem stops responding to commands until it is power cycled.
 - Transmissions that would start a session while it is blocked are skipped and the data remains queued. Data that was sent in a failed session is not resent by the driver; use `ack_requested` for reliable delivery.
 
 ![SBD session states](images/iridium_sbd_session.svg)
