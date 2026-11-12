@@ -158,6 +158,8 @@ check 1 goby interface visualize missing_interface.yml
 expect_output "interface-missing"
 check 1 goby interface visualize no_such_deployment.yml
 expect_output "deployment-missing"
+check 2 goby interface visualize fleet.yml --output_file "$work/no_such_dir/fleet.dot"
+expect_output "cannot write .*no_such_dir/fleet.dot"
 check 1 goby interface no_such_action
 
 [ $fail -eq 0 ] && echo "PASSED"

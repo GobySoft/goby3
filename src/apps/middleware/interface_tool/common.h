@@ -24,6 +24,9 @@
 #ifndef GOBY_APPS_MIDDLEWARE_INTERFACE_TOOL_COMMON_H
 #define GOBY_APPS_MIDDLEWARE_INTERFACE_TOOL_COMMON_H
 
+#include <cerrno>
+#include <cstdlib>
+#include <cstring>
 #include <filesystem>
 #include <fstream>
 #include <iostream>
@@ -104,6 +107,12 @@ inline void write_output(const std::string& out, const std::string& output_file)
     else
     {
         std::ofstream fout(output_file);
+        if (!fout.is_open())
+        {
+            std::cerr << "cannot write " << output_file << ": " << std::strerror(errno)
+                      << std::endl;
+            std::exit(2);
+        }
         fout << out;
     }
 }
