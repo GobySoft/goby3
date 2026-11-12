@@ -101,6 +101,11 @@ static cl::opt<std::string> DotSplines("splines", cl::desc("For '-viz', Graphviz
                                        cl::cat(Goby3ToolCategory));
 
 static cl::opt<bool>
+    ExpandInstances("expand-instances",
+                    cl::desc("For '-viz', draw each of a platform's instances: separately"),
+                    cl::cat(Goby3ToolCategory));
+
+static cl::opt<bool>
     IncludeAll("include-all",
                cl::desc("For '-viz', include all groups, include goby internal groups"),
                cl::cat(Goby3ToolCategory));
@@ -134,7 +139,8 @@ int main(int argc, const char** argv)
                                                 DotSplines,
                                                 OmitGroupRegex,
                                                 OmitNodeRegex,
-                                                OmitInterThread};
+                                                OmitInterThread,
+                                                ExpandInstances};
 
         return goby::clang::visualize(SharedOptionsParser->getSourcePathList(), params);
     }

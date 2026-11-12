@@ -36,6 +36,7 @@ int goby::clang::visualize(const std::vector<std::string>& yamls, const Visualiz
     namespace interface = goby::middleware::tool::interface;
 
     interface::LoadParams load_params;
+    load_params.expand_instances = params.expand_instances;
     std::error_code ec;
     auto exe = std::filesystem::read_symlink("/proc/self/exe", ec);
     if (!ec)

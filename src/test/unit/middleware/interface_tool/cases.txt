@@ -8,3 +8,6 @@ modules | modules.yml | |
 modules_omit_node | modules.yml | --omit_node_regex=.*Serial.* | -omit-node-regex=.*Serial.*
 fleet | run_fleet.yml | |
 run_features | run_features.yml | |
+dynamic_fleet | dynamic_fleet.yml | |
+dynamic_fleet_expanded | dynamic_fleet.yml | --expand_instances | -expand-instances
+dynamic_unbound | dynamic_unbound.yml | |

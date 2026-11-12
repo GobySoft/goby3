@@ -1,0 +1,19 @@
+# the hub addresses bots 1 and 2 (groups 151-152) but bot 3 (group 153) also exists
+deployment: dynamic_fleet
+platforms:
+  - name: hub
+    run: [hub_manager, engineering_display]
+    bind:
+      - { group: fleet::hub_command, numeric: "151-152" }
+      - dynamic: { layer: interprocess, type: google::protobuf::Message }
+        publishes:
+          - { group: fleet::engineering, type: fleet::protobuf::Engineering }
+      - { group: fleet::nothing_here, numeric: 7 }
+  - name: bot
+    instances: [1, 2, 3]
+    run: [mission_manager]
+    bind:
+      - { group: fleet::hub_command, numeric: "${instance} + 150" }
+necessity:
+  - { application: mission_manager, group: fleet::hub_command, set: required }
+  - { application: no_such_application, set: required }
