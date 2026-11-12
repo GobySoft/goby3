@@ -49,5 +49,6 @@ Goby's groups, types and schemes are known at compile time, so the publish/subsc
 - The launch keys on a `run` entry (`process`, `exec`, `config`, `args`, `env`, `kill`, `when`, `enabled`) and a platform's `launch: { flags, defaults }`.
 - Derived lists: `hold: auto` for `gobyd`, `expected: auto` for `goby_coroner`.
 - `goby interface launch`, `goby launch <deployment>.yml`, and `launch_check` for moving existing launch files over.
+- `goby interface systemd`: `systemd:` settings, templates, `when` decided at write time, and `--check` against installed units.
 - `goby interface visualize` and `goby_clang_tool -viz`.
 - `goby_validate_interfaces()` in CMake.

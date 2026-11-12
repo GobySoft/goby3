@@ -1,8 +1,8 @@
 #!/bin/bash
 # Checks 'goby interface' against the deployments in interfaces/: each case in cases.txt is drawn
 # and compared with expected/<case>.<dot|d2>, by 'goby interface visualize' and, when it was built,
-# by 'goby_clang_tool -viz', which shares the same code. Then validate, list, explain, diff and
-# init are checked for their exit codes and what they report.
+# by 'goby_clang_tool -viz', which shares the same code. Then validate, list, explain, diff,
+# init, launch and systemd are checked for their exit codes and what they report.
 #
 # Usage: run.sh <goby bin dir> <this directory> [update]
 #   update: rewrite expected/ from the current output instead of comparing
@@ -199,6 +199,41 @@ check 1 goby launch "$work/launch_fleet.yml" --platform bot --instance 2 -I "$di
 if [ "$update" != update ] && ! diff -q "$dir/launch/bot2.launch" <(sed "s#$work/##" "$work/.launch_fleet.bot.2.launch") > /dev/null; then
     echo "FAILED: goby launch did not write .launch_fleet.bot.2.launch as goby interface launch does"; fail=1
 fi
+
+# systemd: one unit per run: entry (and a target), compared with expected/systemd/<unit>/
+for unit in bot1 topside; do
+    check 0 goby interface systemd systemd_fleet.yml --platform $unit -D fleet_mode=autonomy --outdir "$work/systemd/$unit"
+    if [ "$update" = update ]; then
+        rm -rf "$dir/expected/systemd/$unit"; mkdir -p "$dir/expected/systemd"
+        cp -r "$work/systemd/$unit" "$dir/expected/systemd/$unit"
+    elif ! diff -ru "$dir/expected/systemd/$unit" "$work/systemd/$unit"; then
+        echo "FAILED: systemd units for $unit differ from expected/systemd/$unit"; fail=1
+    fi
+done
+# a when: decided false (or not at all) gets no unit, and a coroner expecting it is warned about
+check 0 goby interface systemd systemd_fleet.yml --platform bot1 -D fleet_mode=manual
+expect_output "systemd-dropped.*goby_coroner waits for mission_manager"
+check 0 goby interface systemd systemd_fleet.yml --platform bot1
+expect_output "systemd-when.*mission_manager"
+! grep -q "^# --- mission_manager.service" "$work/out" ||
+    { echo "FAILED: undecided when: still wrote mission_manager.service"; fail=1; }
+check 0 goby interface systemd launch_fleet.yml --outdir "$work/systemd/all"
+for unit in hub bot1 bot2; do
+    [ -f "$work/systemd/all/$unit/launch_fleet-$unit.target" ] || { echo "FAILED: --outdir did not write $unit/launch_fleet-$unit.target"; fail=1; }
+done
+check 1 goby interface systemd launch_fleet.yml
+expect_output "choose one of bot1, bot2, hub"
+# --check: the installed units against the rendered ones
+check 0 goby interface systemd systemd_fleet.yml --platform bot1 -D fleet_mode=autonomy --check --unit_dir "$work/systemd/bot1"
+expect_output "no differences"
+echo "LimitNOFILE=4096" >> "$work/systemd/bot1/nav_driver.service"
+rm "$work/systemd/bot1/logger.service"
+check 1 goby interface systemd systemd_fleet.yml --platform bot1 -D fleet_mode=autonomy --check --unit_dir "$work/systemd/bot1"
+expect_output "differs  *.*nav_driver.service"
+expect_output "missing  *.*logger.service"
+check 1 goby interface systemd systemd_problems.yml --platform bot
+expect_output "systemd-template.*no_such.service.in"
+expect_output "deployment-schema.*unknown key 'restart'"
 
 check 1 goby interface visualize missing_interface.yml
 expect_output "interface-missing"

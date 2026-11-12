@@ -57,6 +57,8 @@ struct LaunchLine
     const LaunchEntry* entry{nullptr};
     std::string name;
     std::string command;
+    // the command without its when: condition
+    std::string unconditional_command;
     // as given in the deployment (empty: goby_launch's default)
     std::string kill;
     KeyValues env;
@@ -260,6 +262,7 @@ inline std::vector<LaunchLine> launch_lines(const LaunchUnit& unit)
             for (const auto& name : detail::expand_auto(*e.expected, auto_expected(unit, e)))
                 command += " --expected_name " + name;
         }
+        line.unconditional_command = command;
         if (e.when)
             command = "/bin/bash -c \"if " +
                       detail::escape_double_quoted(detail::when_command(*e.when)) + "; then exec " +
