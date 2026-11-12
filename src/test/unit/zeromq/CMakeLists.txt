@@ -4,6 +4,7 @@ add_subdirectory(middleware_speed)
 add_subdirectory(middleware_regex)
 
 add_subdirectory(zeromq_and_intervehicle)
+add_subdirectory(intervehicle_driver_restart)
 add_subdirectory(zeromq_portal_without_interthread)
 add_subdirectory(zeromq_hold_subscription_sync)
 
