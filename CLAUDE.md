@@ -21,7 +21,7 @@ Guidance for Claude when working in this repository.
 
 - Add an entry to `release.md` under the upcoming version for each user-visible change, in the existing sections (Middleware, Acomms, Interface tools, Bugs, ...).
 - One short bullet per change: what changed, and the option or command that controls it. Leave out implementation detail and rationale; the PR and docs carry those.
-- Reference the issue or PR number, e.g. `(#429)`.
+- Link the issue or PR, e.g. `([#429](https://github.com/GobySoft/goby3/pull/429))`.
 
 ## Dependencies
 

@@ -14,17 +14,17 @@
   - `visualize` draws the publish/subscribe graph as Graphviz or D2, with Goby's own applications drawn compactly (`--expand_goby_apps` for all their detail). `goby_clang_tool -viz` now uses the same code.
   - `validate` checks that every required subscription has a publisher in scope. `goby_validate_interfaces()` runs it as a CTest test.
   - `list`, `explain`, `diff` and `init` inventory a deployment, explain why a subscription is unmet, compare two deployments or builds, and start a new deployment file.
-  - `launch` writes `goby_launch` files, and `launch_check` compares a hand-written one with the deployment (#452). `goby launch <deployment>.yml` runs one directly.
-  - `systemd` writes systemd units (#453).
+  - `launch` writes `goby_launch` files, and `launch_check` compares a hand-written one with the deployment ([#452](https://github.com/GobySoft/goby3/issues/452)). `goby launch <deployment>.yml` runs one directly.
+  - `systemd` writes systemd units ([#453](https://github.com/GobySoft/goby3/issues/453)).
 - Deployment files list what each platform `run`s by application name, with launch settings, `plugins`, `instances`, `bind`s for dynamic groups and `necessity` overrides. `interfaces:` lists still work.
-- `goby_clang_tool -gen` records `DynamicGroup` publications and subscriptions (#343).
+- `goby_clang_tool -gen` records `DynamicGroup` publications and subscriptions ([#343](https://github.com/GobySoft/goby3/issues/343)).
 - `subscribe_dynamic()` and `subscribe_type_regex()` take a `Necessity`, as `subscribe()` does. Python and Julia `interface.yml` subscriptions take `necessity:`.
 
 ### Acomms
 
-- Iridium driver follows Iridium's SBD best practices (#423, #424, #425): a signal check before each session, retry back-off, traffic management, session jitter and minimum interval, prompt retrieval of queued MT messages, a `+SBDRB` checksum check, and waiting for a session in progress at shutdown.
-- `InterVehiclePortal` restarts a link's modem driver after it fails (`restart_on_failure`), rather than terminating the portal, and reports the failure in `ModemReport.driver_status` (#429).
-- `InterVehiclePortal` shuts down each link's driver on exit (`shutdown_driver_on_exit`, #466).
+- Iridium driver follows Iridium's SBD best practices ([#423](https://github.com/GobySoft/goby3/pull/423), [#424](https://github.com/GobySoft/goby3/pull/424), [#425](https://github.com/GobySoft/goby3/pull/425)): a signal check before each session, retry back-off, traffic management, session jitter and minimum interval, prompt retrieval of queued MT messages, a `+SBDRB` checksum check, and waiting for a session in progress at shutdown.
+- `InterVehiclePortal` restarts a link's modem driver after it fails (`restart_on_failure`), rather than terminating the portal, and reports the failure in `ModemReport.driver_status` ([#429](https://github.com/GobySoft/goby3/pull/429)).
+- `InterVehiclePortal` shuts down each link's driver on exit (`shutdown_driver_on_exit`, [#466](https://github.com/GobySoft/goby3/pull/466)).
 
 ### Language bindings
 
