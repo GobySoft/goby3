@@ -5,6 +5,7 @@ add_subdirectory(middleware_regex)
 
 add_subdirectory(zeromq_and_intervehicle)
 add_subdirectory(zeromq_portal_without_interthread)
+add_subdirectory(zeromq_hold_subscription_sync)
 
 add_subdirectory(single_thread_app1)
 add_subdirectory(multi_thread_app1)

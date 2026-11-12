@@ -1,5 +1,6 @@
 add_subdirectory(middleware_interthread)
 add_subdirectory(middleware_intervehicle_metadata)
+add_subdirectory(publisher_subscriber_options)
 
 add_subdirectory(dccl_load_library)
 

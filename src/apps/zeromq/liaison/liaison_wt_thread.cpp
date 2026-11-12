@@ -54,6 +54,7 @@
 #include "liaison.h"           // for Liaison
 #include "liaison_commander.h" // for LiaisonComm...
 #include "liaison_home.h"      // for LiaisonHome
+#include "liaison_map.h"       // for LiaisonMap
 #include "liaison_scope.h"     // for LiaisonScope
 #include "liaison_wt_thread.h"
 
@@ -143,6 +144,12 @@ goby::apps::zeromq::LiaisonWtThread::LiaisonWtThread(const Wt::WEnvironment& env
     {
         auto commander = std::make_unique<LiaisonCommander>(app_cfg_);
         add_to_menu(std::move(commander));
+    }
+
+    if (app_cfg_.add_map_tab())
+    {
+        auto map = std::make_unique<LiaisonMap>(app_cfg_);
+        add_to_menu(std::move(map));
     }
 
     using liaison_load_func = std::vector<std::unique_ptr<goby::zeromq::LiaisonContainer>> (*)(

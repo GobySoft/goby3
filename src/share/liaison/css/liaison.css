@@ -189,3 +189,53 @@ li.odd
 .Wt-progressbar .Wt-pgb-bar {
     background: #1C9FCB
 }
+
+/* map tab */
+div.map-panel { font-size: 85%; }
+
+table.map-vehicles { border-collapse: collapse; margin-top: 8px; font-variant-numeric: tabular-nums; }
+table.map-vehicles th, table.map-vehicles td
+{
+    padding: 3px 4px 3px 16px;
+    text-align: right;
+    border-bottom: 1px solid #ddd;
+    white-space: nowrap;
+}
+table.map-vehicles th { font-weight: normal; color: #666; }
+table.map-vehicles th:first-child, table.map-vehicles td:first-child { text-align: left; padding-left: 4px; }
+tr.map-vehicle-row { cursor: pointer; }
+tr.map-vehicle-row:hover { background-color: #eee; }
+tr.map-vehicle-row.followed { background-color: #d6eef6; }
+tr.map-vehicle-row.stale { color: gray; }
+
+span.map-waiting { display: block; padding: 6px 4px; color: gray; }
+div.map-controls { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; margin-bottom: 6px; }
+input.map-trail { width: 10em; }
+span.map-trail-points { min-width: 6em; color: #666; }
+
+div.map-vehicle { position: relative; width: 24px; height: 24px; }
+div.map-vehicle.stale { opacity: 0.4; }
+/* right of the arrow and above the label, which is centred under the arrow */
+span.map-depth-gauge { position: absolute; left: 24px; top: -14px; line-height: 0; }
+span.map-depth-gauge text { fill: #1d2a36; paint-order: stroke; stroke: #fff; stroke-width: 2px; }
+div.map-depth-units { background: rgba(255, 255, 255, 0.8); padding: 0 5px; font-size: 11px; color: #333; }
+div.map-enc { display: flex; align-items: center; gap: 4px; white-space: nowrap; }
+span.map-enc-status { color: #666; }
+div.map-enc-sounding span
+{
+    position: absolute;
+    transform: translate(-50%, -50%);
+    font: italic 10px sans-serif;
+    color: #3b4d5e;
+    white-space: nowrap;
+}
+span.map-vehicle-label
+{
+    position: absolute;
+    top: 22px;
+    left: 50%;
+    transform: translateX(-50%);
+    white-space: nowrap;
+    font-size: 11px;
+    text-shadow: 0 0 2px #fff, 0 0 2px #fff, 0 0 2px #fff;
+}

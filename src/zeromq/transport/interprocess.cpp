@@ -63,9 +63,11 @@ using namespace goby::util::logger;
 #ifdef USE_OLD_ZMQ_CPP_API
 int zmq_send_flags_none{0};
 int zmq_recv_flags_none{0};
+int zmq_recv_flags_dontwait{ZMQ_NOBLOCK};
 #else
 auto zmq_send_flags_none{zmq::send_flags::none};
 auto zmq_recv_flags_none{zmq::recv_flags::none};
+auto zmq_recv_flags_dontwait{zmq::recv_flags::dontwait};
 #endif
 
 bool zmq_socket_recv(zmq::socket_t& socket, zmq::message_t& msg,
@@ -125,12 +127,19 @@ void goby::zeromq::setup_socket(zmq::socket_t& socket, const protobuf::Socket& c
         socket.connect(endpoint.c_str());
 }
 
+std::string goby::zeromq::ready_marker_identifier(const std::string& client_name)
+{
+    return std::string(delimiter_str) + "goby::zeromq::_internal_ready" + delimiter_str +
+           client_name + delimiter_str;
+}
+
 //
 // InterProcessPortalMainThread
 //
 
-goby::zeromq::InterProcessPortalMainThread::InterProcessPortalMainThread(zmq::context_t& context)
-    : control_socket_(context, ZMQ_PAIR), publish_socket_(context, ZMQ_PUB)
+goby::zeromq::InterProcessPortalMainThread::InterProcessPortalMainThread(
+    zmq::context_t& context, const protobuf::InterProcessPortalConfig& cfg)
+    : cfg_(cfg), control_socket_(context, ZMQ_PAIR), publish_socket_(context, ZMQ_XPUB)
 {
     control_socket_.bind("inproc://control");
 }
@@ -160,35 +169,85 @@ void goby::zeromq::InterProcessPortalMainThread::set_publish_cfg(const protobuf:
     have_pubsub_sockets_ = true;
 }
 
-void goby::zeromq::InterProcessPortalMainThread::set_hold_state(bool hold)
+void goby::zeromq::InterProcessPortalMainThread::set_hold_state(
+    bool hold, const std::set<std::string>& required_clients)
 {
-    // hold was on, and now it's off
-    if (hold_ && !hold)
+    if (!hold_ || !manager_hold_)
+        return;
+
+    if (!hold)
     {
-        hold_ = hold;
-
-        // TODO: this is necessary to allow initial ZMQ subscription forwarding
-        // messages to flow through the system so that we don't lose the
-        // first publication to subscriptions that happened before "hold: false"
-        // Find some way to remove this delay!
-        // Without this, we have problems losing the initial publications to
-        // goby::middleware::intervehicle::modem_subscription_forward_tx from
-        // the InterVehicle layer.
-        // Can we do this by replacing the PUB socket with an XPUB and checking
-        // for a subscriber?
-        sleep(1);
-
-        glog.is(DEBUG3) && glog << "InterProcessPortal**Main**Thread: Hold off" << std::endl;
-
-        // publish any queued up messages
-        for (auto& pub_pair : publish_queue_)
-            publish(pub_pair.first, pub_pair.second.data(), pub_pair.second.size());
-        publish_queue_.clear();
+        manager_hold_ = false;
+        required_clients_ = required_clients;
+        hold_release_deadline_ = std::chrono::steady_clock::now() +
+                                 std::chrono::seconds(cfg_.hold_release_timeout_seconds());
+        release_hold_if_ready();
     }
+}
+
+void goby::zeromq::InterProcessPortalMainThread::read_subscriptions()
+{
+    zmq::message_t msg;
+    while (zmq_socket_recv(publish_socket_, msg, zmq_recv_flags_dontwait))
+    {
+        if (msg.size() == 0)
+            continue;
+
+        // XPUB delivers a leading byte (1 subscribe, 0 unsubscribe) followed by the filter
+        const char* data = static_cast<const char*>(msg.data());
+        std::string identifier(data + 1, msg.size() - 1);
+        if (data[0] == 1)
+            subscriptions_.insert(identifier);
+        else
+            subscriptions_.erase(identifier);
+
+        glog.is(DEBUG3) && glog << "Publish socket " << (data[0] == 1 ? "gained" : "lost")
+                                << " subscription [" << identifier << "]" << std::endl;
+    }
+
+    if (hold_)
+        release_hold_if_ready();
+}
+
+void goby::zeromq::InterProcessPortalMainThread::release_hold_if_ready()
+{
+    if (!hold_ || manager_hold_)
+        return;
+
+    std::string missing;
+    for (const auto& client : required_clients_)
+    {
+        if (!subscriptions_.count(ready_marker_identifier(client)))
+            missing += (missing.empty() ? "" : ", ") + client;
+    }
+
+    if (!missing.empty())
+    {
+        if (std::chrono::steady_clock::now() < hold_release_deadline_)
+        {
+            glog.is(DEBUG3) && glog << "Hold released by manager; waiting for subscriptions of: "
+                                    << missing << std::endl;
+            return;
+        }
+
+        glog.is(WARN) &&
+            glog << "Hold released by manager but the subscriptions of required "
+                    "client(s) ["
+                 << missing << "] did not arrive within " << cfg_.hold_release_timeout_seconds()
+                 << " s; publishing anyway (early publications may be lost)" << std::endl;
+    }
+
+    hold_ = false;
+
+    glog.is(DEBUG3) && glog << "InterProcessPortal**Main**Thread: Hold off" << std::endl;
+
+    for (auto& pub_pair : publish_queue_)
+        publish(pub_pair.first, pub_pair.second.data(), pub_pair.second.size());
+    publish_queue_.clear();
 
     protobuf::InprocControl control;
     control.set_type(protobuf::InprocControl::NOTIFY_HOLD_STATE);
-    control.set_hold(hold);
+    control.set_hold(false);
     send_control_msg(control);
 }
 
@@ -777,6 +836,7 @@ goby::zeromq::Manager::handle_request(const protobuf::ManagerRequest& pb_request
             reported_clients_.insert(pb_request.client_name());
 
         pb_response.set_hold(hold_state());
+        for (const auto& client : required_clients_) pb_response.add_required_client(client);
     }
 
     return pb_response;
