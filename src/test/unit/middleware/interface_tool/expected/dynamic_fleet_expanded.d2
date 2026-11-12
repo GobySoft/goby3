@@ -1,0 +1,55 @@
+vars: { d2-config: { layout-engine: elk } }
+direction: right
+classes: {
+  platform: { style.stroke: "#006400"; style.font-color: "#006400"; style.stroke-width: 2; style.fill: transparent }
+  module: { style.stroke: "#cd8500"; style.font-color: "#cd8500"; style.stroke-width: 2; style.fill: transparent }
+  application: { style.stroke: "#104e8b"; style.font-color: "#104e8b"; style.stroke-width: 2; style.fill: transparent }
+  thread: { style.stroke: "#551a8b"; style.font-color: "#551a8b" }
+  placeholder: { shape: text; style.font-color: "#888888" }
+  interthread: { style.stroke: "#551a8b"; style.font-size: 10 }
+  interprocess: { style.stroke: "#104e8b"; style.font-size: 10 }
+  intermodule: { style.stroke: "#cd8500"; style.font-size: 10 }
+  intervehicle: { style.stroke: "#006400"; style.font-size: 10 }
+  required: { style.stroke-width: 3 }
+  recommended: { style.stroke-dash: 6 }
+  regex: { style.stroke-dash: 2 }
+  dynamic: { style.stroke-dash: 4 }
+  unmet: { style.stroke: red; style.stroke-width: 3 }
+}
+bot1: {
+  class: platform
+  mission_manager: {
+    class: application
+    MissionManager: { class: thread }
+  }
+}
+bot2: {
+  class: platform
+  mission_manager: {
+    class: application
+    MissionManager: { class: thread }
+  }
+}
+bot3: {
+  class: platform
+  mission_manager: {
+    class: application
+    MissionManager: { class: thread }
+    no_publisher: { class: placeholder; label: "no publisher" }
+  }
+}
+hub: {
+  class: platform
+  engineering_display: {
+    class: application
+    Display: { class: thread }
+  }
+  hub_manager: {
+    class: application
+    HubManager: { class: thread; tooltip: "P0: fleet::engineering | PROTOBUF | fleet::protobuf::Engineering\nV0: fleet::hub_command;151-152 | DCCL | fleet::protobuf::Command" }
+  }
+}
+hub.hub_manager.HubManager -> hub.engineering_display.Display: "P0 [engineering]" { class: [interprocess; required; dynamic]; tooltip: "P0: fleet::engineering | PROTOBUF | fleet::protobuf::Engineering" }
+hub.hub_manager.HubManager -> bot1.mission_manager.MissionManager: "V0 [hub_command;151-152]" { class: [intervehicle; required; dynamic]; tooltip: "V0: fleet::hub_command;151-152 | DCCL | fleet::protobuf::Command" }
+hub.hub_manager.HubManager -> bot2.mission_manager.MissionManager: "V0 [hub_command;151-152]" { class: [intervehicle; required; dynamic]; tooltip: "V0: fleet::hub_command;151-152 | DCCL | fleet::protobuf::Command" }
+bot3.mission_manager.no_publisher -> bot3.mission_manager.MissionManager: "V1 [hub_command;153]" { class: [intervehicle; required; dynamic; unmet]; tooltip: "V1: fleet::hub_command;153 | DCCL | fleet::protobuf::Command" }

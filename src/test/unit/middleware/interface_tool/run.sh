@@ -1,6 +1,6 @@
 #!/bin/bash
 # Checks 'goby interface' against the deployments in interfaces/: each case in cases.txt is drawn
-# and compared with expected/<case>.dot, by 'goby interface visualize' and, when it was built,
+# and compared with expected/<case>.<dot|d2>, by 'goby interface visualize' and, when it was built,
 # by 'goby_clang_tool -viz', which shares the same code. Then 'goby interface validate' is checked
 # for its exit codes and the problems it reports.
 #
@@ -31,28 +31,37 @@ expect_output() {
     grep -q -- "$pattern" "$work/out" || { echo "FAILED: output lacks '$pattern'"; cat "$work/out"; fail=1; }
 }
 compare() {
-    local name=$1 actual=$2 what=$3
+    local expected=$1 actual=$2 what=$3
     if [ "$update" = update ]; then
-        cp "$actual" "$dir/expected/$name.dot"
-    elif ! diff -u "$dir/expected/$name.dot" "$actual" > "$work/diff"; then
-        echo "FAILED: $what output for '$name' differs from expected/$name.dot"
+        cp "$actual" "$dir/expected/$expected"
+    elif ! diff -u "$dir/expected/$expected" "$actual" > "$work/diff"; then
+        echo "FAILED: $what output differs from expected/$expected"
         head -40 "$work/diff"
         fail=1
     fi
 }
 
-while IFS='|' read -r name deployment goby_flags clang_flags; do
-    name=$(echo $name); deployment=$(echo $deployment)
+while IFS='|' read -r name deployment goby_flags clang_flags format; do
+    name=$(echo $name); deployment=$(echo $deployment); format=$(echo ${format:-dot})
     [ -z "$name" ] || [ "${name:0:1}" = "#" ] && continue
+    expected=$name.$format
+    format_flag=$([ "$format" = d2 ] && echo "--format D2")
 
-    goby interface visualize "$deployment" $goby_flags --output_file "$work/$name.dot" ||
+    goby interface visualize "$deployment" $goby_flags $format_flag --output_file "$work/$expected" ||
         { echo "FAILED: goby interface visualize $deployment $goby_flags"; fail=1; continue; }
-    compare "$name" "$work/$name.dot" "goby interface visualize"
+    compare "$expected" "$work/$expected" "goby interface visualize"
+    if [ "$format" = d2 ]; then
+        awk -f "$dir/check_d2.awk" "$work/$expected" || fail=1
+        if command -v d2 > /dev/null; then
+            d2 "$work/$expected" "$work/$name.svg" > "$work/d2.log" 2>&1 ||
+                { echo "FAILED: d2 could not render $expected"; cat "$work/d2.log"; fail=1; }
+        fi
+    fi
 
     if [ -x "$bin/goby_clang_tool" ] && [ "$update" != update ]; then
-        goby_clang_tool -viz $clang_flags -outdir "$work" -o "$name.clang.dot" "$deployment" ||
+        goby_clang_tool -viz $clang_flags -format=$format -outdir "$work" -o "$name.clang.$format" "$deployment" ||
             { echo "FAILED: goby_clang_tool -viz $deployment $clang_flags"; fail=1; continue; }
-        compare "$name" "$work/$name.clang.dot" "goby_clang_tool -viz"
+        compare "$expected" "$work/$name.clang.$format" "goby_clang_tool -viz"
     fi
 done < "$dir/cases.txt"
 

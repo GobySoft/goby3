@@ -56,6 +56,8 @@ struct VisualizeParameters
     std::string omit_node_regex;
     bool omit_interthread;
     bool expand_instances;
+    // "dot" or "d2"
+    std::string format;
 };
 
 int visualize(const std::vector<std::string>& ymls, const VisualizeParameters& params);

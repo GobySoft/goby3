@@ -57,8 +57,13 @@ static cl::opt<std::string>
 static cl::opt<std::string>
     OutFile("o",
             cl::desc("Specify output file name (optional, defaults to {target}_interface.yml for "
-                     "-gen and {deployment}.dot for -viz)"),
-            cl::value_desc("file.[yml|dot]"), cl::cat(Goby3ToolCategory));
+                     "-gen and {deployment}.dot (or .d2) for -viz)"),
+            cl::value_desc("file.[yml|dot|d2]"), cl::cat(Goby3ToolCategory));
+
+static cl::opt<std::string> Format("format",
+                                   cl::desc("For '-viz', output format: dot (Graphviz) or d2"),
+                                   cl::value_desc("dot|d2"), cl::init("dot"),
+                                   cl::cat(Goby3ToolCategory));
 
 static cl::opt<std::string> Target("target",
                                    cl::desc("Specify target (binary) name for '-gen' action"),
@@ -140,7 +145,8 @@ int main(int argc, const char** argv)
                                                 OmitGroupRegex,
                                                 OmitNodeRegex,
                                                 OmitInterThread,
-                                                ExpandInstances};
+                                                ExpandInstances,
+                                                Format};
 
         return goby::clang::visualize(SharedOptionsParser->getSourcePathList(), params);
     }
