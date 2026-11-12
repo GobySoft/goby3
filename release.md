@@ -22,6 +22,10 @@
 - Deployment files can `bind` a dynamic group's run-time numeric (or say what a fully dynamic group stands for), give a platform `instances` (one per vehicle), and override subscriptions' `necessity`. `goby interface validate` reports unbound and unresolved dynamic groups, and unused binds and overrides; `--assume_dynamic` counts an unbound dynamic publisher as meeting a requirement. Dynamic connections are drawn dashed.
 - A type-regex subscription now matches any type published to its group in `goby_clang_tool` and `goby interface` output, since the regex is known only at run time.
 
+### Language bindings
+
+- `goby_gen_cpp` (Python) and `goby_gen_cpp` / `goby_gen_julia` (Julia) no longer print a "Generating ... from ..." line for each file they write, so a build that generates bindings is quiet. `--verbose` (Python) or `verbose=true` (Julia) prints them.
+
 ### Bugs
 
 - Fixed interprocess connections in deployment diagrams crossing module boundaries. Each module is its own `gobyd`, so an interprocess publication now reaches only subscribers in its own module; intermodule still spans the platform. Previously such edges were drawn to a node in the publisher's module that did not exist.
