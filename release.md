@@ -13,6 +13,10 @@
 
 - Added `goby interface visualize`, which draws a deployment's publish/subscribe graph from the interface files `goby_clang_tool -gen` writes. It needs only yaml-cpp, so it is built without LLVM. `goby_clang_tool -viz` remains and draws the same graph from the same code, which now lives in `goby/middleware/tool/interface/`.
 
+### Language bindings
+
+- `goby_gen_cpp` (Python) and `goby_gen_cpp` / `goby_gen_julia` (Julia) no longer print a "Generating ... from ..." line for each file they write, so a build that generates bindings is quiet. `--verbose` (Python) or `verbose=true` (Julia) prints them.
+
 ### Bugs
 
 - Fixed interprocess connections in deployment diagrams crossing module boundaries. Each module is its own `gobyd`, so an interprocess publication now reaches only subscribers in its own module; intermodule still spans the platform. Previously such edges were drawn to a node in the publisher's module that did not exist.
