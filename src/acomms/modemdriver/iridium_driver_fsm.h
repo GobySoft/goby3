@@ -329,6 +329,10 @@ struct IridiumDriverFSM : boost::statechart::state_machine<IridiumDriverFSM, Act
     int sbd_mt_queued() const { return sbd_mt_queued_; }
     void set_sbd_mt_queued(int n) { sbd_mt_queued_ = n; }
 
+    // set when AT commands go unanswered until the state machine resets; cleared by any serial input
+    bool modem_not_responding() const { return modem_not_responding_; }
+    void set_modem_not_responding(bool not_responding) { modem_not_responding_ = not_responding; }
+
     goby::time::SteadyClock::time_point last_sbd_session_start() const
     {
         return last_sbd_session_start_;
@@ -368,6 +372,7 @@ struct IridiumDriverFSM : boost::statechart::state_machine<IridiumDriverFSM, Act
     SBDBlockReason sbd_block_reason_{SBDBlockReason::NONE};
     int sbd_consecutive_failures_{0};
     int sbd_mt_queued_{0};
+    bool modem_not_responding_{false};
     goby::time::SteadyClock::time_point last_sbd_session_start_;
     std::mt19937 rng_;
 };

@@ -415,6 +415,7 @@ A compact DCCL-encoded `IridiumHeader` (7 bytes max) is prepended to the raw pay
 | `iridium::protobuf::Transmission::rockblock_tx` | Populated after an MT SBD send via RockBLOCK; indicates success/failure and the Iridium MT ID or error code |
 | `iridium::protobuf::Transmission::if_no_data_do_mailbox_check` | When true (default), an SBD mailbox check is initiated even if there is no outgoing data, allowing the driver to retrieve pending MT messages |
 | `iridium::protobuf::Report::sbd_block_reason`, `sbd_blocked_seconds` | In the `ModemReport`: whether SBD sessions are currently blocked (retry back-off or traffic management) and for how many more seconds |
+| `ModemReport::driver_status` | `MODEM_NOT_RESPONDING` (with `link_state: LINK_NOT_AVAILABLE`) once AT commands have gone unanswered until the driver resets its state machine; cleared by the next line received from the modem |
 
 ### SBD session handling
 

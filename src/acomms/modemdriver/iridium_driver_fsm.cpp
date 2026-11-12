@@ -407,6 +407,7 @@ void goby::acomms::iridium::fsm::Command::in_state_react(const EvTxSerial&)
                 glog.is(DEBUG1) && glog << group("iridiumdriver") << warn
                                         << "No valid response after " << RETRIES_BEFORE_RESET
                                         << " tries. Resetting state machine" << std::endl;
+                context<IridiumDriverFSM>().set_modem_not_responding(true);
                 post_event(EvReset());
             }
             else
