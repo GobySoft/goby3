@@ -342,6 +342,28 @@ template <typename T, typename Clock = goby::time::SteadyClock> class DynamicSub
         return false;
     }
 
+    /// \brief Erase all values for which a predicate returns true
+    ///
+    /// \param pred Callable taking `const Value&` and returning true for values to erase
+    /// \return Vector of values that have been erased
+    template <typename Predicate> std::vector<Value> erase_if(Predicate pred)
+    {
+        std::vector<Value> erased;
+        for (auto it = data_.begin(); it != data_.end();)
+        {
+            if (pred(it->second))
+            {
+                erased.push_back(it->second);
+                it = data_.erase(it);
+            }
+            else
+            {
+                ++it;
+            }
+        }
+        return erased;
+    }
+
   private:
     goby::acomms::protobuf::DynamicBufferConfig cfg_;
 
@@ -601,6 +623,32 @@ template <typename T, typename Clock = goby::time::SteadyClock> class DynamicBuf
     bool erase(const Value& value)
     {
         return sub(value.modem_id, value.subbuffer_id).erase({value.push_time, value.data});
+    }
+
+    /// \brief Erase all values in a subbuffer for which a predicate returns true
+    ///
+    /// \param dest_id The modem id destination for these messages
+    /// \param sub_id An identifier for this subbuffer
+    /// \param pred Callable taking `const DynamicSubBuffer<T, Clock>::Value&` and returning true for values to erase
+    /// \return Vector of values that have been erased
+    /// \throw goby::Exception If subbuffer doesn't exist
+    template <typename Predicate>
+    std::vector<Value> erase_if(modem_id_type dest_id, const subbuffer_id_type& sub_id,
+                                Predicate pred)
+    {
+        std::vector<Value> erased;
+        for (const auto& e : sub(dest_id, sub_id).erase_if(pred))
+            erased.push_back({dest_id, sub_id, e.push_time, e.data});
+        return erased;
+    }
+
+    /// \brief Erase all values in a subbuffer
+    ///
+    /// \return Vector of values that have been erased
+    /// \throw goby::Exception If subbuffer doesn't exist
+    std::vector<Value> clear(modem_id_type dest_id, const subbuffer_id_type& sub_id)
+    {
+        return erase_if(dest_id, sub_id, [](const auto&) { return true; });
     }
 
     /// \brief Erase any values that have exceeded their time-to-live

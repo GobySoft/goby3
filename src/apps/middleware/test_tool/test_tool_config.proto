@@ -1,0 +1,247 @@
+// Copyright 2026:
+//   GobySoft, LLC (2013-)
+//   Community contributors (see AUTHORS file)
+// File authors:
+//   Toby Schneider <toby@gobysoft.org>
+//
+//
+// This file is part of the Goby Underwater Autonomy Project Binaries
+// ("The Goby Binaries").
+//
+// The Goby Binaries are free software: you can redistribute them and/or modify
+// them under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 2 of the License, or
+// (at your option) any later version.
+//
+// The Goby Binaries are distributed in the hope that they will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License
+// along with Goby.  If not, see <http://www.gnu.org/licenses/>.
+syntax = "proto2";
+import "goby/middleware/protobuf/app_config.proto";
+import "goby/middleware/protobuf/layer.proto";
+import "goby/middleware/protobuf/pubsub_test.proto";
+import "goby/protobuf/option_extensions.proto";
+import "goby/udpm/protobuf/interprocess_config.proto";
+import "goby/zeromq/protobuf/interprocess_config.proto";
+
+package goby.apps.middleware.protobuf;
+
+message TestToolConfig
+{
+    option (goby.msg).cfg.tool = {
+        is_tool: true
+        has_subtools: true
+        has_help_action: true
+    };
+
+    optional goby.middleware.protobuf.AppConfig app = 1
+        [(goby.field) = { cfg { action: DEVELOPER } }];
+
+    enum Action
+    {
+        help = 0 [(goby.ev).cfg = {
+            short_help_msg: "Print usage information",
+            full_help_msg: "Usage: \"goby test help [action]\"\n"
+        }];
+        run = 1 [(goby.ev).cfg = {
+            short_help_msg: "Run a test file against a running (or fixture-launched) system"
+        }];
+        validate = 2 [(goby.ev).cfg = {
+            short_help_msg: "Check a test file without running it"
+        }];
+        visualize = 3 [(goby.ev).cfg = {
+            short_help_msg: "Write the test plan as a Graphviz .dot graph"
+        }];
+    }
+    optional Action action = 2 [
+        default = help,
+        (goby.field) = {
+            description: "The action this tool should take [can omit --action if 1st parameter]",
+            cfg { position: { enable: true }, cli_short: "A", action: HIDDEN }
+        }
+    ];
+}
+
+// Contents of a test file (YAML, JSON or TextFormat)
+
+message TestEndpoint
+{
+    required string name = 1;
+    optional goby.middleware.protobuf.Layer layer = 2 [default = LAYER_INTERPROCESS];
+    oneof transport
+    {
+        goby.zeromq.protobuf.InterProcessPortalConfig zeromq = 3;
+        goby.udpm.protobuf.InterProcessPortalConfig udpm = 4;
+    }
+}
+
+message TestFixture
+{
+    required string name = 1;
+    required string command = 2 [(goby.field).description =
+                                     "Shell command (run with /bin/sh -c) in its own process group"];
+    optional string cwd = 3 [(goby.field).description =
+                                 "Working directory; a relative path resolves against the file "
+                                 "that declares the fixture, which is also the default"];
+    repeated string env = 4 [(goby.field).description = "Extra environment as NAME=value"];
+
+    message Ready
+    {
+        repeated string output_regex = 1 [(goby.field).description =
+                                              "Ready once each of these has matched a line of "
+                                              "output (stdout or stderr), in any order"];
+        optional double delay = 2 [
+            default = 0,
+            (goby.field).description = "Then wait this many more seconds"
+        ];
+        optional double timeout = 3 [
+            default = 30,
+            (goby.field).description = "Seconds allowed for every output_regex to match"
+        ];
+    }
+    optional Ready ready = 5 [(goby.field).description =
+                                  "When the fixture counts as ready; ready immediately if omitted"];
+
+    message Stop
+    {
+        optional string signal = 1 [
+            default = "SIGINT",
+            (goby.field).description = "First signal sent to the fixture's process group"
+        ];
+        optional double grace = 2 [
+            default = 10,
+            (goby.field).description = "Seconds to wait before escalating to SIGTERM, then SIGKILL"
+        ];
+    }
+    optional Stop stop = 6;
+}
+
+message TestFile
+{
+    repeated string include = 1 [(goby.field).description =
+                                     "Other test files merged before this one, relative to this "
+                                     "file"];
+    repeated string load_shared_library = 2
+        [(goby.field).description =
+             "Libraries with compiled Protobuf/DCCL messages, relative to this file"];
+    repeated TestEndpoint endpoint = 3
+        [(goby.field).description =
+             "Endpoints referenced by the test. One with neither 'zeromq' nor 'udpm' uses zeromq "
+             "when available, otherwise udpm. If none are declared, one named 'default' is "
+             "created."];
+    repeated TestFixture fixture = 4 [(goby.field).description =
+                                          "Commands started in order before the test and stopped "
+                                          "in reverse order after it"];
+    optional goby.middleware.protobuf.PubSubTest test = 5;
+}
+
+// Subcommand configuration
+
+message TestRunConfig
+{
+    option (goby.msg).cfg.tool = {
+        is_tool: true
+        has_subtools: false
+        has_help_action: false
+    };
+
+    optional goby.middleware.protobuf.AppConfig app = 1
+        [(goby.field) = { cfg { action: DEVELOPER } }];
+
+    optional goby.zeromq.protobuf.InterProcessPortalConfig zeromq = 2 [(goby.field) = {
+        description: "Default settings for zeromq endpoints; each endpoint's own 'zeromq' settings are layered on top",
+        cfg { env: "GOBY_INTERPROCESS" }
+    }];
+    optional goby.udpm.protobuf.InterProcessPortalConfig udpm = 3 [(goby.field) = {
+        description: "Default settings for udpm endpoints; each endpoint's own 'udpm' settings are layered on top"
+    }];
+
+    required string test_file = 10 [(goby.field) = {
+        description: "Test file: YAML (.yml/.yaml, when built with yaml-cpp), JSON (.json) or Protobuf TextFormat (other extensions)",
+        cfg { position: { enable: true } }
+    }];
+    repeated string define = 11 [(goby.field) = {
+        description: "Set a variable used as ${NAME} in the test file, as NAME=value; overrides the environment",
+        cfg { cli_short: "D" }
+    }];
+
+    repeated string load_shared_library = 20 [(goby.field) = {
+        description: "Load this shared library containing compiled Protobuf/DCCL messages.",
+        cfg { cli_short: "l" env: "GOBY_TOOL_LOAD_SHARED_LIBRARY" }
+    }];
+
+    enum OutputFormat
+    {
+        HUMAN = 1;
+        JSON = 2;
+    }
+    optional OutputFormat output_format = 30
+        [default = HUMAN, (goby.field) = { cfg { cli_short: "o" } }];
+    optional string output_file = 31
+        [(goby.field).description = "Write the report here instead of stdout"];
+    optional string log_dir = 32
+        [(goby.field).description =
+             "Directory for fixture output logs; a new temporary directory if omitted"];
+    optional uint32 repeat = 33 [
+        default = 1,
+        (goby.field).description =
+            "Run the whole test this many times with the fixtures left running; fails if any pass "
+            "fails"
+    ];
+}
+
+message TestValidateConfig
+{
+    option (goby.msg).cfg.tool = {
+        is_tool: true
+        has_subtools: false
+        has_help_action: false
+    };
+
+    optional goby.middleware.protobuf.AppConfig app = 1
+        [(goby.field) = { cfg { action: DEVELOPER } }];
+
+    required string test_file = 10 [(goby.field) = {
+        description: "Test file to check",
+        cfg { position: { enable: true } }
+    }];
+    repeated string define = 11 [(goby.field) = {
+        description: "Set a variable used as ${NAME} in the test file, as NAME=value; overrides the environment",
+        cfg { cli_short: "D" }
+    }];
+
+    repeated string load_shared_library = 20 [(goby.field) = {
+        description: "Load this shared library containing compiled Protobuf/DCCL messages.",
+        cfg { cli_short: "l" env: "GOBY_TOOL_LOAD_SHARED_LIBRARY" }
+    }];
+
+    optional TestRunConfig.OutputFormat output_format = 30
+        [default = HUMAN, (goby.field) = { cfg { cli_short: "o" } }];
+}
+
+message TestVisualizeConfig
+{
+    option (goby.msg).cfg.tool = {
+        is_tool: true
+        has_subtools: false
+        has_help_action: false
+    };
+
+    optional goby.middleware.protobuf.AppConfig app = 1
+        [(goby.field) = { cfg { action: DEVELOPER } }];
+
+    required string test_file = 10 [(goby.field) = {
+        description: "Test file to draw",
+        cfg { position: { enable: true } }
+    }];
+    repeated string define = 11 [(goby.field) = {
+        description: "Set a variable used as ${NAME} in the test file, as NAME=value; overrides the environment",
+        cfg { cli_short: "D" }
+    }];
+    optional string output_file = 31
+        [(goby.field).description = "Write the .dot graph here instead of stdout"];
+}

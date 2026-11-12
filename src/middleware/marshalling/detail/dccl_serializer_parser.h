@@ -31,6 +31,7 @@
 #include <string>        // for string, operat...
 #include <unordered_map> // for unordered_map
 #include <utility>       // for pair, make_pair
+#include <vector>        // for vector
 
 #include <dccl/codec.h>                    // for Codec
 #include <dccl/dynamic_protobuf_manager.h> // for DynamicProtobu...
@@ -62,6 +63,7 @@ struct DCCLSerializerParserHelperBase
 {
   private:
     static std::unique_ptr<dccl::Codec> codec_;
+    static std::vector<void*> loaded_libs_;
 
   protected:
     static std::mutex dccl_mutex_;
@@ -113,15 +115,22 @@ struct DCCLSerializerParserHelperBase
     static dccl::Codec& codec()
     {
         if (!codec_)
-            codec_ = std::make_unique<dccl::Codec>();
+        {
+            auto new_codec = std::make_unique<dccl::Codec>();
+            for (void* handle : loaded_libs_) new_codec->load_library(handle);
+            codec_ = std::move(new_codec);
+        }
         return *codec_;
     }
 
     static dccl::Codec& set_codec(dccl::Codec* new_codec)
     {
-        codec_.reset(new_codec);
+        std::unique_ptr<dccl::Codec> codec(new_codec);
+        for (void* handle : loaded_libs_) codec->load_library(handle);
+        // Loader destructors unload from codec(), so must run before codec_ is replaced
         loader_map_.clear();
-        return *new_codec;
+        codec_ = std::move(codec);
+        return *codec_;
     }
 
   public:
@@ -156,11 +165,18 @@ struct DCCLSerializerParserHelperBase
     static goby::middleware::intervehicle::protobuf::DCCLForwardedData
     unpack(const std::string& bytes);
 
-    static void load_library(const std::string& library)
-    {
-        std::lock_guard<std::mutex> lock(dccl_mutex_);
-        codec().load_library(library);
-    }
+    /// \brief Load DCCL field codecs ("plugins") and compiled Protobuf messages from one or more
+    /// shared libraries.
+    ///
+    /// \param library Path (or name resolvable by ld.so) of the shared library to load, e.g.
+    /// "libdccl_arithmetic.so". Several libraries may be given in a single string separated by
+    /// ':', ';' or ','.
+    /// \throw goby::Exception if any of the given libraries could not be opened
+    static void load_library(const std::string& library);
+
+    /// \brief Load DCCL field codecs ("plugins") and compiled Protobuf messages from an already
+    /// opened shared library handle (e.g. the result of dlopen()).
+    static void load_library(void* dl_handle);
 
     /// \brief Enable dlog output to glog using same verbosity settings as glog.
     static void setup_dlog();

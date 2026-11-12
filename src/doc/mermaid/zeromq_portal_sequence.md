@@ -23,8 +23,15 @@ sequenceDiagram
     main->>portal: subscribe() unblocks
     portal->>main: ready()
     read->>main: REQUEST_HOLD_STATE
+    main->>read: SUBSCRIBE (ready marker, after all other subscriptions)
+    read->>main: SUBSCRIBE_ACK
+    main->>router: (pub, request) PROVIDE_HOLD_STATE (ready)
+    router->>manager: (pub, request) PROVIDE_HOLD_STATE
+    manager->>router: (pub, response) PROVIDE_HOLD_STATE (hold, required_client)
+    router->>main: (pub, response) PROVIDE_HOLD_STATE
+    router-)main: (xpub) subscriptions forwarded from all clients, incl. ready markers
+    Note right of main: once hold = false and the ready marker of every required client has arrived (or hold_release_timeout_seconds passes)
     main->>read: NOTIFY_HOLD_STATE
-    Note right of main: if hold = false
     main->>router: PUBLISH (all messages in buffer)
     portal-)main: publish()
     main->>router: PUBLISH

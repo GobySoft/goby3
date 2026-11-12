@@ -43,8 +43,11 @@ message iFrontSeatConfig
         optional bool subscribe_desired = 1 [
             default = true,
             (goby.field).description =
-                "Convert the IvP Helm DESIRED_HEADING, DESIRED_SPEED, "
-                "DESIRED_DEPTH variables into a CommandRequest::desired_course "
+                "Convert the IvP Helm DESIRED_SPEED (m/s), DESIRED_HEADING "
+                "(degrees), DESIRED_DEPTH (meters), DESIRED_PITCH and "
+                "DESIRED_ROLL (degrees, unlike NAV_PITCH and NAV_ROLL, which "
+                "are radians), DESIRED_Z_RATE (m/s) and DESIRED_ALTITUDE "
+                "(meters) variables into a CommandRequest::desired_course "
                 "message."
         ];
 
@@ -83,9 +86,13 @@ message iFrontSeatConfig
         optional bool publish_nav = 12 [
             default = true,
             (goby.field).description =
-                "Publish NAV_X, NAV_Y, NAV_LAT, NAV_LONG, NAV_Z, NAV_DEPTH, "
-                "NAV_YAW, NAV_HEADING, NAV_SPEED, NAV_PITCH, NAV_ROLL and "
-                "NAV_ALTITUDE from the NodeStatus message within "
+                "Publish NAV_X, NAV_Y, NAV_Z, NAV_DEPTH and NAV_ALTITUDE "
+                "(meters); NAV_LAT, NAV_LONG, NAV_HEADING and "
+                "NAV_HEADING_OVER_GROUND (degrees); NAV_YAW, NAV_PITCH and "
+                "NAV_ROLL (radians, unlike DESIRED_PITCH and DESIRED_ROLL, "
+                "which are read as degrees); NAV_SPEED (m/s, speed through water if "
+                "known, otherwise over ground) and NAV_SPEED_OVER_GROUND "
+                "(m/s) from the NodeStatus message within "
                 "FrontSeatInterfaceData"
         ];
 
