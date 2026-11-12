@@ -39,6 +39,8 @@ expect "group=dynamic_test::local;scheme=PROTOBUF;type=$status;necessity=optiona
 # constant numerics are recorded as their values
 expect "group=groups::broadcast;0;scheme=PROTOBUF;type=$status"
 expect "group=groups::fleet;105;scheme=PROTOBUF;type=$status"
+# and a group without one is recorded without a suffix
+expect "group=dynamic_test::plain;scheme=PROTOBUF;type=$status"
 
 # Goby's own forwarding calls pass a const Group&, not a DynamicGroup, and are not recorded
 # (publications are repeated on the interthread layer as inner=true)

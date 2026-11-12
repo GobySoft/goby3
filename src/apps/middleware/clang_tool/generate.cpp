@@ -24,6 +24,7 @@
 #include <functional> // for function
 #include <iostream>   // for operator<<, basic...
 #include <iterator>   // for operator!=, rever...
+#include <limits>     // for numeric_limits
 #include <map>        // for _Rb_tree_const_it...
 #include <memory>     // for allocator, unique...
 #include <set>        // for set
@@ -546,13 +547,18 @@ class PubSubAggregator : public ::clang::ast_matchers::MatchFinder::MatchCallbac
         else
         {
             const auto* group_int_expr = Result.Nodes.getNodeAs<clang::Expr>("group_int_arg");
+            // a group without a numeric (the default argument) has none to record
+            if (group_int_expr && llvm::isa<clang::CXXDefaultArgExpr>(group_int_expr))
+                group_int_expr = nullptr;
             clang::Expr::EvalResult numeric;
             // a constant (e.g. GOBY_DEFINE_INTERVEHICLE_GROUP's static_cast) as its value, so it
             // matches the numerics bound to dynamic groups
             if (group_int_expr && !group_int_expr->isValueDependent() &&
                 group_int_expr->EvaluateAsInt(numeric, *Result.Context))
             {
-                group_int = std::to_string(numeric.Val.getInt().getZExtValue());
+                auto value = numeric.Val.getInt().getZExtValue();
+                if (value != std::numeric_limits<std::uint32_t>::max())
+                    group_int = std::to_string(value);
             }
             else if (group_int_expr)
             {
