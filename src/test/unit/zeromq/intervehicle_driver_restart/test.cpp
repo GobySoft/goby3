@@ -108,6 +108,11 @@ class MockModem
     void listen_on(int port)
     {
         listen_fd_ = ::socket(AF_INET, SOCK_STREAM, 0);
+        if (listen_fd_ < 0)
+        {
+            std::cerr << "FAIL: mock modem could not create a socket" << std::endl;
+            exit(EXIT_FAILURE);
+        }
         int one = 1;
         ::setsockopt(listen_fd_, SOL_SOCKET, SO_REUSEADDR, &one, sizeof(one));
         sockaddr_in addr{};
