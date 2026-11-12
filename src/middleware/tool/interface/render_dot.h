@@ -146,6 +146,7 @@ class DotWriter
           resolution_(resolution),
           params_(params),
           filter_(params.filter),
+          view_(deployment, resolution, filter_, params.omit_disconnected),
           indexer_(deployment.indexer)
     {
     }
@@ -153,10 +154,12 @@ class DotWriter
     void write();
 
   private:
+    // a collapsed application is one node, whichever of its threads an entry names
     std::string node_name(const Endpoint& at, const std::string& thread) const
     {
-        return dot_id(at.platform->name) + "_" + dot_id(at.module->name) + "_" +
-               dot_id(at.application->name) + "_" + dot_id(thread);
+        auto app = dot_id(at.platform->name) + "_" + dot_id(at.module->name) + "_" +
+                   dot_id(at.application->name);
+        return view_.collapsed(*at.application) ? app : app + "_" + dot_id(thread);
     }
 
     void open_cluster(const std::string& indent, const std::string& name, const std::string& color)
@@ -211,8 +214,6 @@ class DotWriter
 
     void unsubscribed(const std::string& indent, const Unmatched& u)
     {
-        if (params_.omit_disconnected || u.entry.is_inner_pub)
-            return;
         const auto& color = style::layer_color(u.entry.layer);
         auto node = node_name(u.at, u.entry.thread);
         auto placeholder = node + "_no_subscribers_" + dot_id(color);
@@ -224,8 +225,6 @@ class DotWriter
     void unpublished(const std::string& indent, const Unmatched& u)
     {
         bool required = u.entry.necessity == goby::middleware::Necessity::REQUIRED;
-        if (params_.omit_disconnected && !required)
-            return;
         std::string color = required ? "red" : style::layer_color(u.entry.layer);
         auto node = node_name(u.at, u.entry.thread);
         auto placeholder = node + "_no_publishers_" + dot_id(color);
@@ -245,12 +244,12 @@ class DotWriter
     {
         for (const auto& c : resolution_.connections)
         {
-            if (c.pub.layer == layer && at(c.pub_at) && filter_.is_included(c))
+            if (c.pub.layer == layer && at(c.pub_at) && view_.drawn(c))
                 connection(indent, c);
         }
         for (const auto& u : resolution_.unsubscribed)
         {
-            if (u.entry.layer == layer && at(u.at) && filter_.is_included(u))
+            if (u.entry.layer == layer && at(u.at) && view_.drawn_unsubscribed(u))
                 unsubscribed(indent, u);
         }
     }
@@ -261,7 +260,7 @@ class DotWriter
         std::vector<const Unmatched*> subs;
         for (const auto& u : resolution_.unpublished)
         {
-            if (u.entry.layer == layer && at(u.at) && filter_.is_included(u))
+            if (u.entry.layer == layer && at(u.at) && view_.drawn_unpublished(u))
                 subs.push_back(&u);
         }
         std::stable_sort(subs.begin(), subs.end(),
@@ -280,18 +279,41 @@ class DotWriter
 
     void write_node_labels();
 
+    // the publications drawn from a node, listed in its label
+    std::string pub_key(const std::string& node)
+    {
+        std::string key;
+        for (const auto& layer_p : pubs_in_use_[node])
+        {
+            for (const auto& index_pub_p : layer_p.second)
+            {
+                const auto& pub = index_pub_p.second;
+                key += "<font color=\"" + style::layer_color(layer_p.first) +
+                       "\" point-size=\"10\">" + pub.publish_index_str() +
+                       ": </font><b><font point-size=\"10\">" + html_escaped(pub.display_group()) +
+                       "</font></b><br/><font point-size=\"6\">" + html_escaped(pub.scheme) +
+                       "</font><br/><font point-size=\"8\">" +
+                       html_escaped(pub.type, false, false) + "</font><br/>";
+            }
+        }
+        return key;
+    }
+
   private:
     std::ostream& os_;
     const Deployment& deployment_;
     const Resolution& resolution_;
     const DotParams& params_;
     ViewFilter filter_;
+    DiagramView view_;
     PublishIndexer indexer_;
     int cluster_{0};
     const std::string box_transparency_{"20"};
 
     // node -> thread drawn there (nullptr for an unpublished subscription's placeholder)
     std::map<std::string, const Thread*> node_threads_;
+    // node -> collapsed application drawn there
+    std::map<std::string, const Application*> node_apps_;
     // node -> layer -> publish index -> publication
     std::map<std::string, std::map<Layer, std::map<int, PubSubEntry>>> pubs_in_use_;
 };
@@ -306,7 +328,11 @@ inline void DotWriter::write()
     {
         if (!filter_.is_node_included(platform.name))
             continue;
-        open_cluster("\t\t", platform.name, style::vehicle_color);
+        open_cluster("\t\t",
+                     platform.has_modules()
+                         ? platform.name
+                         : view_.container_label(platform.name, platform.modules.front()),
+                     style::vehicle_color);
 
         for (const auto& module : platform.modules)
         {
@@ -314,21 +340,30 @@ inline void DotWriter::write()
             {
                 if (!filter_.is_node_included(module.name))
                     continue;
-                open_cluster("\t\t", module.name, style::module_color);
+                open_cluster("\t\t", view_.container_label(module.name, module),
+                             style::module_color);
             }
 
             for (const auto& app_p : module.applications)
             {
                 const auto& app = app_p.second;
-                if (!filter_.is_node_included(app.name))
+                if (!filter_.is_node_included(app.name) || view_.folded(app))
                     continue;
+                if (view_.collapsed(app))
+                {
+                    auto node = node_name({&platform, &module, &app, nullptr}, "");
+                    node_apps_[node] = &app;
+                    os_ << "\t\t\t" << node << "\n";
+                    connections_from("\t\t", Layer::INTERPROCESS,
+                                     [&](const Endpoint& at) { return at.application == &app; });
+                    continue;
+                }
                 open_cluster("\t\t\t", app.name, style::process_color);
 
                 for (const auto& thread_p : app.threads)
                 {
                     const auto& thread = *thread_p.second;
-                    if (!filter_.is_node_included(thread.most_derived_name()) ||
-                        !filter_.is_thread_included(app, thread))
+                    if (!view_.thread_drawn(app, thread))
                         continue;
 
                     connections_from("\t\t\t", Layer::INTERTHREAD,
@@ -375,32 +410,31 @@ inline void DotWriter::write()
 
 inline void DotWriter::write_node_labels()
 {
+    for (const auto& node_app_p : node_apps_)
+    {
+        os_ << "\t" << node_app_p.first << "\n"
+            << " [label=<<b><font color=\"" << style::process_color << "\">"
+            << html_escaped(node_app_p.second->name) << "</font></b><br/>"
+            << pub_key(node_app_p.first) << ">,shape=box,penwidth=2,color=\""
+            << style::process_color << box_transparency_ << "\"]\n";
+    }
+
     for (const auto& node_thread_p : node_threads_)
     {
         const auto& node = node_thread_p.first;
         const auto* thread = node_thread_p.second;
-
-        std::string pub_key;
-        for (const auto& layer_p : pubs_in_use_[node])
-        {
-            for (const auto& index_pub_p : layer_p.second)
-            {
-                const auto& pub = index_pub_p.second;
-                pub_key +=
-                    "<font color=\"" + style::layer_color(layer_p.first) + "\" point-size=\"10\">" +
-                    pub.publish_index_str() + ": </font><b><font point-size=\"10\">" +
-                    html_escaped(pub.display_group()) + "</font></b><br/><font point-size=\"6\">" +
-                    html_escaped(pub.scheme) + "</font><br/><font point-size=\"8\">" +
-                    html_escaped(pub.type, false, false) + "</font><br/>";
-            }
-        }
+        auto pub_key = this->pub_key(node);
 
         if (thread)
         {
+            auto name = thread->most_derived_name();
             os_ << "\t" << node << "\n"
                 << " [label=<<font color=\"" << style::thread_color << "\">"
-                << html_escaped(thread->most_derived_name()) << "</font><br/>" << pub_key
-                << ">,shape=box,style=" << (thread->known ? "solid" : "dashed") << "]\n";
+                << html_escaped(display_thread_name(name), false, false) << "</font><br/>"
+                << pub_key << ">,shape=box,style=" << (thread->known ? "solid" : "dashed")
+                << (display_thread_name(name) == name ? ""
+                                                      : ",tooltip=\"" + dot_quoted(name) + "\"")
+                << "]\n";
         }
         else
         {

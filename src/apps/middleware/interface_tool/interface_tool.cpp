@@ -236,6 +236,7 @@ void goby::apps::middleware::InterfaceVisualizeTool::run()
     filter.include_terminate = cfg.include_terminate() || cfg.include_all();
     filter.include_internal = cfg.include_all();
     filter.omit_interthread = cfg.omit_interthread();
+    filter.expand_goby_apps = cfg.expand_goby_apps() || cfg.include_all();
 
     std::stringstream out;
     auto resolution = interface::resolve(deployment);

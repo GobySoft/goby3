@@ -42,6 +42,7 @@ Goby's groups, types and schemes are known at compile time, so the publish/subsc
 ## Checking and drawing
 
 - `goby interface validate`: issue codes and exit status (see [goby interface](doc010_cli.md)).
+- What a diagram leaves out by default (gobyd on its container, other Goby applications as one box, Goby's internal groups and threads) and the options that draw them.
 - `goby interface explain` for a single group; `list` and `diff` for inventories and regressions; `init` to start a deployment file.
 
 ## Launching a deployment

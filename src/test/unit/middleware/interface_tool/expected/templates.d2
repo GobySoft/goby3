@@ -20,7 +20,7 @@ auv: {
   class: platform
   sampler: {
     class: application
-    Sampler: { class: thread; label: "nav::Sampler<class nav::Filter>"; tooltip: "P0: nav::samples | CXX_OBJECT | std::vector&lt;nav::Sample&gt;" }
+    Sampler: { class: thread; label: "nav::Sampler<...>"; tooltip: "nav::Sampler&lt;class nav::Filter&gt;\nP0: nav::samples | CXX_OBJECT | std::vector&lt;nav::Sample&gt;" }
   }
 }
 auv.sampler.Sampler -> auv.sampler.Sampler: "P0 [samples]" { class: interprocess; tooltip: "P0: nav::samples | CXX_OBJECT | std::vector&lt;nav::Sample&gt;" }

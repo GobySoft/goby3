@@ -145,6 +145,11 @@ message InterfaceVisualizeConfig
         (goby.field).description =
             "Draw each of a platform's instances: separately, rather than once for all of them"
     ];
+    optional bool expand_goby_apps = 29 [
+        default = false,
+        (goby.field).description =
+            "Draw Goby's own applications (gobyd, goby_*) with their threads, rather than as one box (gobyd folded into its module)"
+    ];
 }
 
 message InterfaceValidateConfig

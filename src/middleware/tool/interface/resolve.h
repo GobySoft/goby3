@@ -24,6 +24,7 @@
 #ifndef GOBY_MIDDLEWARE_TOOL_INTERFACE_RESOLVE_H
 #define GOBY_MIDDLEWARE_TOOL_INTERFACE_RESOLVE_H
 
+#include <map>
 #include <regex>
 #include <set>
 #include <string>
@@ -171,6 +172,8 @@ class ViewFilter
         bool include_terminate{false};
         bool include_internal{false};
         bool omit_interthread{false};
+        // draw Goby's own applications (gobyd, goby_*) with their threads
+        bool expand_goby_apps{false};
     };
 
     ViewFilter(Params params)
@@ -188,26 +191,30 @@ class ViewFilter
             "goby::middleware::interprocess::to_portal",
             "goby::middleware::interprocess::regex",
             "goby::middleware::SerializationUnSubscribeAll",
-            "goby::ThreadJoinable",
-            "goby::ThreadShutdown",
+            "goby::middleware::Thread::joinable",
+            "goby::middleware::Thread::shutdown",
+            "goby::configuration",
+            "goby::datum_update",
             "goby::middleware::intervehicle::modem_data_in",
             "goby::middleware::intervehicle::modem_data_out",
             "goby::middleware::intervehicle::metadata_request",
             "goby::middleware::intervehicle::modem_ack_in",
             "goby::middleware::intervehicle::modem_expire_in",
             "goby::middleware::intervehicle::modem_subscription_forward_tx"};
-        static const std::set<std::string> terminate_groups{"goby::terminate::request",
-                                                            "goby::terminate::response"};
-        static const std::set<std::string> coroner_groups{"goby::health::request",
-                                                          "goby::health::response"};
+        static const std::set<std::string> terminate_groups{
+            "goby::terminate::request", "goby::terminate::response", "goby::terminate::result"};
+        static const std::set<std::string> coroner_groups{
+            "goby::health::request", "goby::health::response", "goby::health::report"};
 
         if (!params_.omit_group_regex.empty() && std::regex_match(group, omit_group_regex_))
             return false;
-        if (internal_groups.count(group) && !params_.include_internal)
+        // with or without a numeric
+        auto name = group.substr(0, group.find(';'));
+        if (internal_groups.count(name) && !params_.include_internal)
             return false;
-        if (terminate_groups.count(group) && !params_.include_terminate)
+        if (terminate_groups.count(name) && !params_.include_terminate)
             return false;
-        if (coroner_groups.count(group) && !params_.include_coroner)
+        if (coroner_groups.count(name) && !params_.include_coroner)
             return false;
         return true;
     }
@@ -270,6 +277,158 @@ class ViewFilter
     Params params_;
     std::regex omit_group_regex_;
     std::regex omit_node_regex_;
+};
+
+/// \brief Goby's own applications, which a diagram draws as one node without their threads
+inline bool is_goby_application(const Application& app)
+{
+    return app.name == "gobyd" || app.name.rfind("goby_", 0) == 0;
+}
+
+/// \brief A thread from Goby itself: a goby:: class, or a lambda in one of Goby's headers
+inline bool is_goby_thread(const std::string& name)
+{
+    static const std::regex goby_lambda(R"(\(lambda at .*/goby/.*\))");
+    return name.rfind("goby::", 0) == 0 || std::regex_match(name, goby_lambda);
+}
+
+/// \brief A thread's name as drawn: a lambda by its file and line, a template without its arguments
+inline std::string display_thread_name(const std::string& name)
+{
+    static const std::regex lambda(R"(\(lambda at (?:.*/)?([^/]+):(\d+):\d+\))");
+    std::smatch match;
+    if (std::regex_match(name, match, lambda))
+        return "lambda (" + match[1].str() + ":" + match[2].str() + ")";
+    auto lt = name.find('<');
+    return lt == std::string::npos ? name : name.substr(0, lt) + "<...>";
+}
+
+/// \brief What a diagram draws of a resolved deployment, shared by the DOT and D2 writers
+class DiagramView
+{
+  public:
+    DiagramView(const Deployment& deployment, const Resolution& resolution, ViewFilter filter,
+                bool omit_disconnected)
+        : filter_(std::move(filter)), omit_disconnected_(omit_disconnected)
+    {
+        // a deployment of only Goby's applications (such as one's interface file) is about them
+        for (const auto& platform : deployment.platforms)
+        {
+            for (const auto& module : platform.modules)
+            {
+                for (const auto& app_p : module.applications)
+                    collapse_goby_apps_ |= !is_goby_application(app_p.second);
+            }
+        }
+        collapse_goby_apps_ &= !filter_.params().expand_goby_apps;
+
+        auto use = [&](const Endpoint& at, const std::string& thread)
+        { used_[at.application].insert(thread); };
+        for (const auto& c : resolution.connections)
+        {
+            if (drawn(c))
+            {
+                use(c.pub_at, c.pub.thread);
+                use(c.sub_at, c.sub.thread);
+            }
+        }
+        for (const auto& u : resolution.unsubscribed)
+        {
+            if (drawn_unsubscribed(u))
+                use(u.at, u.entry.thread);
+        }
+        for (const auto& u : resolution.unpublished)
+        {
+            if (drawn_unpublished(u))
+                use(u.at, u.entry.thread);
+        }
+
+        // gobyd is the module (its interprocess boundary), so unless something is drawn to it,
+        // it is shown by naming it on its container
+        for (const auto& platform : deployment.platforms)
+        {
+            for (const auto& module : platform.modules)
+            {
+                for (const auto& app_p : module.applications)
+                {
+                    const auto& app = app_p.second;
+                    if (app.name == "gobyd" && collapsed(app) && !used_.count(&app))
+                        folded_.insert(&app);
+                }
+            }
+        }
+    }
+
+    const ViewFilter& filter() const { return filter_; }
+
+    bool collapsed(const Application& app) const
+    {
+        return collapse_goby_apps_ && is_goby_application(app);
+    }
+
+    bool folded(const Application& app) const { return folded_.count(&app); }
+
+    /// \brief The container's name, with any gobyd folded into it
+    std::string container_label(const std::string& name, const Module& module) const
+    {
+        for (const auto& app_p : module.applications)
+        {
+            if (folded(app_p.second))
+                return name + " (gobyd)";
+        }
+        return name;
+    }
+
+    bool drawn(const Connection& c) const
+    {
+        if (c.pub.layer == Layer::INTERTHREAD && collapsed(*c.pub_at.application))
+            return false;
+        return filter_.is_included(c);
+    }
+
+    bool drawn_unsubscribed(const Unmatched& u) const
+    {
+        return !omit_disconnected_ && !u.entry.is_inner_pub && !collapsed(*u.at.application) &&
+               !goby_internal(u) && filter_.is_included(u);
+    }
+
+    /// \brief An unmet required subscription is drawn even when the rest are left out
+    bool drawn_unpublished(const Unmatched& u) const
+    {
+        bool required = u.entry.necessity == goby::middleware::Necessity::REQUIRED;
+        if ((collapsed(*u.at.application) || goby_internal(u)) &&
+            (!required || u.entry.layer == Layer::INTERTHREAD))
+            return false;
+        if (omit_disconnected_ && !required)
+            return false;
+        return filter_.is_included(u);
+    }
+
+    /// \brief Goby's own threads within a project's application (such as its portal's forwarder)
+    /// are drawn only when something is drawn to them
+    bool thread_drawn(const Application& app, const Thread& thread) const
+    {
+        auto name = thread.most_derived_name();
+        if (!filter_.is_node_included(name) || !filter_.is_thread_included(app, thread))
+            return false;
+        if (is_goby_application(app) || !is_goby_thread(name))
+            return true;
+        auto it = used_.find(&app);
+        return it != used_.end() && it->second.count(name);
+    }
+
+  private:
+    // made by Goby's own thread within a project's application
+    bool goby_internal(const Unmatched& u) const
+    {
+        return !is_goby_application(*u.at.application) && is_goby_thread(u.entry.thread);
+    }
+
+    ViewFilter filter_;
+    bool omit_disconnected_;
+    bool collapse_goby_apps_{false};
+    std::map<const Application*, std::set<std::string>> used_;
+    std::set<const Application*> folded_;
 };
 
 } // namespace interface

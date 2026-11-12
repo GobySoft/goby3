@@ -79,6 +79,7 @@ int goby::clang::visualize(const std::vector<std::string>& yamls, const Visualiz
     filter.include_terminate = params.include_terminate;
     filter.include_internal = params.include_internal;
     filter.omit_interthread = params.omit_interthread;
+    filter.expand_goby_apps = params.expand_goby_apps;
 
     auto resolution = interface::resolve(deployment);
     if (params.format == "d2")

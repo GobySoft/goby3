@@ -1,0 +1,77 @@
+application: goby_coroner
+interprocess:
+  publishes:
+    - group: goby::health::report
+      scheme: PROTOBUF
+      type: goby::middleware::protobuf::VehicleHealth
+      thread: goby::apps::zeromq::Coroner
+    - group: goby::health::request
+      scheme: PROTOBUF
+      type: goby::middleware::protobuf::HealthRequest
+      thread: goby::apps::zeromq::Coroner
+    - group: goby::configuration
+      scheme: PROTOBUF
+      type: goby::apps::zeromq::protobuf::CoronerConfig
+      thread: goby::apps::zeromq::Coroner
+    - group: goby::health::response
+      scheme: PROTOBUF
+      type: goby::middleware::protobuf::ProcessHealth
+      thread: goby::apps::zeromq::Coroner
+    - group: goby::terminate::response
+      scheme: PROTOBUF
+      type: goby::middleware::protobuf::TerminateResponse
+      thread: goby::apps::zeromq::Coroner
+  subscribes:
+    - group: goby::health::response
+      scheme: PROTOBUF
+      type: goby::middleware::protobuf::ProcessHealth
+      necessity: optional
+      thread: goby::apps::zeromq::Coroner
+    - group: goby::datum_update
+      scheme: PROTOBUF
+      type: goby::middleware::protobuf::DatumUpdate
+      necessity: optional
+      thread: goby::apps::zeromq::Coroner
+    - group: goby::health::request
+      scheme: PROTOBUF
+      type: goby::middleware::protobuf::HealthRequest
+      necessity: optional
+      thread: goby::apps::zeromq::Coroner
+    - group: goby::terminate::request
+      scheme: PROTOBUF
+      type: goby::middleware::protobuf::TerminateRequest
+      necessity: optional
+      thread: goby::apps::zeromq::Coroner
+interthread:
+  threads:
+    - name: goby::apps::zeromq::Coroner
+      known: true
+      bases:
+        - goby::middleware::Application<class goby::apps::zeromq::protobuf::CoronerConfig>
+        - goby::middleware::SingleThreadApplication<class goby::apps::zeromq::protobuf::CoronerConfig, goby::zeromq::InterProcessPortal>
+        - goby::middleware::Thread<class goby::apps::zeromq::protobuf::CoronerConfig, class goby::middleware::InterVehicleForwarder<class goby::zeromq::InterProcessPortalImplementation<class goby::middleware::NullTransporter, goby::middleware::InterProcessPortalBase, struct goby::zeromq::detail::InterProcessTag> > >
+        - goby::middleware::coroner::Application<class goby::middleware::SingleThreadApplication<class goby::apps::zeromq::protobuf::CoronerConfig, goby::zeromq::InterProcessPortal> >
+        - goby::middleware::terminate::Application<class goby::middleware::SingleThreadApplication<class goby::apps::zeromq::protobuf::CoronerConfig, goby::zeromq::InterProcessPortal> >
+      publishes:
+        - group: goby::health::report
+          scheme: PROTOBUF
+          type: goby::middleware::protobuf::VehicleHealth
+          inner: true
+        - group: goby::health::request
+          scheme: PROTOBUF
+          type: goby::middleware::protobuf::HealthRequest
+          inner: true
+        - group: goby::configuration
+          scheme: PROTOBUF
+          type: goby::apps::zeromq::protobuf::CoronerConfig
+          inner: true
+        - group: goby::health::response
+          scheme: PROTOBUF
+          type: goby::middleware::protobuf::ProcessHealth
+          inner: true
+        - group: goby::terminate::response
+          scheme: PROTOBUF
+          type: goby::middleware::protobuf::TerminateResponse
+          inner: true
+      subscribes:
+        []
