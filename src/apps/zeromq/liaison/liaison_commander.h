@@ -34,6 +34,7 @@
 #include <mutex>         // for mutex
 #include <set>           // for set
 #include <string>        // for string
+#include <tuple>         // for tuple
 #include <unordered_map> // for unordered_...
 #include <utility>       // for pair
 #include <vector>        // for vector
@@ -219,7 +220,8 @@ class LiaisonCommander
                                const std::string& parent_hierarchy = "", int index = -1);
             void generate_tree_row(Wt::WTreeTableNode* parent, google::protobuf::Message* message,
                                    const google::protobuf::FieldDescriptor* field_desc,
-                                   const std::string& parent_hierarchy = "");
+                                   const std::string& parent_hierarchy = "",
+                                   int message_index = -1);
 
             void generate_tree_field(std::unique_ptr<Wt::WFormWidget>& value_field,
                                      google::protobuf::Message* message,
@@ -311,14 +313,16 @@ class LiaisonCommander
                     send_button_->setDisabled(false);
             }
 
-            void check_dynamics()
-            {
+            // regenerates the form when a dynamic condition's result changed, then returns focus
+            // to the given field's widget (the one the user just changed)
+            void check_dynamics(const google::protobuf::Message* message = nullptr,
+                                const google::protobuf::FieldDescriptor* field_desc = nullptr,
+                                int index = -1);
 #if DCCL_VERSION_MAJOR >= 4
-                if (has_dynamic_conditions_ && !skip_dynamic_conditions_update_ // avoid recursion
-                )
-                    generate_root();
+            std::string dynamic_state();
+            void dynamic_state(const google::protobuf::Message* message, int message_index,
+                               std::string& state);
 #endif
-            }
 
             void update_oneofs(google::protobuf::Message* message,
                                const google::protobuf::FieldDescriptor* field_desc,
@@ -396,7 +400,19 @@ class LiaisonCommander
             // does any field in the message have dynamic conditions set?
             bool has_dynamic_conditions_{false};
             dccl::DynamicConditions dccl_dycon_;
+            // results of every dynamic condition when the form was last generated
+            std::string dynamic_state_;
+            // message fields shown because their required_if held at the last generation
+            std::set<std::pair<const google::protobuf::Message*,
+                               const google::protobuf::FieldDescriptor*>>
+                required_by_condition_;
 #endif
+            // (message, field, repeated index or modify_widget_index) -> widget, for restoring
+            // focus after the form is regenerated
+            using FieldKey = std::tuple<const google::protobuf::Message*,
+                                        const google::protobuf::FieldDescriptor*, int>;
+            static constexpr int modify_widget_index = -2;
+            std::map<FieldKey, Wt::WFormWidget*> form_widgets_;
             bool skip_dynamic_conditions_update_{true};
 
             std::map<

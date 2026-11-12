@@ -103,6 +103,11 @@ message ManagerResponse
             "Used to synchronize start of multiple processes. If true, wait "
             "until receiving a hold == false before publishing data"
     ];
+    repeated string required_client = 7 [
+        (goby.field).description =
+            "Clients that must report ready before the hold is released "
+            "(sent with PROVIDE_HOLD_STATE)"
+    ];
 }
 
 message InprocControl

@@ -1,0 +1,17 @@
+syntax = "proto2";
+import "dccl/option_extensions.proto";
+
+package goby.test.middleware.protobuf;
+
+// DCCL message for the intervehicle 'goby test' cases
+message IntervehicleSample
+{
+    option (dccl.msg) = {
+        id: 401
+        max_bytes: 16
+        codec_version: 4
+    };
+
+    required int32 value = 1 [(dccl.field) = { min: 0 max: 1000 }];
+    optional uint32 group = 2 [(dccl.field) = { min: 0 max: 255 }];
+}

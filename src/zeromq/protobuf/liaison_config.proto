@@ -59,9 +59,11 @@ message LiaisonConfig
     optional bool add_home_tab = 21 [default = true];
     optional bool add_scope_tab = 22 [default = true];
     optional bool add_commander_tab = 23 [default = true];
-    
+    optional bool add_map_tab = 24 [default = true];
+
     optional ProtobufCommanderConfig pb_commander_config = 900;
     optional ProtobufScopeConfig pb_scope_config = 901;
+    optional ProtobufMapConfig pb_map_config = 902;
 
     // MOOS - 1000 to 1099
     // DRC -  1100
@@ -230,6 +232,156 @@ message ProtobufScopeConfig
     
     optional int32 max_message_size_bytes = 20 [default = 2048];
 
+}
+
+message ProtobufMapConfig
+{
+    message TileLayer
+    {
+        optional string url_template = 1
+            [default = "https://tile.openstreetmap.org/{z}/{x}/{y}.png"];
+        optional string attribution = 2 [
+            default =
+                "&copy; <a href=\"https://www.openstreetmap.org/copyright\">OpenStreetMap</a> contributors"
+        ];
+        optional int32 max_zoom = 3 [default = 19];
+        optional int32 min_zoom = 4 [default = 0];
+        optional bool overlay = 5 [
+            default = false,
+            (goby.field).description =
+                "Transparent layer drawn above the base layer and switched on and "
+                "off by itself; otherwise one of the base layers to choose between"
+        ];
+        optional double opacity = 6 [default = 1.0];
+        optional string name = 7
+            [(goby.field).description =
+                 "Label in the map's layer control. Defaults "
+                 "to the host in url_template"];
+        message WMS
+        {
+            required string layers = 1;
+            optional string format = 2 [default = "image/png"];
+            optional string version = 3 [default = "1.3.0"];
+            optional string styles = 4 [default = ""];
+        }
+        optional WMS wms = 8 [
+            (goby.field).description =
+                "Request images from the WMS service at url_template instead of "
+                "{z}/{x}/{y} tiles. An overlay is requested transparent"
+        ];
+        optional bool shown = 9 [
+            default = true,
+            (goby.field).description =
+                "Whether an overlay starts switched on. The first base layer starts "
+                "selected. The browser then remembers the viewer's choice"
+        ];
+        optional int32 max_native_zoom = 11 [
+            (goby.field).description =
+                "Highest zoom the server has tiles for; beyond it, up to max_zoom, "
+                "its tiles are enlarged rather than left blank"
+        ];
+        optional string depth_units = 12 [
+            (goby.field).description =
+                "Units of the depths the layer labels (e.g. feet), named in the "
+                "map's corner while the layer is shown"
+        ];
+        optional int32 tile_size = 10 [
+            default = 256,
+            (goby.field).description =
+                "Pixels per WMS image: larger means fewer requests and fewer labels "
+                "cut at image edges"
+        ];
+    }
+    repeated TileLayer tile_layer = 1 [
+        (goby.field).description =
+            "Base layers (the first starts selected) and overlays, drawn above "
+            "the base in order, offered in the map's layer control. If empty: "
+            "GEBCO bathymetry, OpenStreetMap and Esri Ocean bases, with NOAA "
+            "depths, the NOAA chart and OpenSeaMap seamark overlays"
+    ];
+    optional bool blank_background = 6 [
+        default = false,
+        (goby.field).description =
+            "Draw no tiles (e.g. offline use); overrides tile_layer"
+    ];
+
+    optional double initial_lat = 2 [default = 0];
+    optional double initial_lon = 3 [default = 0];
+    optional int32 initial_zoom = 4 [default = 2];
+    optional bool fit_on_first_fix = 5 [
+        default = true,
+        (goby.field).description =
+            "Zoom to the first vehicle position received"
+    ];
+
+    message Source
+    {
+        enum Kind
+        {
+            NODE_STATUS = 1;  // goby.middleware.frontseat.protobuf.NodeStatus
+            GPSD_TPV = 2;     // goby.middleware.protobuf.gpsd.TimePositionVelocity
+        }
+        required Kind kind = 1;
+        optional string group_regex = 2
+            [(goby.field).description =
+                 "Defaults to the standard group for this kind"];
+        optional string name_override = 3
+            [(goby.field).description =
+                 "Vehicle name when the message has none. Defaults to this "
+                 "platform's name"];
+    }
+    repeated Source source = 10
+        [(goby.field).description =
+             "Vehicle position sources. If empty, NodeStatus on "
+             "goby::middleware::frontseat::node_status"];
+
+    optional int32 track_length = 20 [
+        default = 5000,
+        (goby.field).description =
+            "Most track points kept per vehicle; older points are dropped even when "
+            "they are inside the Trail time"
+    ];
+    optional double track_min_move_meters = 21 [
+        default = 1.0,
+        (goby.field).description =
+            "Minimum movement before a new track point is added"
+    ];
+    optional double stale_timeout_seconds = 22 [
+        default = 60,
+        (goby.field).description =
+            "Vehicles with no position for this long are shown as stale"
+    ];
+    optional bool show_age = 23 [
+        default = false,
+        (goby.field).description =
+            "Show the time since each vehicle's last position beside its name "
+            "on the map, not only once it is stale. The Show age box toggles it"
+    ];
+    optional int32 trail_seconds = 24 [
+        default = 600,
+        (goby.field).description =
+            "How far back each track is drawn, in seconds, until changed with the "
+            "Trail slider (which rounds it to its nearest step). 0 draws none; "
+            "negative draws every kept point"
+    ];
+    optional bool show_depth = 25 [
+        default = false,
+        (goby.field).description =
+            "Show a depth gauge beside each vehicle with a depth: surface at the top, "
+            "5000 m at the bottom on a log scale. The Show depth box toggles it"
+    ];
+    optional string enc_dir = 26
+        [(goby.field).description =
+             "Where uploaded S-57 ENCs are stored and converted. Defaults to "
+             "$HOME/.goby/liaison/enc"];
+    optional bool enc_upload = 27 [
+        default = true,
+        (goby.field).description =
+            "Offer an upload for S-57 ENCs (.000, or a .zip of them), drawn as map "
+            "overlays. Converting needs GDAL's ogr2ogr on the PATH"
+    ];
+
+    optional int32 map_height = 30 [default = 600];
 }
 
 message NetworkAckSet

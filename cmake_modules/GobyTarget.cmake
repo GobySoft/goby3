@@ -81,6 +81,20 @@ function(_GOBY_TARGET_GENERATE_PROTOS out_var protoc_out_dir protos import_dirs)
     set(_protoc "${GOBY_PROTOC_EXECUTABLE}")
   endif()
 
+  # passed explicitly so a missing plugin fails here rather than at build time, and PATH at
+  # build time doesn't matter
+  if(TARGET protoc-gen-dccl)
+    set(_protoc_gen_dccl "$<TARGET_FILE:protoc-gen-dccl>")
+  else()
+    find_program(GOBY_PROTOC_GEN_DCCL_EXECUTABLE NAMES protoc-gen-dccl)
+    if(NOT GOBY_PROTOC_GEN_DCCL_EXECUTABLE)
+      message(FATAL_ERROR "goby_add_app/goby_add_library: PROTOS given but the DCCL protoc "
+        "plugin (protoc-gen-dccl) was not found; install dccl5-compiler or set "
+        "GOBY_PROTOC_GEN_DCCL_EXECUTABLE")
+    endif()
+    set(_protoc_gen_dccl "${GOBY_PROTOC_GEN_DCCL_EXECUTABLE}")
+  endif()
+
   set(_generated)
   foreach(_proto ${protos})
     get_filename_component(_abs_proto "${_proto}" ABSOLUTE)
@@ -96,6 +110,7 @@ function(_GOBY_TARGET_GENERATE_PROTOS out_var protoc_out_dir protos import_dirs)
       ARGS --cpp_out "${protoc_out_dir}"
            "${_abs_proto}"
            ${_import_flags}
+           "--plugin=protoc-gen-dccl=${_protoc_gen_dccl}"
            --dccl_out "${protoc_out_dir}"
       DEPENDS "${_abs_proto}"
       COMMENT "Running dccl protocol buffer compiler on ${_proto}"
@@ -112,7 +127,8 @@ function(_GOBY_TARGET_PROTOC_OUT_DIR out_var target given)
   if(given)
     set(_dir "${given}")
   else()
-    set(_dir "${CMAKE_CURRENT_BINARY_DIR}/${target}")
+    # not ${target} itself: an executable of that name is linked into the same directory
+    set(_dir "${CMAKE_CURRENT_BINARY_DIR}/${target}_protos")
   endif()
   file(MAKE_DIRECTORY "${_dir}")
   set(${out_var} "${_dir}" PARENT_SCOPE)

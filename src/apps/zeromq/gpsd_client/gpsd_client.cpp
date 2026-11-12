@@ -285,8 +285,8 @@ void goby::apps::zeromq::GPSDClient::handle_sky(nlohmann::json& data)
         if (data.contains("xdop"))
             sky.set_xdop((data["xdop"].get<double>()));
 
-        if (data.contains("vdop"))
-            sky.set_vdop((data["vdop"].get<double>()));
+        if (data.contains("ydop"))
+            sky.set_ydop((data["ydop"].get<double>()));
 
         if (data.contains("nSat"))
             sky.set_nsat((data["nSat"].get<int>()));

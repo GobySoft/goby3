@@ -35,6 +35,11 @@
 #include <boost/bind/bind.hpp>                                  // for bind_t, arg
 #include <boost/numeric/conversion/converter_policies.hpp> // for bad_numer...
 #include <boost/signals2/signal.hpp>                       // for signal
+#include <boost/units/systems/angle/degrees.hpp>           // for degrees
+#include <boost/units/systems/si/length.hpp>               // for meters
+#include <boost/units/systems/si/pressure.hpp>             // for pascals
+#include <boost/units/systems/si/time.hpp>                 // for seconds
+#include <boost/units/systems/si/velocity.hpp>             // for meters_per_second
 
 #include "goby/acomms/connect.h"                          // for connect
 #include "goby/acomms/protobuf/modem_message.pb.h"        // for ModemRaw
@@ -161,6 +166,7 @@ void goby::apps::moos::FrontSeatLegacyTranslator::handle_driver_data_from_fronts
 
 void goby::apps::moos::FrontSeatLegacyTranslator::handle_mail_ctd(const CMOOSMsg& msg)
 {
+    namespace si = boost::units::si;
     const std::string& key = msg.GetKey();
     if (key == "CTD_CONDUCTIVITY")
     {
@@ -177,7 +183,7 @@ void goby::apps::moos::FrontSeatLegacyTranslator::handle_mail_ctd(const CMOOSMsg
 
         // We'll use the variable to key postings, since it's
         // always present (even in simulations)
-        ctd_sample_.set_time(msg.GetTime());
+        ctd_sample_.set_time_with_units(msg.GetTime() * si::seconds);
         gpb::InterfaceData data;
         *data.mutable_ctd_sample() = ctd_sample_;
         ifs_->frontseat_->compute_missing(data.mutable_ctd_sample());
@@ -192,7 +198,7 @@ void goby::apps::moos::FrontSeatLegacyTranslator::handle_mail_ctd(const CMOOSMsg
         // - CTDSample uses Pascals
 
         const double dBar_TO_Pascal = 1e4; // 1 dBar == 10000 Pascals
-        ctd_sample_.set_pressure(msg.GetDouble() * dBar_TO_Pascal);
+        ctd_sample_.set_pressure_with_units(msg.GetDouble() * dBar_TO_Pascal * si::pascals);
     }
     else if (key == "CTD_SALINITY")
     {
@@ -203,11 +209,13 @@ void goby::apps::moos::FrontSeatLegacyTranslator::handle_mail_ctd(const CMOOSMsg
 
 void goby::apps::moos::FrontSeatLegacyTranslator::handle_mail_desired_course(const CMOOSMsg& msg)
 {
+    namespace si = boost::units::si;
+    namespace degree = boost::units::degree;
     const std::string& key = msg.GetKey();
     if (key == "DESIRED_SPEED")
     {
-        desired_course_.set_speed(msg.GetDouble());
-        desired_course_.set_time(msg.GetTime());
+        desired_course_.set_speed_with_units(msg.GetDouble() * si::meters_per_second);
+        desired_course_.set_time_with_units(msg.GetTime() * si::seconds);
         gpb::CommandRequest command;
         *command.mutable_desired_course() = desired_course_;
         command.set_response_requested(true);
@@ -218,27 +226,28 @@ void goby::apps::moos::FrontSeatLegacyTranslator::handle_mail_desired_course(con
     }
     else if (key == "DESIRED_HEADING")
     {
-        desired_course_.set_heading(msg.GetDouble());
+        desired_course_.set_heading_with_units(msg.GetDouble() * degree::degrees);
     }
     else if (key == "DESIRED_DEPTH")
     {
-        desired_course_.set_depth(msg.GetDouble());
+        desired_course_.set_depth_with_units(msg.GetDouble() * si::meters);
     }
     else if (key == "DESIRED_PITCH")
     {
-        desired_course_.set_pitch(msg.GetDouble());
+        // degrees, though NAV_PITCH and NAV_ROLL are published in radians (likewise DESIRED_ROLL)
+        desired_course_.set_pitch_with_units(msg.GetDouble() * degree::degrees);
     }
     else if (key == "DESIRED_ROLL")
     {
-        desired_course_.set_roll(msg.GetDouble());
+        desired_course_.set_roll_with_units(msg.GetDouble() * degree::degrees);
     }
     else if (key == "DESIRED_Z_RATE")
     {
-        desired_course_.set_z_rate(msg.GetDouble());
+        desired_course_.set_z_rate_with_units(msg.GetDouble() * si::meters_per_second);
     }
     else if (key == "DESIRED_ALTITUDE")
     {
-        desired_course_.set_altitude(msg.GetDouble());
+        desired_course_.set_altitude_with_units(msg.GetDouble() * si::meters);
     }
 }
 

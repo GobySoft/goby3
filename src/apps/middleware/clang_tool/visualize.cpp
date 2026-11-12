@@ -21,6 +21,7 @@
 // You should have received a copy of the GNU General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
+#include <cctype>   // for isalnum
 #include <iostream> // for operator<<, char_tr...
 #include <map>      // for map, map<>::mapped_...
 #include <memory>   // for allocator, shared_ptr
@@ -31,7 +32,6 @@
 #include <utility>  // for pair, make_pair
 #include <vector>   // for vector
 
-#include <boost/algorithm/string/replace.hpp> // for replace_all
 #include <yaml-cpp/yaml.h>
 
 #include "actions.h"                             // for VisualizeParameters
@@ -453,15 +453,18 @@ const auto recommended_style = "tapered";
 const auto optional_style = "solid";
 const auto regex_style = "dotted";
 
+// unquoted DOT IDs may only contain letters, digits and underscores
 void escape_for_dot(std::string& s)
 {
-    std::vector<char> reserved{{':', '&', '<', '>', ' ', ',', '-', '#', ')', '(', '/', '.'}};
-    for (char r : reserved)
+    std::string escaped;
+    for (unsigned char c : s)
     {
-        std::string search(1, r);
-        auto replacement = "_" + std::to_string(static_cast<int>(r)) + "_";
-        boost::replace_all(s, search, replacement);
+        if (std::isalnum(c) || c == '_')
+            escaped += c;
+        else
+            escaped += "_" + std::to_string(static_cast<int>(c)) + "_";
     }
+    s = escaped;
 }
 
 std::string node_name(std::string p, std::string m, std::string a, std::string th)
@@ -944,10 +947,10 @@ int goby::clang::visualize(const std::vector<std::string>& yamls, const Visualiz
 
     for (const auto& platform : deployment.platforms)
     {
-        ofs << "\tsubgraph cluster_" << cluster++ << " {\n";
-
         if (!is_node_included(platform.name))
             continue;
+
+        ofs << "\tsubgraph cluster_" << cluster++ << " {\n";
 
         auto platform_display_name = platform.name;
 
@@ -980,10 +983,10 @@ int goby::clang::visualize(const std::vector<std::string>& yamls, const Visualiz
         {
             if (has_modules)
             {
-                ofs << "\tsubgraph cluster_" << cluster++ << " {\n";
-
                 if (!is_node_included(module.name))
                     continue;
+
+                ofs << "\tsubgraph cluster_" << cluster++ << " {\n";
 
                 auto module_display_name = module.name;
                 viz::html_escape(module_display_name);
@@ -1008,10 +1011,10 @@ int goby::clang::visualize(const std::vector<std::string>& yamls, const Visualiz
 
             for (const auto& application : module.applications)
             {
-                ofs << "\t\tsubgraph cluster_" << cluster++ << " {\n";
-
                 if (!is_node_included(application.second.name))
                     continue;
+
+                ofs << "\t\tsubgraph cluster_" << cluster++ << " {\n";
 
                 auto application_display_name = application.second.name;
                 viz::html_escape(application_display_name);

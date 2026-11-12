@@ -48,17 +48,19 @@
 #include "goby/middleware/marshalling/interface.h"              // for Seri...
 #include "goby/middleware/protobuf/serializer_transporter.pb.h" // for Seri...
 #include "goby/middleware/protobuf/transporter_config.pb.h"     // for Tran...
-#include "goby/middleware/transport/interface.h"                // for Poll...
-#include "goby/middleware/transport/interprocess.h"             // for Inte...
-#include "goby/middleware/transport/null.h"                     // for Null...
-#include "goby/middleware/transport/serialization_handlers.h"   // for Seri...
-#include "goby/middleware/transport/subscriber.h"               // for Subs...
-#include "goby/time/system_clock.h"                             // for Syst...
-#include "goby/util/debug_logger/flex_ostream.h"                // for Flex...
-#include "goby/zeromq/transport/detail/tags.h"                  // for InterProcessTag
-#include "goby/util/debug_logger/flex_ostreambuf.h"             // for lock
-#include "goby/zeromq/protobuf/interprocess_config.pb.h"        // for Inte...
-#include "goby/zeromq/protobuf/interprocess_zeromq.pb.h"        // for Inpr...
+#include "goby/middleware/transport/detail/implementation_traits.h"
+#include "goby/middleware/transport/detail/poller_notify.h"
+#include "goby/middleware/transport/interface.h"              // for Poll...
+#include "goby/middleware/transport/interprocess.h"           // for Inte...
+#include "goby/middleware/transport/null.h"                   // for Null...
+#include "goby/middleware/transport/serialization_handlers.h" // for Seri...
+#include "goby/middleware/transport/subscriber.h"             // for Subs...
+#include "goby/time/system_clock.h"                           // for Syst...
+#include "goby/util/debug_logger/flex_ostream.h"              // for Flex...
+#include "goby/util/debug_logger/flex_ostreambuf.h"           // for lock
+#include "goby/zeromq/protobuf/interprocess_config.pb.h"      // for Inte...
+#include "goby/zeromq/protobuf/interprocess_zeromq.pb.h"      // for Inpr...
+#include "goby/zeromq/transport/detail/tags.h"                // for InterProcessTag
 
 #if ZMQ_VERSION <= ZMQ_MAKE_VERSION(4, 3, 1)
 #define USE_OLD_ZMQ_CPP_API
@@ -91,6 +93,9 @@ constexpr const char* delimiter_str{"/"};
 
 void setup_socket(zmq::socket_t& socket, const protobuf::Socket& cfg);
 
+/// Subscription a client makes once it is ready(); its arrival at a publisher's socket implies all of that client's earlier subscriptions have arrived too
+std::string ready_marker_identifier(const std::string& client_name);
+
 #ifdef USE_OLD_ZMQ_CPP_API
 using zmq_recv_flags_type = int;
 using zmq_send_flags_type = int;
@@ -103,7 +108,8 @@ using zmq_send_flags_type = zmq::send_flags;
 class InterProcessPortalMainThread
 {
   public:
-    InterProcessPortalMainThread(zmq::context_t& context);
+    InterProcessPortalMainThread(zmq::context_t& context,
+                                 const protobuf::InterProcessPortalConfig& cfg);
     ~InterProcessPortalMainThread()
     {
 #ifdef USE_OLD_CPPZMQ_SETSOCKOPT
@@ -122,8 +128,12 @@ class InterProcessPortalMainThread
               zmq_recv_flags_type flags = zmq_recv_flags_type());
     void set_publish_cfg(const protobuf::Socket& cfg);
 
-    void set_hold_state(bool hold);
+    /// Hold state as reported by the Manager; the hold is released once the ready marker of every required client has arrived (or the timeout expires)
+    void set_hold_state(bool hold, const std::set<std::string>& required_clients);
     bool hold_state() { return hold_; }
+
+    /// Reads subscriptions arriving at the XPUB socket, releasing the hold if ready
+    void read_subscriptions();
 
     void publish(const std::string& identifier, const char* bytes, int size,
                  bool ignore_buffer = false);
@@ -135,10 +145,18 @@ class InterProcessPortalMainThread
     void send_control_msg(const protobuf::InprocControl& control);
 
   private:
+    void release_hold_if_ready();
+
   private:
+    const protobuf::InterProcessPortalConfig& cfg_;
     zmq::socket_t control_socket_;
     zmq::socket_t publish_socket_;
     bool hold_{true};
+    bool manager_hold_{true};
+    std::set<std::string> required_clients_;
+    std::chrono::steady_clock::time_point hold_release_deadline_;
+    // every subscription in the system, as forwarded by the Router to this XPUB socket
+    std::set<std::string> subscriptions_;
     bool have_pubsub_sockets_{false};
 
     std::deque<std::pair<std::string, std::vector<char>>>
@@ -154,6 +172,7 @@ class InterProcessPortalReadThread
   public:
     InterProcessPortalReadThread(const protobuf::InterProcessPortalConfig& cfg,
                                  zmq::context_t& context, std::atomic<bool>& alive,
+                                 std::shared_ptr<std::mutex> poller_mutex,
                                  std::shared_ptr<std::condition_variable> poller_cv);
     void run();
     ~InterProcessPortalReadThread()
@@ -176,6 +195,7 @@ class InterProcessPortalReadThread
     void manager_data(const zmq::message_t& zmq_msg);
     void send_control_msg(const protobuf::InprocControl& control);
     void send_manager_request(const protobuf::ManagerRequest& req);
+    void wake_poller();
 
   private:
     const protobuf::InterProcessPortalConfig& cfg_;
@@ -183,7 +203,10 @@ class InterProcessPortalReadThread
     zmq::socket_t subscribe_socket_;
     zmq::socket_t manager_socket_;
     std::atomic<bool>& alive_;
+    std::shared_ptr<std::mutex> poller_mutex_;
     std::shared_ptr<std::condition_variable> poller_cv_;
+    bool poller_wakeup_pending_{false};
+    static constexpr long poller_wakeup_retry_ms_{1};
     std::vector<zmq::pollitem_t> poll_items_;
     enum
     {
@@ -223,8 +246,10 @@ class InterProcessPortalImplementation
     InterProcessPortalImplementation(const protobuf::InterProcessPortalConfig& cfg)
         : cfg_(cfg),
           zmq_context_(cfg.zeromq_number_io_threads()),
-          zmq_main_(zmq_context_),
-          zmq_read_thread_(cfg_, zmq_context_, zmq_alive_, middleware::PollerInterface::cv())
+          zmq_main_(zmq_context_, cfg_),
+          zmq_read_thread_(cfg_, zmq_context_, zmq_alive_,
+                           middleware::PollerInterface::poll_mutex(),
+                           middleware::PollerInterface::cv())
     {
         _init();
     }
@@ -234,8 +259,10 @@ class InterProcessPortalImplementation
         : Base(inner),
           cfg_(cfg),
           zmq_context_(cfg.zeromq_number_io_threads()),
-          zmq_main_(zmq_context_),
-          zmq_read_thread_(cfg_, zmq_context_, zmq_alive_, middleware::PollerInterface::cv())
+          zmq_main_(zmq_context_, cfg_),
+          zmq_read_thread_(cfg_, zmq_context_, zmq_alive_,
+                           middleware::PollerInterface::poll_mutex(),
+                           middleware::PollerInterface::cv())
     {
         _init();
     }
@@ -296,19 +323,13 @@ class InterProcessPortalImplementation
                     response->client_pid() == getpid() &&
                     response->client_name() == cfg_.client_name())
                 {
-                    zmq_main_.set_hold_state(response->hold());
-                }
-
-                // we're good to go now, so let's unsubscribe to this group
-                if (zmq_main_.publish_ready())
-                {
-                    this->template _unsubscribe<protobuf::ManagerResponse,
-                                                middleware::MarshallingScheme::PROTOBUF>(
-                        groups::manager_response,
-                        middleware::Subscriber<protobuf::ManagerResponse>());
+                    zmq_main_.set_hold_state(
+                        response->hold(), std::set<std::string>(response->required_client().begin(),
+                                                                response->required_client().end()));
                 }
             },
             groups::manager_response, middleware::Subscriber<protobuf::ManagerResponse>());
+        manager_response_subscribed_ = true;
     }
 
     void _do_publish(const std::string& identifier, const std::vector<char>& bytes)
@@ -335,6 +356,14 @@ class InterProcessPortalImplementation
 #else
         auto flags = zmq::recv_flags::dontwait;
 #endif
+
+        // the inner layers have already been polled, so all subscriptions forwarded so far
+        // precede the marker on the SUB socket
+        if (ready_ && !ready_marker_subscribed_)
+        {
+            zmq_main_.subscribe(ready_marker_identifier(cfg_.client_name()));
+            ready_marker_subscribed_ = true;
+        }
 
         while (zmq_main_.recv(&new_control_msg, flags))
             zmq_main_.control_buffer().push_back(new_control_msg);
@@ -373,6 +402,17 @@ class InterProcessPortalImplementation
             }
             zmq_main_.control_buffer().pop_front();
         }
+
+        zmq_main_.read_subscriptions();
+
+        if (manager_response_subscribed_ && zmq_main_.publish_ready())
+        {
+            this->template _unsubscribe<protobuf::ManagerResponse,
+                                        middleware::MarshallingScheme::PROTOBUF>(
+                groups::manager_response, middleware::Subscriber<protobuf::ManagerResponse>());
+            manager_response_subscribed_ = false;
+        }
+
         return items;
     }
 
@@ -386,6 +426,8 @@ class InterProcessPortalImplementation
     InterProcessPortalReadThread zmq_read_thread_;
 
     bool ready_{false};
+    bool ready_marker_subscribed_{false};
+    bool manager_response_subscribed_{false};
     bool ignore_buffer_{false};
 };
 
@@ -482,6 +524,23 @@ using InterProcessForwarder =
     middleware::InterProcessForwarder<InnerTransporter, detail::InterProcessTag>;
 
 } // namespace zeromq
+} // namespace goby
+
+namespace goby
+{
+namespace middleware
+{
+namespace detail
+{
+template <> struct implementation_traits<goby::zeromq::detail::InterProcessTag>
+{
+    template <typename InnerTransporter>
+    using Portal = goby::zeromq::InterProcessPortal<InnerTransporter>;
+    using PortalConfig = goby::zeromq::protobuf::InterProcessPortalConfig;
+    static constexpr const char* name = "zeromq";
+};
+} // namespace detail
+} // namespace middleware
 } // namespace goby
 
 #endif
