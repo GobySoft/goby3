@@ -366,5 +366,42 @@ class SchemaTest(unittest.TestCase):
                     validator.validate(yaml.safe_load(handle))
 
 
+class MainTest(unittest.TestCase):
+    """goby_gen_cpp runs from a build, so it prints nothing unless asked to."""
+
+    def run_main(self, *extra):
+        import contextlib
+        import io
+        import tempfile
+
+        with tempfile.TemporaryDirectory() as directory:
+            interface = os.path.join(directory, "interface.yml")
+            with open(interface, "w", encoding="utf-8") as handle:
+                handle.write(SINGLE_PORTAL)
+            out = io.StringIO()
+            with contextlib.redirect_stdout(out):
+                result = gen.main(
+                    [
+                        interface,
+                        "--cpp-out",
+                        os.path.join(directory, "out.cpp"),
+                        "--python-out",
+                        os.path.join(directory, "out.py"),
+                        *extra,
+                    ]
+                )
+            self.assertEqual(result, 0)
+            self.assertTrue(os.path.exists(os.path.join(directory, "out.cpp")))
+            return out.getvalue()
+
+    def test_quiet_by_default(self):
+        self.assertEqual(self.run_main(), "")
+
+    def test_verbose_names_each_file(self):
+        output = self.run_main("--verbose")
+        self.assertIn("out.cpp from", output)
+        self.assertIn("out.py from", output)
+
+
 if __name__ == "__main__":
     unittest.main()
