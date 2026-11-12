@@ -382,16 +382,52 @@ void goby::middleware::intervehicle::ModemDriverThread<ImplementationTag>::_expi
 
     *expire_pair.mutable_serializer() = value.data;
     interprocess_->template publish<groups::modem_expire_in>(expire_pair);
+
+    for (const auto& superseded : _take_superseded(value)) _expire_value(now, superseded, reason);
 }
 
 template <typename ImplementationTag>
-void goby::middleware::intervehicle::ModemDriverThread<ImplementationTag>::_discard_superseded(
+void goby::middleware::intervehicle::ModemDriverThread<ImplementationTag>::_ack_value(
+    intervehicle::protobuf::AckMessagePair& ack_pair, const goby::time::SteadyClock::time_point now,
+    const goby::acomms::DynamicBuffer<buffer_data_type>::Value& value)
+{
+    ack_pair.mutable_data()->set_latency_with_units(
+        goby::time::convert_duration<goby::time::MicroTime>(now - value.push_time));
+    *ack_pair.mutable_serializer() = value.data;
+    interprocess_->template publish<groups::modem_ack_in>(ack_pair);
+
+    for (const auto& superseded : _take_superseded(value)) _ack_value(ack_pair, now, superseded);
+}
+
+template <typename ImplementationTag>
+std::vector<typename goby::middleware::intervehicle::ModemDriverThread<
+    ImplementationTag>::buffer_value_type>
+goby::middleware::intervehicle::ModemDriverThread<ImplementationTag>::_take_superseded(
+    const buffer_value_type& value)
+{
+    std::vector<buffer_value_type> superseded;
+    auto queued_it = queued_subscriptions_.find(value.modem_id);
+    if (queued_it == queued_subscriptions_.end())
+        return superseded;
+
+    auto& queued = queued_it->second;
+    auto it = std::find_if(queued.begin(), queued.end(),
+                           [&](const auto& q) { return q.data == value.data; });
+    if (it != queued.end())
+    {
+        superseded = std::move(it->superseded);
+        queued.erase(it);
+    }
+    return superseded;
+}
+
+template <typename ImplementationTag>
+void goby::middleware::intervehicle::ModemDriverThread<ImplementationTag>::_erase_pending_ack(
     const std::vector<goby::acomms::DynamicBuffer<buffer_data_type>::Value>& values)
 {
-    auto now = goby::time::SteadyClock::now();
+    // otherwise a late ack would also report these values as delivered
     for (const auto& value : values)
     {
-        // otherwise a late ack would also report this value as delivered
         for (auto& frame_values_p : pending_ack_)
         {
             auto& frame_values = frame_values_p.second;
@@ -406,8 +442,17 @@ void goby::middleware::intervehicle::ModemDriverThread<ImplementationTag>::_disc
                                               }),
                                frame_values.end());
         }
-        _expire_value(now, value, intervehicle::protobuf::ExpireData::EXPIRED_SUPERSEDED);
     }
+}
+
+template <typename ImplementationTag>
+void goby::middleware::intervehicle::ModemDriverThread<ImplementationTag>::_discard_superseded(
+    const std::vector<goby::acomms::DynamicBuffer<buffer_data_type>::Value>& values)
+{
+    _erase_pending_ack(values);
+    auto now = goby::time::SteadyClock::now();
+    for (const auto& value : values)
+        _expire_value(now, value, intervehicle::protobuf::ExpireData::EXPIRED_SUPERSEDED);
 }
 
 template <typename ImplementationTag>
@@ -460,26 +505,43 @@ void goby::middleware::intervehicle::ModemDriverThread<ImplementationTag>::_forw
         subscription_publication->mutable_key()->set_serialize_time_with_units(subscribe_time);
 
         auto& queued = queued_subscriptions_[dest];
-        for (auto it = queued.begin(); it != queued.end();)
+        std::vector<buffer_value_type> superseded;
+        auto equivalent_it =
+            std::find_if(queued.begin(), queued.end(),
+                         [&](const auto& q)
+                         {
+                             return q.subscription.dccl_id() == subscription.dccl_id() &&
+                                    q.subscription.group() == subscription.group() &&
+                                    q.subscription.intervehicle() == subscription.intervehicle();
+                         });
+        if (equivalent_it != queued.end())
         {
-            const auto& queued_subscription = it->first;
-            if (queued_subscription.dccl_id() == subscription.dccl_id() &&
-                queued_subscription.group() == subscription.group() &&
-                queued_subscription.intervehicle() == subscription.intervehicle())
+            auto erased = buffer_.erase_if(dest, buffer_id, [&](const auto& v)
+                                           { return v.data == equivalent_it->data; });
+            if (equivalent_it->subscription.action() == subscription.action())
             {
-                const auto& queued_data = it->second;
-                _discard_superseded(buffer_.erase_if(dest, buffer_id, [&](const auto& v)
-                                                     { return v.data == queued_data; }));
-                it = queued.erase(it);
+                // the new subscription stands in for the one it replaces (which may belong to
+                // another local subscriber), so that one is acked or expired along with it
+                _erase_pending_ack(erased);
+                superseded = std::move(equivalent_it->superseded);
+                superseded.insert(superseded.end(), erased.begin(), erased.end());
+                queued.erase(equivalent_it);
             }
             else
             {
-                ++it;
+                // the opposite action cancels the queued subscription and whatever it stood in for
+                erased.insert(erased.end(), equivalent_it->superseded.begin(),
+                              equivalent_it->superseded.end());
+                queued.erase(equivalent_it);
+                _discard_superseded(erased);
             }
         }
 
-        buffer_.push({dest, buffer_id, goby::time::SteadyClock::now(), *subscription_publication});
-        queued.emplace_back(subscription, *subscription_publication);
+        auto now = goby::time::SteadyClock::now();
+        auto exceeded = buffer_.push({dest, buffer_id, now, *subscription_publication});
+        queued.push_back({subscription, *subscription_publication, std::move(superseded)});
+        for (const auto& value : exceeded)
+            _expire_value(now, value, intervehicle::protobuf::ExpireData::EXPIRED_BUFFER_OVERFLOW);
     }
 }
 
@@ -833,11 +895,7 @@ void goby::middleware::intervehicle::ModemDriverThread<ImplementationTag>::_rece
                                                          << "Publishing ack for "
                                                          << value.subbuffer_id << std::endl;
 
-                    ack_data.set_latency_with_units(
-                        goby::time::convert_duration<goby::time::MicroTime>(now - value.push_time));
-
-                    *ack_pair.mutable_serializer() = value.data;
-                    interprocess_->template publish<groups::modem_ack_in>(ack_pair);
+                    _ack_value(ack_pair, now, value);
                     buffer_.erase(value);
                 }
                 pending_ack_.erase(values_to_ack_it);

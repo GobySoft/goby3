@@ -250,6 +250,44 @@ void write_log(int test, int version)
     }
 }
 
+// an unset TempSample serializes to zero bytes
+void write_read_empty_payload()
+{
+    const std::string log_path("/tmp/goby3_test_log_empty.goby");
+    LogEntry::reset();
+    {
+        std::ofstream out_log_file(log_path);
+        TempSample empty, full;
+        full.set_temperature(20);
+        for (const auto& t : {empty, full})
+        {
+            std::vector<unsigned char> data(t.ByteSizeLong());
+            if (!data.empty())
+                t.SerializeToArray(data.data(), data.size());
+            LogEntry entry(data, goby::middleware::MarshallingScheme::PROTOBUF,
+                           TempSample::descriptor()->full_name(), tempgroup, start_time);
+            entry.serialize(&out_log_file);
+        }
+    }
+
+    LogEntry::reset();
+    std::ifstream in_log_file(log_path);
+    {
+        LogEntry entry;
+        entry.parse(&in_log_file);
+        assert(entry.data().empty());
+        assert(entry.group() == tempgroup);
+        assert(entry.type() == TempSample::descriptor()->full_name());
+    }
+    {
+        LogEntry entry;
+        entry.parse(&in_log_file);
+        TempSample t;
+        bool parsed = t.ParseFromArray(entry.data().data(), entry.data().size());
+        assert(parsed && t.temperature() == 20);
+    }
+}
+
 int main(int /*argc*/, char* argv[])
 {
     goby::glog.add_stream(goby::util::logger::DEBUG3, &std::cerr);
@@ -269,6 +307,9 @@ int main(int /*argc*/, char* argv[])
             read_log(test, version);
         }
     }
+
+    std::cout << "Running empty payload test" << std::endl;
+    write_read_empty_payload();
 
     std::cout << "all tests passed" << std::endl;
 }

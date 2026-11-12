@@ -36,7 +36,6 @@
 #include <stdexcept>     // for runtim...
 #include <string>        // for string
 #include <type_traits>   // for __succ...
-#include <unistd.h>      // for usleep
 #include <unordered_map> // for operat...
 #include <vector>        // for vector
 
@@ -206,12 +205,23 @@ goby::apps::zeromq::Liaison::Liaison()
             throw(std::runtime_error("No valid docroot found for Goby Liaison. Set docroot to the "
                                      "valid path to what is normally /usr/share/goby/liaison"));
 
-        std::string static_resources = "/css,/fonts,/images,/resources";
+        std::string static_resources = "/css,/fonts,/images,/resources,/leaflet,/tiles";
+
+        // docroot wt_config.xml points WLeafletMap at the bundled Leaflet, so the map works offline
+        std::string wt_config_param;
+        const std::string user_params = " " + cfg().additional_wt_http_params() + " ";
+        const bool user_wt_config = getenv("WT_CONFIG_XML") ||
+                                    user_params.find(" --config") != std::string::npos ||
+                                    user_params.find(" -c ") != std::string::npos;
+        const std::string docroot_wt_config = doc_root + "/wt_config.xml";
+        if (!user_wt_config && std::filesystem::exists(docroot_wt_config, ec))
+            wt_config_param = " --config " + docroot_wt_config;
 
         std::vector<std::string> wt_argv_vec;
         std::string str = " --docroot " + doc_root + ";" + static_resources + " --http-port " +
                           goby::util::as<std::string>(cfg().http_port()) + " --http-address " +
-                          cfg().http_address() + " " + cfg().additional_wt_http_params();
+                          cfg().http_address() + wt_config_param + " " +
+                          cfg().additional_wt_http_params();
         boost::split(wt_argv_vec, str, boost::is_any_of(" "));
 
         glog.is(DEBUG1) && glog << "setting Wt cfg to: " << std::flush;
@@ -240,16 +250,11 @@ goby::apps::zeromq::Liaison::Liaison()
 
     // clean up sessions if there are none
     // see https://redmine.webtoolkit.eu/boards/2/topics/5614?r=5615#message-5615
-    expire_sessions_ = [=]()
+    // a non-zero schedule() delay uses a timer; sleeping in a posted job would block Wt's strand
+    expire_sessions_ = [this]()
     {
-        int seconds = 10;
-        auto start = goby::time::SteadyClock::now();
-        while (!terminating_ &&
-               goby::time::SteadyClock::now() < start + std::chrono::seconds(seconds))
-        {
-            // 100 ms to avoid pegging CPU but be responsive to shutdown
-            usleep(100000);
-        }
+        if (terminating_)
+            return;
 
         glog.is_debug3() && glog << std::chrono::duration_cast<std::chrono::seconds>(
                                         goby::time::SteadyClock::now().time_since_epoch())
@@ -258,11 +263,10 @@ goby::apps::zeromq::Liaison::Liaison()
 
         wt_server_.expireSessions();
 
-        if (!terminating_)
-            Wt::WServer::instance()->ioService().post(expire_sessions_);
+        Wt::WServer::instance()->ioService().schedule(std::chrono::seconds(10), expire_sessions_);
     };
 
-    Wt::WServer::instance()->ioService().post(expire_sessions_);
+    Wt::WServer::instance()->ioService().schedule(std::chrono::seconds(10), expire_sessions_);
 }
 
 void goby::apps::zeromq::Liaison::load_proto_file(const std::string& path)

@@ -132,7 +132,7 @@ int main(int argc, char* argv[])
     cfg1.set_modem_id(1);
 
     srand(time(nullptr));
-    int port1 = rand() % 1000 + 50010;
+    int port1 = rand() % 1000 + 21100;
     int port2 = port1 + 1;
 
     //gumstix

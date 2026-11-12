@@ -1251,9 +1251,11 @@ class PubSubTestRunner
 
         try
         {
-            connect();
+            // subscribe before ready(): a hold that requires this tool is released once its
+            // subscriptions have reached the publishers
             for (auto& ep : endpoints_)
                 ep->subscribe_all([this](const PubSubTestMessage& msg) { on_message(msg); });
+            connect();
 
             bool ok = true;
             for (const auto& req : test_.require_app())

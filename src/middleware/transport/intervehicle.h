@@ -300,14 +300,16 @@ class InterVehicleTransporterBase
     std::shared_ptr<goby::middleware::protobuf::SerializerTransporterMessage>
     _set_up_publish(const Data& d, const Group& group, const Publisher<Data>& publisher)
     {
-        if (group.numeric() != Group::broadcast_group && !publisher.has_set_group_func())
+        if (group.numeric() != Group::broadcast_group && !publisher.has_set_group_func() &&
+            publisher.group_in_message())
         {
             std::stringstream ss;
             ss << "Error: Publisher must have set_group_func in order to publish to a "
                   "non-broadcast Group ("
                << group
                << "). The set_group_func modifies the contents of the outgoing message to store "
-                  "the group information.";
+                  "the group information. If the message doesn't store the group, set "
+                  "group_in_message to false in the Publisher's Options instead.";
             throw(InvalidPublication(ss.str()));
         }
 
@@ -360,14 +362,16 @@ class InterVehicleTransporterBase
         {
             case SubscriptionAction::SUBSCRIBE:
             {
-                if (group.numeric() != Group::broadcast_group && !subscriber.has_group_func())
+                if (group.numeric() != Group::broadcast_group && !subscriber.has_group_func() &&
+                    subscriber.group_in_message())
                 {
                     std::stringstream ss;
                     ss << "Error: Subscriber must have group_func in order to subscribe to "
                           "non-broadcast Group ("
                        << group
                        << "). The group_func returns the appropriate Group based on the contents "
-                          "of the incoming message.";
+                          "of the incoming message. If the message doesn't store the group, set "
+                          "group_in_message to false in the Subscriber's Options instead.";
                     throw(InvalidSubscription(ss.str()));
                 }
 
@@ -378,6 +382,9 @@ class InterVehicleTransporterBase
                     ss << "Error: Broadcast subscriptions cannot have ack_required: true";
                     throw(InvalidSubscription(ss.str()));
                 }
+
+                if (subscriber.cfg().intervehicle().republish_on_receive())
+                    func = _republishing(func, group);
 
                 using SubscriptionType =
                     IntervehicleSerializationSubscription<Data, MarshallingScheme::DCCL>;
@@ -551,6 +558,23 @@ class InterVehicleTransporterBase
         _expire_pending_ack();
 
         return static_cast<Derived*>(this)->_poll(lock);
+    }
+
+    // received messages go to func and then to the inner layer, as an outgoing publication in the
+    // same group would be (DCCL and PROTOBUF). The group's string form ("name;7", or "7" for a
+    // numeric-only group) is the identifier that publication uses, and outlives a DynamicGroup.
+    template <typename Data>
+    std::function<void(std::shared_ptr<const Data>)>
+    _republishing(std::function<void(std::shared_ptr<const Data>)> func, const Group& group)
+    {
+        return [this, func, inner_group = std::string(group)](std::shared_ptr<const Data> d)
+        {
+            if (func)
+                func(d);
+            DynamicGroup g(inner_group);
+            this->inner().template publish_dynamic<Data, MarshallingScheme::DCCL>(d, g);
+            this->inner().template publish_dynamic<Data, MarshallingScheme::PROTOBUF>(d, g);
+        };
     }
 
     // desc is only used (and required) when Data is google::protobuf::Message
@@ -820,7 +844,7 @@ class InterVehiclePortal
         // then re-publish to driver threads
         {
             using intervehicle::protobuf::Subscription;
-            auto subscribe_lambda = [=](std::shared_ptr<const Subscription> d)
+            auto subscribe_lambda = [this](std::shared_ptr<const Subscription> d)
             {
                 this->innermost()
                     .template publish<intervehicle::groups::modem_subscription_forward_rx,

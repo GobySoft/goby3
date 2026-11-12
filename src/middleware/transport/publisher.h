@@ -75,6 +75,33 @@ template <typename Data> class Publisher
     {
     }
 
+    /// \brief Everything a Publisher can be given, named, so that it can be initialized with
+    /// C++20 designated initializers, e.g.
+    /// \code
+    /// goby::middleware::Publisher<Nav> publisher({.cfg = cfg, .acked_func = on_ack});
+    /// \endcode
+    struct Options
+    {
+        /// Additional metadata for all publish calls for which this Publisher is provided
+        goby::middleware::protobuf::TransporterConfig cfg{};
+        /// Sets the group in the message (see the full constructor)
+        set_group_func_type set_group_func{};
+        /// Called when data are acknowledged by subscribers (sets ack_required)
+        acked_func_type acked_func{};
+        /// Called when data expire without reaching any subscribers
+        expired_func_type expired_func{};
+        /// False when the group isn't stored in the message, e.g. when every message of this type
+        /// uses the same group. Then no set_group_func is needed for a non-broadcast group.
+        bool group_in_message{true};
+    };
+
+    /// \brief Construct a Publisher from Options
+    explicit Publisher(Options options)
+        : Publisher(options.cfg, options.set_group_func, options.acked_func, options.expired_func)
+    {
+        group_in_message_ = options.group_in_message;
+    }
+
     ~Publisher() {}
 
     /// \brief Returns the metadata configuration
@@ -94,11 +121,15 @@ template <typename Data> class Publisher
 
     bool has_set_group_func() const { return bool(set_group_func_); }
 
+    /// \brief False if the group isn't stored in the message (see Options::group_in_message)
+    bool group_in_message() const { return group_in_message_; }
+
   private:
     goby::middleware::protobuf::TransporterConfig cfg_;
     set_group_func_type set_group_func_;
     acked_func_type acked_func_;
     expired_func_type expired_func_;
+    bool group_in_message_{true};
 };
 
 } // namespace middleware
