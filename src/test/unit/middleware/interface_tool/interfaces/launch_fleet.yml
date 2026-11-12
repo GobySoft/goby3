@@ -1,0 +1,31 @@
+# launch data on run: entries, as goby interface launch turns it into goby_launch files
+deployment: launch_fleet
+platforms:
+  - name: hub
+    launch:
+      flags: "-P -d 100"
+      defaults: { config: "<(./gen.sh ${app})" }
+    run:
+      - { process: gpsd, exec: "gpsd -N /dev/ttyUSB0" }
+      - { application: gobyd, hold: auto }
+      - { application: hub_manager, env: { HUB_PLUGINS: "libfleet_hub.so.1:libfleet_extra.so.1" } }
+      - engineering_display
+      - { application: goby_coroner, expected: auto }
+    bind:
+      - { group: fleet::hub_command, numeric: "151-152" }
+  - name: bot
+    instances: [1, 2]
+    launch:
+      flags: "-L -P"
+      defaults: { config: "bot${instance}.pb.cfg", args: "-v" }
+    run:
+      - { application: gobyd, hold: auto }
+      - mission_manager
+      - { application: mission_manager, name: mission_backup, enabled: false }
+      - { process: MOOSDB, exec: "MOOSDB /tmp/bot${instance}.moos" }
+      - { application: engineering_display, when: "${fleet_bot_type} =~ STORM", kill: SIGTERM, expected: false }
+      - { application: goby_coroner, expected: auto }
+    bind:
+      - { group: fleet::hub_command, numeric: "${instance} + 150" }
+necessity:
+  - { application: mission_manager, group: fleet::hub_command, set: required }

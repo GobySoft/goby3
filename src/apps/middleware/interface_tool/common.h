@@ -34,6 +34,7 @@
 
 #include <google/protobuf/util/json_util.h>
 
+#include "goby/middleware/tool/interface/launch.h"
 #include "goby/middleware/tool/interface/model.h"
 
 #include "goby/apps/middleware/interface_tool/interface_tool_config.pb.h"
@@ -162,6 +163,31 @@ inline void to_proto(const interface::Issue& issue, protobuf::InterfaceIssue& pb
         pb.set_location(issue.location);
     if (!issue.subject.application.empty())
         to_proto(issue.subject, *pb.mutable_subject());
+}
+
+/// \brief The launch unit picked by --platform (with --instance) and --module, or the only one
+template <typename Config>
+bool select_unit(const interface::Deployment& deployment, const Config& cfg,
+                 interface::LaunchUnit& unit, std::string& error)
+{
+    auto platform = cfg.platform() + (cfg.has_instance() ? std::to_string(cfg.instance()) : "");
+    std::vector<interface::LaunchUnit> matches, all = interface::launch_units(deployment);
+    for (const auto& u : all)
+    {
+        if ((platform.empty() || u.platform->name == platform) &&
+            (!cfg.has_module() || u.module == cfg.module()))
+            matches.push_back(u);
+    }
+    if (matches.size() == 1)
+    {
+        unit = matches.front();
+        return true;
+    }
+    std::string names;
+    for (const auto& u : all) names += (names.empty() ? "" : ", ") + u.name();
+    error = std::string(matches.empty() ? "nothing matches" : "more than one matches") +
+            "; choose one of " + names + " with --platform (and --module)";
+    return false;
 }
 
 /// \brief "platform/[module/]application"

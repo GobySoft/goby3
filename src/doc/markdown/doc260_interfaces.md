@@ -43,5 +43,11 @@ Goby's groups, types and schemes are known at compile time, so the publish/subsc
 
 - `goby interface validate`: issue codes and exit status (see [goby interface](doc010_cli.md)).
 - `goby interface explain` for a single group; `list` and `diff` for inventories and regressions; `init` to start a deployment file.
+
+## Launching a deployment
+
+- The launch keys on a `run` entry (`process`, `exec`, `config`, `args`, `env`, `kill`, `when`, `enabled`) and a platform's `launch: { flags, defaults }`.
+- Derived lists: `hold: auto` for `gobyd`, `expected: auto` for `goby_coroner`.
+- `goby interface launch`, `goby launch <deployment>.yml`, and `launch_check` for moving existing launch files over.
 - `goby interface visualize` and `goby_clang_tool -viz`.
 - `goby_validate_interfaces()` in CMake.

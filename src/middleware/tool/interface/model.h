@@ -33,6 +33,7 @@
 #include <functional>
 #include <map>
 #include <memory>
+#include <optional>
 #include <ostream>
 #include <regex>
 #include <set>
@@ -299,12 +300,54 @@ struct Module
     bool not_a_module{false};
 };
 
+using KeyValues = std::vector<std::pair<std::string, std::string>>;
+
+/// \brief How one run: entry is started by goby_launch
+struct LaunchEntry
+{
+    std::string module;
+    // goby_launch's name for the line, and ${app} in its config
+    std::string name;
+    // empty for a process (a non-Goby program, with no interface file)
+    std::string application;
+    bool process{false};
+    std::optional<std::string> exec;
+    std::optional<std::string> config;
+    std::optional<std::string> args;
+    std::optional<std::string> kill;
+    // a bash conditional ([[ ... ]]) deciding at launch whether the entry runs
+    std::optional<std::string> when;
+    KeyValues env;
+    bool enabled{true};
+    // gobyd's required_client list; "auto" stands for the derived list
+    std::optional<std::vector<std::string>> hold;
+    // goby_coroner's expected_name list; "auto" stands for the derived list
+    std::optional<std::vector<std::string>> expected;
+    // expected: false, leaving this entry out of an automatic expected list
+    bool not_expected{false};
+    std::string location;
+};
+
+/// \brief A platform's launch: settings
+struct LaunchSettings
+{
+    std::string flags;
+    // defaults for Goby applications' entries
+    std::optional<std::string> config;
+    std::optional<std::string> args;
+    std::optional<std::string> kill;
+    KeyValues env;
+};
+
 struct Platform
 {
     std::string name;
     // the name in the deployment file; differs from name for one of a platform's instances
     std::string base_name;
     std::vector<Module> modules;
+    // every run: entry, in order, including processes
+    std::vector<LaunchEntry> launch;
+    LaunchSettings launch_settings;
 
     bool has_modules() const { return !(modules.size() == 1 && modules.front().not_a_module); }
 };
@@ -373,6 +416,7 @@ struct RunRef
     // an interfaces: entry that names its application, which merges it into that application
     bool merge_intended{false};
     std::vector<std::shared_ptr<Bind>> binds;
+    LaunchEntry launch;
 };
 
 struct ModuleRef
@@ -388,6 +432,7 @@ struct PlatformRef
     std::vector<ModuleRef> modules;
     std::vector<std::shared_ptr<Bind>> binds;
     std::vector<std::uint32_t> instances;
+    LaunchSettings launch_settings;
 };
 
 /// \brief Replace ${NAME} and ${NAME:-default} from \c defines, then the environment
@@ -428,7 +473,7 @@ inline std::string expand_variables(const std::string& text,
             has_fallback = true;
         }
 
-        if (name == "instance")
+        if (name == "instance" || name == "app")
         {
             out += text.substr(i, close - i + 1);
             i = close;
@@ -837,6 +882,167 @@ inline Application::Binder make_binder(std::vector<std::shared_ptr<Bind>> binds,
     };
 }
 
+inline bool valid_kill(const std::string& kill)
+{
+    return kill == "goby_terminate" || kill == "SIGTERM" || kill == "SIGINT" || kill == "SIGKILL";
+}
+
+inline KeyValues read_env(const YAML::Node& node, const std::string& location, Issues& issues)
+{
+    KeyValues env;
+    if (!node)
+        return env;
+    if (!node.IsMap())
+    {
+        add_issue(issues, Issue::Severity::ERROR, "deployment-schema",
+                  "env: must be a map of NAME: value", location);
+        return env;
+    }
+    for (const auto& kv : node)
+    {
+        auto value = kv.second.as<std::string>();
+        // goby_launch splits its [directives] on spaces, commas and semicolons
+        if (value.find_first_of(" ,;") != std::string::npos)
+            add_issue(issues, Issue::Severity::ERROR, "deployment-schema",
+                      "env: " + kv.first.as<std::string>() +
+                          " contains a space, comma or semicolon, which goby_launch cannot pass",
+                      location);
+        env.emplace_back(kv.first.as<std::string>(), value);
+    }
+    return env;
+}
+
+// the launch keys of a run: entry
+inline bool read_launch(const YAML::Node& entry, RunRef& ref, Issues& issues)
+{
+    auto& launch = ref.launch;
+    launch.location = ref.location;
+    auto text = [&](const char* key, std::optional<std::string>& value)
+    {
+        if (entry[key])
+            value = entry[key].as<std::string>();
+    };
+
+    if (entry["process"])
+    {
+        if (entry["application"] || entry["file"] || entry["plugins"] || entry["bind"])
+        {
+            add_issue(issues, Issue::Severity::ERROR, "deployment-schema",
+                      "a process: entry is not a Goby application, so it has no application:, "
+                      "file:, plugins: or bind:",
+                      ref.location);
+            return false;
+        }
+        launch.process = true;
+        launch.name = entry["process"].as<std::string>();
+    }
+    text("exec", launch.exec);
+    text("config", launch.config);
+    text("args", launch.args);
+    text("kill", launch.kill);
+    text("when", launch.when);
+    launch.env = read_env(entry["env"], ref.location + ".env", issues);
+    if (entry["enabled"])
+        launch.enabled = entry["enabled"].as<bool>();
+    if (launch.kill && !valid_kill(*launch.kill))
+    {
+        add_issue(issues, Issue::Severity::ERROR, "deployment-schema",
+                  "kill: must be goby_terminate, SIGTERM, SIGINT or SIGKILL", ref.location);
+        return false;
+    }
+    if (entry["hold"])
+        launch.hold = read_list(entry["hold"]);
+    if (auto expected = entry["expected"])
+    {
+        if (expected.IsScalar() && (expected.as<std::string>() == "false"))
+            launch.not_expected = true;
+        else
+            launch.expected = read_list(expected);
+    }
+    return true;
+}
+
+inline LaunchSettings read_launch_settings(const YAML::Node& node, const std::string& location,
+                                           Issues& issues)
+{
+    LaunchSettings settings;
+    if (!node)
+        return settings;
+    if (!node.IsMap())
+    {
+        add_issue(issues, Issue::Severity::ERROR, "deployment-schema",
+                  "launch: must be a map (flags:, defaults:)", location);
+        return settings;
+    }
+    for (const auto& kv : node)
+    {
+        auto key = kv.first.as<std::string>();
+        if (key != "flags" && key != "defaults")
+            add_issue(issues, Issue::Severity::ERROR, "deployment-schema",
+                      "unknown key '" + key + "'", location);
+    }
+    if (node["flags"])
+        settings.flags = node["flags"].as<std::string>();
+    if (auto defaults = node["defaults"])
+    {
+        for (const auto& kv : defaults)
+        {
+            auto key = kv.first.as<std::string>();
+            if (key == "config")
+                settings.config = kv.second.as<std::string>();
+            else if (key == "args")
+                settings.args = kv.second.as<std::string>();
+            else if (key == "kill")
+                settings.kill = kv.second.as<std::string>();
+            else if (key == "env")
+                settings.env = read_env(kv.second, location + ".defaults.env", issues);
+            else
+                add_issue(issues, Issue::Severity::ERROR, "deployment-schema",
+                          "unknown key '" + key + "' (defaults: takes config, args, kill, env)",
+                          location + ".defaults");
+        }
+        if (settings.kill && !valid_kill(*settings.kill))
+            add_issue(issues, Issue::Severity::ERROR, "deployment-schema",
+                      "kill: must be goby_terminate, SIGTERM, SIGINT or SIGKILL",
+                      location + ".defaults");
+    }
+    return settings;
+}
+
+inline std::string with_instance(std::string text, const std::vector<std::uint32_t>& instances)
+{
+    if (instances.size() != 1)
+        return text;
+    static const std::string var = "${instance}";
+    for (auto pos = text.find(var); pos != std::string::npos; pos = text.find(var, pos))
+        text.replace(pos, var.size(), std::to_string(instances.front()));
+    return text;
+}
+
+inline LaunchSettings for_instance(LaunchSettings settings,
+                                   const std::vector<std::uint32_t>& instances)
+{
+    settings.flags = with_instance(settings.flags, instances);
+    for (auto* field : {&settings.config, &settings.args})
+    {
+        if (*field)
+            **field = with_instance(**field, instances);
+    }
+    for (auto& kv : settings.env) kv.second = with_instance(kv.second, instances);
+    return settings;
+}
+
+inline LaunchEntry for_instance(LaunchEntry entry, const std::vector<std::uint32_t>& instances)
+{
+    for (auto* field : {&entry.exec, &entry.config, &entry.args, &entry.when})
+    {
+        if (*field)
+            **field = with_instance(**field, instances);
+    }
+    for (auto& kv : entry.env) kv.second = with_instance(kv.second, instances);
+    return entry;
+}
+
 inline std::vector<RunRef> read_run(const YAML::Node& node, bool legacy,
                                     const std::string& location, Issues& issues)
 {
@@ -853,6 +1059,7 @@ inline std::vector<RunRef> read_run(const YAML::Node& node, bool legacy,
     {
         RunRef ref;
         ref.location = location + "[" + std::to_string(index++) + "]";
+        ref.launch.location = ref.location;
         if (entry.IsScalar())
         {
             (legacy ? ref.file : ref.application) = entry.as<std::string>();
@@ -860,8 +1067,9 @@ inline std::vector<RunRef> read_run(const YAML::Node& node, bool legacy,
         else if (entry.IsMap())
         {
             static const std::set<std::string> legacy_keys{"file", "application", "bind"};
-            static const std::set<std::string> run_keys{"application", "file", "name", "plugins",
-                                                        "bind"};
+            static const std::set<std::string> run_keys{
+                "application", "file", "name", "plugins", "bind",    "process", "exec",    "config",
+                "args",        "env",  "kill", "when",    "enabled", "hold",    "expected"};
             const auto& allowed = legacy ? legacy_keys : run_keys;
             bool bad_key = false;
             for (const auto& kv : entry)
@@ -895,12 +1103,14 @@ inline std::vector<RunRef> read_run(const YAML::Node& node, bool legacy,
                 if (entry["name"])
                     ref.name = entry["name"].as<std::string>();
                 ref.plugins = read_list(entry["plugins"]);
+                if (!read_launch(entry, ref, issues))
+                    continue;
             }
-            if (ref.file.empty() && ref.application.empty())
+            if (ref.file.empty() && ref.application.empty() && !ref.launch.process)
             {
                 add_issue(issues, Issue::Severity::ERROR, "deployment-schema",
                           legacy ? "an interfaces entry that is a map must have file:"
-                                 : "a run entry must name an application: or a file:",
+                                 : "a run entry must name an application:, a file: or a process:",
                           ref.location);
                 continue;
             }
@@ -1204,8 +1414,10 @@ inline Deployment load_deployment(const std::string& path, Issues& issues,
                                 "deployment", "", issues, deploy_yaml))
         return deployment;
     for (const auto& name : unset)
-        add_issue(issues, Issue::Severity::WARNING, "variable-unset",
-                  "${" + name + "} has no value (set it with -D " + name + "=value)");
+        add_issue(issues, Issue::Severity::INFO, "variable-unset",
+                  "${" + name +
+                      "} has no value here, so it is left for the shell (set it with -D " + name +
+                      "=value)");
 
     detail::InterfaceFinder finder(detail::search_dirs(path, params));
     std::map<std::string, detail::PlatformRef> platform_refs;
@@ -1254,6 +1466,8 @@ inline Deployment load_deployment(const std::string& path, Issues& issues,
             auto& platform_ref = platform_refs[platform_name];
             platform_ref.location = location;
             platform_ref.binds = detail::read_binds(platform["bind"], location + ".bind", issues);
+            platform_ref.launch_settings =
+                detail::read_launch_settings(platform["launch"], location + ".launch", issues);
             if (auto instances_node = platform["instances"])
             {
                 for (const auto& instance : detail::read_list(instances_node))
@@ -1356,6 +1570,7 @@ inline Deployment load_deployment(const std::string& path, Issues& issues,
                              const std::vector<std::uint32_t>& instances, Platform& platform)
     {
         platform.name = name;
+        platform.launch_settings = detail::for_instance(platform_ref.launch_settings, instances);
         for (const auto& module_ref : platform_ref.modules)
         {
             Module module;
@@ -1363,13 +1578,37 @@ inline Deployment load_deployment(const std::string& path, Issues& issues,
             module.not_a_module = module_ref.not_a_module;
             for (const auto& ref : module_ref.run)
             {
+                auto launch = detail::for_instance(ref.launch, instances);
+                launch.module = module.name;
+                if (launch.process)
+                {
+                    platform.launch.push_back(launch);
+                    continue;
+                }
+
                 auto file = locate(ref, ref.application, ref.file);
                 YAML::Node yaml;
                 if (file.empty() || !load_interface(file, ref, yaml))
+                {
+                    launch.application = ref.application;
+                    launch.name = ref.name.empty() ? ref.application : ref.name;
+                    if (launch.name.empty())
+                        launch.name = std::filesystem::path(ref.file).stem().string();
+                    platform.launch.push_back(launch);
                     continue;
+                }
 
                 std::string app_name =
                     ref.name.empty() ? yaml["application"].as<std::string>() : ref.name;
+                launch.application = yaml["application"].as<std::string>();
+                launch.name = app_name;
+                // a second entry for the same application (a plugin's interface file) is not a
+                // second process
+                bool already_launched = std::any_of(
+                    platform.launch.begin(), platform.launch.end(), [&](const LaunchEntry& e)
+                    { return e.module == launch.module && e.name == launch.name; });
+                if (!already_launched)
+                    platform.launch.push_back(launch);
 
                 auto it = module.applications.find(app_name);
                 if (it == module.applications.end())

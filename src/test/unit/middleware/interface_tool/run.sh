@@ -151,8 +151,54 @@ check 2 goby interface diff fleet.yml no_such_deployment.yml
 check 0 goby interface init "$dir/interfaces" --platform auv --output_file "$work/init.yml"
 grep -q "^      - nav_driver$" "$work/init.yml" || { echo "FAILED: init did not list nav_driver"; fail=1; }
 check 1 goby interface validate "$work/init.yml" -I "$dir/interfaces"
-expect_output "10 applications"
+expect_output "12 applications"
 check 1 goby interface init "$dir/deployments"
+
+# launch: goby_launch files from the deployment's run: lists
+for platform in hub bot2; do
+    goby interface launch launch_fleet.yml --platform $platform --output_file "$work/$platform.launch" ||
+        { echo "FAILED: goby interface launch --platform $platform"; fail=1; }
+    if [ "$update" = update ]; then
+        cp "$work/$platform.launch" "$dir/launch/$platform.launch"
+    elif ! diff -u "$dir/launch/$platform.launch" "$work/$platform.launch"; then
+        echo "FAILED: launch file for $platform differs from launch/$platform.launch"; fail=1
+    fi
+done
+check 0 goby interface launch launch_fleet.yml --outdir "$work/outdir"
+for unit in hub bot1 bot2; do
+    [ -x "$work/outdir/$unit.launch" ] || { echo "FAILED: --outdir did not write $unit.launch"; fail=1; }
+done
+check 1 goby interface launch launch_fleet.yml
+expect_output "choose one of bot1, bot2, hub"
+check 1 goby interface launch launch_problems.yml
+expect_output "launch-order.*mission_manager is launched before gobyd"
+expect_output "hold-incomplete.*leaves out mission_manager"
+expect_output "coroner-expected.*names nav_driver"
+expect_output "launch-hash.*logger"
+check 1 goby interface validate launch_problems.yml
+expect_output "launch-hash"
+
+# launch_check: a hand-written launch file against the deployment
+check 1 goby interface launch_check launch_fleet.yml "$dir/launch/bot1_by_hand.launch" --platform bot1
+expect_output "launched-only  *pHelmIvP"
+expect_output "not-launched  *goby_coroner"
+expect_output "kill  *MOOSDB  *goby_terminate in the launch file, SIGTERM in the deployment"
+expect_output "env  *MOOSDB"
+check 0 goby interface launch_check launch_fleet.yml "$work/outdir/bot1.launch" --platform bot1
+expect_output "no differences"
+check 1 goby interface launch_check launch_fleet.yml "$dir/launch/bot1_by_hand.launch" --platform bot1 -o JSON
+expect_output '"kind": "launched-only"'
+
+# goby launch <deployment>.yml writes the platform's launch file beside it and hands it to
+# goby_launch (-h here, which prints its usage and exits 1, so nothing is started)
+if ! command -v goby_launch > /dev/null; then
+    export PATH=$PATH:$dir/../../../../../scripts
+fi
+cp launch_fleet.yml "$work/"
+check 1 goby launch "$work/launch_fleet.yml" --platform bot --instance 2 -I "$dir/interfaces" -h
+if [ "$update" != update ] && ! diff -q "$dir/launch/bot2.launch" <(sed "s#$work/##" "$work/.launch_fleet.bot.2.launch") > /dev/null; then
+    echo "FAILED: goby launch did not write .launch_fleet.bot.2.launch as goby interface launch does"; fail=1
+fi
 
 check 1 goby interface visualize missing_interface.yml
 expect_output "interface-missing"
