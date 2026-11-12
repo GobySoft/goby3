@@ -22,6 +22,7 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
+#include <algorithm> // for min, max
 #include <boost/circular_buffer.hpp>
 #include <chrono>      // for operator/, seconds, tim...
 #include <memory>      // for allocator_traits<>::val...
@@ -96,6 +97,102 @@ void goby::acomms::iridium::fsm::IridiumDriverFSM::parse_ciev(const std::string&
     }
 }
 
+void goby::acomms::iridium::fsm::IridiumDriverFSM::sbd_session_failed()
+{
+    const auto& cfg = iridium_driver_cfg();
+
+    double backoff = cfg.sbd_retry_backoff_initial();
+    for (int i = 0; i < sbd_consecutive_failures_ && backoff < cfg.sbd_retry_backoff_max(); ++i)
+        backoff *= 2;
+    backoff = std::min<double>(backoff, cfg.sbd_retry_backoff_max());
+    ++sbd_consecutive_failures_;
+
+    std::uniform_real_distribution<double> jitter(0,
+                                                  std::max(0.0, cfg.sbd_retry_jitter_fraction()));
+    backoff *= 1 + jitter(rng_);
+
+    sbd_blocked_until_ = goby::time::SteadyClock::now() +
+                         std::chrono::duration_cast<goby::time::SteadyClock::duration>(
+                             std::chrono::duration<double>(backoff));
+    sbd_block_reason_ = SBDBlockReason::RETRY_BACKOFF;
+
+    glog.is(DEBUG1) &&
+        glog << group("iridiumdriver") << "SBD session failed (" << sbd_consecutive_failures_
+             << " consecutive); next session allowed in " << backoff << " s" << std::endl;
+}
+
+void goby::acomms::iridium::fsm::IridiumDriverFSM::sbd_traffic_management(
+    std::chrono::seconds remaining)
+{
+    auto tm_end = goby::time::SteadyClock::now() + remaining;
+    if (tm_end > sbd_blocked_until_)
+    {
+        sbd_blocked_until_ = tm_end;
+        sbd_block_reason_ = SBDBlockReason::TRAFFIC_MANAGEMENT;
+    }
+
+    glog.is(WARN) && glog << group("iridiumdriver") << "SBD traffic management active for "
+                          << remaining.count() << " s; no SBD sessions until it ends" << std::endl;
+}
+
+void goby::acomms::iridium::fsm::IridiumDriverFSM::parse_sbdloe(const std::string& sbdloe)
+{
+    // +SBDLOE:<status>,<time>
+    auto colon_pos = sbdloe.find(':');
+    auto comma_pos = sbdloe.find(',');
+    if (colon_pos == std::string::npos || comma_pos == std::string::npos)
+    {
+        glog.is(WARN) && glog << group("iridiumdriver") << "Invalid +SBDLOE: " << sbdloe
+                              << std::endl;
+        return;
+    }
+
+    enum
+    {
+        SBDLOE_TIME_VALID = 0
+    };
+
+    try
+    {
+        int status = std::stoi(sbdloe.substr(colon_pos + 1, comma_pos - colon_pos - 1));
+        int time = std::stoi(sbdloe.substr(comma_pos + 1));
+
+        if (status != SBDLOE_TIME_VALID)
+            glog.is(DEBUG1) && glog << group("iridiumdriver")
+                                    << "Traffic management time could not be determined"
+                                    << std::endl;
+        else if (time > 0)
+            sbd_traffic_management(std::chrono::seconds(time));
+    }
+    catch (const std::exception& e)
+    {
+        glog.is(WARN) && glog << group("iridiumdriver")
+                              << "Invalid +SBDLOE: could not convert integers: " << sbdloe
+                              << std::endl;
+    }
+}
+
+int goby::acomms::iridium::fsm::IridiumDriverFSM::parse_csq(const std::string& csq)
+{
+    // +CSQ:<rssi>
+    auto colon_pos = csq.find(':');
+    try
+    {
+        if (colon_pos != std::string::npos)
+        {
+            int rssi = std::stoi(csq.substr(colon_pos + 1));
+            ciev_data_.rssi = rssi;
+            return rssi;
+        }
+    }
+    catch (const std::exception& e)
+    {
+    }
+
+    glog.is(WARN) && glog << group("iridiumdriver") << "Invalid +CSQ: " << csq << std::endl;
+    return 0;
+}
+
 void goby::acomms::iridium::fsm::Command::in_state_react(const EvRxSerial& e)
 {
     std::string in = e.line;
@@ -122,6 +219,8 @@ void goby::acomms::iridium::fsm::Command::in_state_react(const EvRxSerial& e)
     static const std::string connect = "CONNECT";
     static const std::string sbdi = "+SBDI";
     static const std::string ciev = "+CIEV";
+    static const std::string csq = "+CSQ:";
+    static const std::string sbdloe = "+SBDLOE:";
 
     if (in == "OK")
     {
@@ -151,6 +250,16 @@ void goby::acomms::iridium::fsm::Command::in_state_react(const EvRxSerial& e)
         post_event(EvAck(in));
         post_event(EvNoCarrier());
     }
+    else if (in == "ERROR" && !at_out().empty() && is_optional_command(at_out().front().second))
+    {
+        // not supported by all modems or firmware versions
+        glog.is(WARN) && glog << group("iridiumdriver") << "AT" << at_out().front().second
+                              << " not supported by modem" << std::endl;
+        const bool sbdloe = at_out().front().second == "+SBDLOE";
+        post_event(EvAck(in));
+        if (sbdloe)
+            post_event(EvSBDTrafficManagementStatus());
+    }
     else if (in == "ERROR")
     {
         post_event(EvReset());
@@ -169,11 +278,20 @@ void goby::acomms::iridium::fsm::Command::in_state_react(const EvRxSerial& e)
     }
     else if (in == "SBDRING")
     {
-        post_event(EvSBDBeginData("", true));
+        post_event(EvSBDCheckSignal(true));
     }
     else if (in.compare(0, ciev.size(), ciev) == 0)
     {
         context<IridiumDriverFSM>().parse_ciev(in);
+    }
+    else if (in.compare(0, csq.size(), csq) == 0)
+    {
+        post_event(EvSBDSignalStrength(context<IridiumDriverFSM>().parse_csq(in)));
+    }
+    else if (in.compare(0, sbdloe.size(), sbdloe) == 0)
+    {
+        context<IridiumDriverFSM>().parse_sbdloe(in);
+        post_event(EvSBDTrafficManagementStatus());
     }
 }
 
@@ -201,23 +319,36 @@ void goby::acomms::iridium::fsm::Command::handle_sbd_rx(const std::string& in)
         glog.is(DEBUG1) && glog << group("iridiumdriver") << "SBD RX Size: " << sbd_rx_size
                                 << std::endl;
 
-        if (sbd_rx_buffer_.size() < (SBD_FIELD_SIZE_BYTES + sbd_rx_size))
+        if (sbd_rx_buffer_.size() < (SBD_FIELD_SIZE_BYTES + sbd_rx_size + SBD_CHECKSUM_BYTES))
         {
             return; // keep building up message
         }
         else
         {
             std::string sbd_rx_data = sbd_rx_buffer_.substr(SBD_FIELD_SIZE_BYTES, sbd_rx_size);
-            std::string bytes;
-            parse_sbd_packet(&bytes, sbd_rx_data);
-            goby::acomms::protobuf::ModemTransmission msg;
-            parse_iridium_modem_message(bytes, &msg);
-            context<IridiumDriverFSM>().received().push_back(msg);
+            const auto csum_pos = SBD_FIELD_SIZE_BYTES + sbd_rx_size;
+            unsigned rx_csum = ((sbd_rx_buffer_[csum_pos] & 0xff) << SBD_BITS_IN_BYTE) |
+                               (sbd_rx_buffer_[csum_pos + 1] & 0xff);
+
+            if (rx_csum != (sbd_csum(sbd_rx_data) & 0xFFFF))
+            {
+                glog.is(WARN) && glog << group("iridiumdriver")
+                                      << "Discarding SBD message with invalid +SBDRB checksum"
+                                      << std::endl;
+            }
+            else
+            {
+                std::string bytes;
+                parse_sbd_packet(&bytes, sbd_rx_data);
+                goby::acomms::protobuf::ModemTransmission msg;
+                parse_iridium_modem_message(bytes, &msg);
+                context<IridiumDriverFSM>().received().push_back(msg);
+            }
             at_out().pop_front();
 
             post_event(EvSBDReceiveComplete());
 
-            // clear out the checksum
+            // so the "OK" that follows has a command to clear
             push_at_command("");
         }
     }
@@ -243,14 +374,28 @@ void goby::acomms::iridium::fsm::Command::in_state_react(const EvTxSerial&)
         }
 
         static const std::string sbdi = "+SBDI";
-        if (at_out_.front().second.compare(0, sbdi.size(), sbdi) == 0)
-            timeout = SBDIX_TIMEOUT_SECONDS;
-
-        if (at_out_.front().second == "+SBDRB")
-            clear_sbd_rx_buffer();
+        const bool is_sbd_session = at_out_.front().second.compare(0, sbdi.size(), sbdi) == 0;
+        if (is_sbd_session)
+            timeout = sbd_session_timeout_seconds(context<IridiumDriverFSM>().iridium_driver_cfg());
+        else if (at_out_.front().second == "+CSQ")
+            timeout = CSQ_TIMEOUT_SECONDS;
+        else if (at_out_.front().second == "+SBDLOE")
+            timeout = SBDLOE_TIMEOUT_SECONDS;
+        else if (at_out_.front().second == "*F")
+            timeout = FLUSH_EEPROM_TIMEOUT_SECONDS;
 
         if ((at_out_.front().first.last_send_time_ + timeout) < now)
         {
+            // resending would start another SBD session without any back-off
+            if (is_sbd_session && at_out_.front().first.tries_ > 0)
+            {
+                at_out_.pop_front();
+                post_event(EvSBDSessionTimeout());
+                if (at_out_.empty())
+                    post_event(EvAtEmpty());
+                return;
+            }
+
             std::string at_command;
             if (at_out_.front().second != "+++")
                 at_command = "AT" + at_out_.front().second + "\r";
@@ -262,10 +407,15 @@ void goby::acomms::iridium::fsm::Command::in_state_react(const EvTxSerial&)
                 glog.is(DEBUG1) && glog << group("iridiumdriver") << warn
                                         << "No valid response after " << RETRIES_BEFORE_RESET
                                         << " tries. Resetting state machine" << std::endl;
+                context<IridiumDriverFSM>().set_modem_not_responding(true);
                 post_event(EvReset());
             }
             else
             {
+                // only on (re)send, as the reply may arrive over several do_work() calls
+                if (at_out_.front().second == "+SBDRB")
+                    clear_sbd_rx_buffer();
+
                 context<IridiumDriverFSM>().serial_tx_buffer().push_back(at_command);
                 at_out_.front().first.last_send_time_ = now;
             }
@@ -303,9 +453,25 @@ void goby::acomms::iridium::fsm::Command::in_state_react(const EvAck& e)
                     push_at_command("AT"); // this is so the "OK" will have something to clear
                 }
                 return; // all followed by "OK" which will clear the sentence
-            case '1': return;
-            case '2': return;
-            case '3': return;
+            case '1':
+            case '2':
+            case '3':
+            {
+                const int result = e.response_[0] - '0';
+                if (!at_out().empty() && at_out().front().second == "+SBDD2")
+                {
+                    post_event(EvSBDSendBufferClearFailed());
+                }
+                else if (at_out().empty() && state_downcast<const SBDWrite*>() != nullptr)
+                {
+                    post_event(EvSBDWriteFailed(result));
+                    // +SBDWB result 1 (timeout) is the only one not followed by "OK"
+                    const int sbdwb_timeout = 1;
+                    if (result != sbdwb_timeout)
+                        push_at_command("AT");
+                }
+                return;
+            }
             default: break;
         }
     }
