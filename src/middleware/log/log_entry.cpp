@@ -168,9 +168,9 @@ void LogEntry::parse(std::istream* s)
         try
         {
             data_.resize(data_size);
-            s->read(reinterpret_cast<char*>(&data_[0]), data_size);
+            s->read(reinterpret_cast<char*>(data_.data()), data_size);
 
-            crc.process_bytes(&data_[0], data_.size());
+            crc.process_bytes(data_.data(), data_.size());
 
             auto calculated_crc = crc.checksum();
             auto given_crc(read_one<uint<crc_bytes_>::type>(s));
@@ -364,7 +364,7 @@ void LogEntry::serialize(std::ostream* s) const
     auto type_index = types_[scheme_mapping].left.at(type_);
 
     // insert actual data
-    _serialize(s, scheme_, group_index, type_index, reinterpret_cast<const char*>(&data_[0]),
+    _serialize(s, scheme_, group_index, type_index, reinterpret_cast<const char*>(data_.data()),
                data_.size());
 
     s->exceptions(old_except_mask);

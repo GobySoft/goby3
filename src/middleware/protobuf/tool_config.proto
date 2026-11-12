@@ -60,6 +60,13 @@ message PublishToolConfig
         description: "Load this shared library containing compiled Protobuf/DCCL messages.",
         cfg { cli_short: "l" env: "GOBY_TOOL_LOAD_SHARED_LIBRARY" }
     }];
+
+    optional double settle_seconds = 30 [
+        default = 0,
+        (goby.field) = {
+            description: "Seconds to wait before publishing, so that a transport still discovering its peers delivers the message"
+        }
+    ];
 }
 
 message SubscribeToolConfig

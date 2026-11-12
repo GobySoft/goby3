@@ -215,6 +215,7 @@ install(
 unset(GOBY_CORE_LIBRARY_LIST CACHE)
 unset(GOBY_MOOS_LIBRARY_LIST CACHE)
 unset(GOBY_ZEROMQ_LIBRARY_LIST CACHE)
+unset(GOBY_ZENOH_LIBRARY_LIST CACHE)
 
 ## start adding subdirectories
 ## Python bindings
@@ -271,6 +272,7 @@ file(GLOB_RECURSE INCLUDE_FILES RELATIVE ${goby_SRC_DIR}
   src/protobuf/*.h
   src/zeromq/*.h
   src/udpm/*.h
+  src/zenoh/*.h
   )
 
 file(GLOB_RECURSE PROTOBUF_FILES RELATIVE ${goby_SRC_DIR}
@@ -302,6 +304,8 @@ write_basic_package_version_file(${CMAKE_BINARY_DIR}/goby-config-version.cmake
                                  COMPATIBILITY SameMajorVersion )
                                
 install(EXPORT goby_core-config DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/goby)
+# lets goby-config.cmake find the installed 'goby' from its own location
+file(RELATIVE_PATH GOBY_CONFIG_TO_BINDIR ${CMAKE_INSTALL_FULL_LIBDIR}/cmake/goby ${CMAKE_INSTALL_FULL_BINDIR})
 configure_file(${goby_SRC_DIR}/goby-config.cmake.in ${CMAKE_BINARY_DIR}/goby-config.cmake @ONLY)
 install(FILES ${CMAKE_BINARY_DIR}/goby-config.cmake ${CMAKE_BINARY_DIR}/goby-config-version.cmake 
   DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/goby)

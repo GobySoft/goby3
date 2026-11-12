@@ -13,6 +13,23 @@ if(zeromq_built)
   endif()
 endif()
 
+set(zenoh_built @build_zenoh@)
+if(zenoh_built AND "zenoh" IN_LIST GOBY_FIND_COMPONENTS
+    AND EXISTS ${CMAKE_CURRENT_LIST_DIR}/goby_zenoh-config.cmake)
+  # goby_zenoh links Zenoh's imported targets, which must exist before the export file that
+  # references them is included below. Not find_dependency(): it would fail all of Goby even when
+  # zenoh is only an optional component.
+  find_package(zenohc QUIET)
+  find_package(zenohcxx QUIET)
+  if(NOT (zenohc_FOUND AND zenohcxx_FOUND))
+    if(GOBY_FIND_REQUIRED_zenoh)
+      message(FATAL_ERROR "goby_zenoh requires Zenoh (zenohc and zenohcxx), which was not found.")
+    endif()
+    list(REMOVE_ITEM GOBY_FIND_COMPONENTS zenoh)
+    set(GOBY_zenoh_FOUND 0)
+  endif()
+endif()
+
 foreach(component ${GOBY_FIND_COMPONENTS})
   if(EXISTS ${CMAKE_CURRENT_LIST_DIR}/goby_${component}-config.cmake)
     include(${CMAKE_CURRENT_LIST_DIR}/goby_${component}-config.cmake)
@@ -38,6 +55,16 @@ find_dependency(Protobuf)
 endif()
 
 get_target_property(GOBY_INCLUDE_DIR goby INTERFACE_INCLUDE_DIRECTORIES)
+
+# the 'goby' command line tool from this same build or installation, if its applications were built
+if(EXISTS ${CMAKE_CURRENT_LIST_DIR}/bin/goby)
+  set(GOBY_EXECUTABLE ${CMAKE_CURRENT_LIST_DIR}/bin/goby)
+else()
+  get_filename_component(GOBY_EXECUTABLE ${CMAKE_CURRENT_LIST_DIR}/@GOBY_CONFIG_TO_BINDIR@/goby ABSOLUTE)
+  if(NOT EXISTS ${GOBY_EXECUTABLE})
+    unset(GOBY_EXECUTABLE)
+  endif()
+endif()
 
 # so that a consumer can include(GobyJulia), which defines targets and so is not automatic
 list(APPEND CMAKE_MODULE_PATH ${CMAKE_CURRENT_LIST_DIR})

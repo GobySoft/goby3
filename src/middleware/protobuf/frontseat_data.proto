@@ -57,6 +57,8 @@ message DesiredCourse
 
     optional double z_rate = 7
         [default = 0, (dccl.field).units.derived_dimensions = "length/time"];
+    // deliberately non-zero: if read without has_altitude(), 10 m off the bottom is safer
+    // than 0 (or NaN)
     optional double altitude = 8
         [default = 10, (dccl.field).units.derived_dimensions = "length"];
 
