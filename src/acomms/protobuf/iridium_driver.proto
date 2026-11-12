@@ -34,6 +34,15 @@ message Config
     optional bool enable_sbdring_automatic_registration = 13 [default = true];
 
     optional DeviceType device = 14 [default = DEVICE_VOICE_ENABLED_ISU];
+
+    // +CSQ bars required to start an SBD session
+    optional int32 sbd_min_signal_strength = 15 [default = 2];
+    // after a failed SBD session, wait this long (doubling on each consecutive
+    // failure, up to sbd_retry_backoff_max) before starting another
+    optional int32 sbd_retry_backoff_initial = 16 [default = 60];  // seconds
+    optional int32 sbd_retry_backoff_max = 17 [default = 600];     // seconds
+    // each back-off is extended by a random [0, fraction) of itself
+    optional double sbd_retry_jitter_fraction = 18 [default = 0.25];
 }
 
 extend goby.acomms.protobuf.DriverConfig
