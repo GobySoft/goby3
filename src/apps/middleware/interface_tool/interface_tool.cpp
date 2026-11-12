@@ -21,6 +21,9 @@
 // You should have received a copy of the GNU General Public License
 // along with Goby.  If not, see <http://www.gnu.org/licenses/>.
 
+#include <cerrno>
+#include <cstdlib>
+#include <cstring>
 #include <fstream>
 #include <iostream>
 #include <sstream>
@@ -85,6 +88,12 @@ void write_output(const std::string& out, const std::string& output_file)
     else
     {
         std::ofstream fout(output_file);
+        if (!fout.is_open())
+        {
+            std::cerr << "cannot write " << output_file << ": " << std::strerror(errno)
+                      << std::endl;
+            std::exit(2);
+        }
         fout << out;
     }
 }
