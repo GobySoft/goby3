@@ -38,6 +38,7 @@ namespace groups
 {
 constexpr goby::middleware::Group status{"dynamic_test::status"};
 constexpr goby::middleware::Group command{"dynamic_test::command"};
+constexpr goby::middleware::Group plain{"dynamic_test::plain"};
 constexpr std::uint32_t fleet_base{100};
 } // namespace groups
 
@@ -73,6 +74,8 @@ class DynamicGroups : public goby::udpm::SingleThreadApplication<DynamicGroupsCo
         // static groups whose numerics are constant expressions, not literals
         interprocess().publish<groups::broadcast>(status);
         interprocess().publish<groups::fleet>(status);
+        // and one without a numeric
+        interprocess().publish<groups::plain>(status);
 
         // a smart pointer set above
         interprocess()
