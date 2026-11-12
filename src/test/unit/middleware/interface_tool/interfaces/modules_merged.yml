@@ -1,0 +1,10 @@
+# modules.yml with payload moved into the vehicle module, so its nav::depth reaches controller
+deployment: modules
+platforms:
+  - name: auv
+    modules:
+      - name: vehicle
+        interfaces:
+          - nav_driver_interface.yml
+          - controller_interface.yml
+          - payload_interface.yml
