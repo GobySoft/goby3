@@ -146,6 +146,7 @@ class ModemDriverThread : public goby::middleware::Thread<
     int tx_queue_size() { return buffer_.size(); }
 
   private:
+    void finalize() override;
     void _data_request(goby::acomms::protobuf::ModemTransmission* msg);
     void _buffer_message(
         const std::shared_ptr<const goby::middleware::protobuf::SerializerTransporterMessage>& msg);

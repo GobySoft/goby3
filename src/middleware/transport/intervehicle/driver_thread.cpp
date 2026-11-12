@@ -397,6 +397,27 @@ bool goby::middleware::intervehicle::ModemDriverThread<ImplementationTag>::_rest
 }
 
 template <typename ImplementationTag>
+void goby::middleware::intervehicle::ModemDriverThread<ImplementationTag>::finalize()
+{
+    if (!driver_started_ || !this->cfg().shutdown_driver_on_exit())
+        return;
+
+    goby::glog.is_debug1() && goby::glog << group(glog_group_) << "Shutting down driver"
+                                         << std::endl;
+    try
+    {
+        driver_->shutdown();
+    }
+    catch (const goby::acomms::ModemDriverException& e)
+    {
+        goby::glog.is_warn() && goby::glog << group(glog_group_)
+                                           << "Driver failed to shut down: " << e.what()
+                                           << std::endl;
+    }
+    driver_started_ = false;
+}
+
+template <typename ImplementationTag>
 void goby::middleware::intervehicle::ModemDriverThread<ImplementationTag>::_publish_modem_report()
 {
     protobuf::ModemReportWithLinkID report_with_id;

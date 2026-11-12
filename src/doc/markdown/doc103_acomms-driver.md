@@ -430,7 +430,7 @@ The driver follows the Iridium SBD best practices for starting SBD sessions (`+S
 - When a session receives an MT message and reports more MT messages queued at the gateway, the driver retrieves them straight away with further sessions (mailbox checks, if there is no other data).
 - `sbd_min_session_interval` (default 0, off) sets a minimum time from one session to the next session started by the MAC. Iridium recommends 60 s for applications that send frequently.
 - `+SBDST` is set to `sbd_session_timeout` (default 50 s) at startup, so a stalled session ends with MO status 17 and the usual back-off.
-- On shutdown the driver waits for an SBD session in progress to finish. If `flush_eeprom_on_shutdown` is true (default false), it then sends `AT*F` so that the modem's power can be removed safely; the modem stops responding to commands until it is power cycled.
+- On shutdown the driver waits for an SBD session in progress to finish before it hangs up (with `use_dtr`, by dropping DTR), then waits for any call to end. If `flush_eeprom_on_shutdown` is true (default false), it then sends `AT*F` so that the modem's power can be removed safely; the modem stops responding to commands until it is power cycled.
 - Transmissions that would start a session while it is blocked are skipped and the data remains queued. Data that was sent in a failed session is not resent by the driver; use `ack_requested` for reliable delivery.
 
 ![SBD session states](images/iridium_sbd_session.svg)

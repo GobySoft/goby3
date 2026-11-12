@@ -787,9 +787,11 @@ class InterVehiclePortal
 
     ~InterVehiclePortal()
     {
+        // stop every link before joining any, so their drivers shut down in parallel
+        for (auto& modem_driver_data : modem_drivers_)
+            modem_driver_data->driver_thread_alive = false;
         for (auto& modem_driver_data : modem_drivers_)
         {
-            modem_driver_data->driver_thread_alive = false;
             if (modem_driver_data->underlying_thread)
                 modem_driver_data->underlying_thread->join();
         }

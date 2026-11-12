@@ -248,17 +248,18 @@ void goby::acomms::IridiumDriver::shutdown(bool flush_eeprom)
     sbd_data_request_.reset();
     sbd_acks_.clear();
 
-    hangup();
-
-    auto busy = [this]()
+    auto sbd_session_in_progress = [this]()
     {
-        const bool sbd_session_in_progress =
-            fsm_.state_cast<const iridium::fsm::SBD*>() != nullptr &&
-            fsm_.state_cast<const iridium::fsm::SBDReady*>() == nullptr;
+        return fsm_.state_cast<const iridium::fsm::SBD*>() != nullptr &&
+               fsm_.state_cast<const iridium::fsm::SBDReady*>() == nullptr;
+    };
+
+    auto busy = [this, &sbd_session_in_progress]()
+    {
         return fsm_.state_cast<const iridium::fsm::Online*>() != nullptr ||
                fsm_.state_cast<const iridium::fsm::HangingUp*>() != nullptr ||
                fsm_.state_cast<const iridium::fsm::PostDisconnected*>() != nullptr ||
-               sbd_session_in_progress;
+               sbd_session_in_progress();
     };
 
     auto wait_while = [this](const auto& condition, int max_seconds)
@@ -271,8 +272,14 @@ void goby::acomms::IridiumDriver::shutdown(bool flush_eeprom)
         }
     };
 
-    wait_while(busy, iridium::fsm::Command::sbd_session_timeout_seconds(iridium_driver_cfg()) +
-                         SHUTDOWN_WAIT_MARGIN_SECONDS);
+    const int max_wait_seconds =
+        iridium::fsm::Command::sbd_session_timeout_seconds(iridium_driver_cfg()) +
+        SHUTDOWN_WAIT_MARGIN_SECONDS;
+
+    // hanging up with DTR (&D2) would abort an SBD session in progress
+    wait_while(sbd_session_in_progress, max_wait_seconds);
+    hangup();
+    wait_while(busy, max_wait_seconds);
 
     if (flush_eeprom)
     {

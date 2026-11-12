@@ -56,6 +56,7 @@
 #include <chrono>
 #include <iostream>
 #include <map>
+#include <memory>
 #include <mutex>
 #include <set>
 #include <string>
@@ -103,11 +104,20 @@ class MockModem
     // while unplugged, connections are refused and any open one is dropped
     std::atomic<bool> unplugged{false};
     std::atomic<int> connections{0};
+    // a non-zero delay holds back the +SBDIX reply, as a satellite session in progress does
+    std::atomic<int> sbdix_delay_ms{0};
+    std::atomic<int> sbdix_received{0};
+    std::atomic<int> sbdix_answered{0};
 
   private:
     void listen_on(int port)
     {
         listen_fd_ = ::socket(AF_INET, SOCK_STREAM, 0);
+        if (listen_fd_ < 0)
+        {
+            std::cerr << "FAIL: mock modem could not create a socket" << std::endl;
+            exit(EXIT_FAILURE);
+        }
         int one = 1;
         ::setsockopt(listen_fd_, SOL_SOCKET, SO_REUSEADDR, &one, sizeof(one));
         sockaddr_in addr{};
@@ -191,7 +201,12 @@ class MockModem
         else if (cmd == "+SBDD2")
             reply = "0\r\nOK\r\n";
         else if (cmd == "+SBDIX" || cmd == "+SBDIXA")
+        {
+            ++sbdix_received;
+            std::this_thread::sleep_for(std::chrono::milliseconds(sbdix_delay_ms));
             reply = cmd + ": 0, 1, 0, 0, 0, 0\r\nOK\r\n";
+            ++sbdix_answered;
+        }
         else
             reply = "OK\r\n";
 
@@ -321,7 +336,9 @@ int main(int argc, char* argv[])
             });
 
         // before the fix, this either aborted the process or never returned
-        goby::middleware::InterVehiclePortal<decltype(zmq)> intervehicle(zmq, portal_cfg);
+        auto portal =
+            std::make_unique<goby::middleware::InterVehiclePortal<decltype(zmq)>>(zmq, portal_cfg);
+        auto& intervehicle = *portal;
         std::cout << "Portal constructed with the Iridium modem silent" << std::endl;
 
         wait_for_report(intervehicle, udp_modem_id, ModemDriverStatus::NOMINAL, 10, "Step 1");
@@ -386,6 +403,36 @@ int main(int argc, char* argv[])
         if (modem.connections <= connections_before_replug)
         {
             std::cerr << "FAIL (Step 6): NOMINAL without a new driver connection" << std::endl;
+            exit(EXIT_FAILURE);
+        }
+
+        // Step 7: the portal exits during an SBD session (a mailbox check, as the slot has no
+        // data). With shutdown_driver_on_exit (the default) the driver waits for the +SBDIX
+        // result before the portal finishes exiting.
+        const int sbdix_delay_ms = 4000;
+        modem.sbdix_delay_ms = sbdix_delay_ms;
+        const int sbdix_before = modem.sbdix_received;
+        auto session_deadline = Clock::now() + std::chrono::seconds(30);
+        while (modem.sbdix_received == sbdix_before)
+        {
+            if (Clock::now() > session_deadline)
+            {
+                std::cerr << "FAIL (Step 7): no SBD session started" << std::endl;
+                exit(EXIT_FAILURE);
+            }
+            intervehicle.poll(std::chrono::milliseconds(10));
+        }
+        const auto exit_start = Clock::now();
+        portal.reset();
+        const double exit_seconds =
+            std::chrono::duration<double>(Clock::now() - exit_start).count();
+        std::cout << "Step 7: portal exited " << exit_seconds << " s after +SBDIX was sent"
+                  << std::endl;
+        if (modem.sbdix_answered != modem.sbdix_received ||
+            exit_seconds < 0.5 * sbdix_delay_ms / 1000.0)
+        {
+            std::cerr << "FAIL (Step 7): portal exited before the SBD session finished"
+                      << std::endl;
             exit(EXIT_FAILURE);
         }
     }
