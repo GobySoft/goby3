@@ -151,7 +151,7 @@ check 2 goby interface diff fleet.yml no_such_deployment.yml
 check 0 goby interface init "$dir/interfaces" --platform auv --output_file "$work/init.yml"
 grep -q "^      - nav_driver$" "$work/init.yml" || { echo "FAILED: init did not list nav_driver"; fail=1; }
 check 1 goby interface validate "$work/init.yml" -I "$dir/interfaces"
-expect_output "9 applications"
+expect_output "10 applications"
 check 1 goby interface init "$dir/deployments"
 
 check 1 goby interface visualize missing_interface.yml

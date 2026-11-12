@@ -1,0 +1,12 @@
+application: sampler
+interprocess:
+  publishes:
+    - group: nav::samples
+      scheme: CXX_OBJECT
+      type: std::vector<nav::Sample>
+      thread: nav::Sampler<class nav::Filter>
+  subscribes:
+    - group: nav::samples
+      scheme: CXX_OBJECT
+      type: std::vector<nav::Sample>
+      thread: nav::Sampler<class nav::Filter>
