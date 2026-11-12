@@ -98,6 +98,8 @@ The InterVehiclePortal is configured using a goby::middleware::intervehicle::pro
 
 By default, a link whose modem driver throws a `ModemDriverException`, at startup or while running, terminates the portal. If the link sets `restart_on_failure`, the portal keeps running its other links, discards the failed driver and starts a new one after `restart_on_failure.interval` (default 60 s), repeating until one starts. Until then the link publishes a `ModemReport` on `goby::middleware::intervehicle::groups::modem_report` with `link_state: LINK_NOT_AVAILABLE` and `driver_status` set to the reason (e.g. `STARTUP_FAILED`, `CONNECTION_TO_MODEM_FAILED`). A driver that reports a problem without throwing, such as the Iridium driver's `MODEM_NOT_RESPONDING`, is left running.
 
+When the portal exits, it calls each running driver's `shutdown()` so that the driver can finish what is in progress, such as an Iridium SBD session, before the modem is released. The links shut down in parallel. Set `shutdown_driver_on_exit: false` on a link to skip this. A driver discarded by `restart_on_failure` is not shut down, as it would talk to the modem that just failed.
+
 Each link on the InterVehiclePortal has an 15-bit modem id (roughly similar to an IP address) and a 15-bit subnet mask. The logical AND of the modem id and the subnet mask provides the given subnet. Each link should be on its own logical subnet. The 0 address on a given subnet is used as broadcast.
 
 For example, using a subnet mask of 0xFFF0 provides subnets with 16 addresses each:
