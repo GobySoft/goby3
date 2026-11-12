@@ -81,6 +81,7 @@ class D2Writer
           resolution_(resolution),
           params_(params),
           filter_(params.filter),
+          view_(deployment, resolution, filter_, params.omit_disconnected),
           indexer_(deployment.indexer)
     {
     }
@@ -141,12 +142,12 @@ class D2Writer
         return ids_[key] = unique;
     }
 
+    // a collapsed application is one shape, whichever of its threads an entry names
     std::string path(const Endpoint& at, const std::string& thread)
     {
-        std::string p = id("", at.platform->name);
-        if (at.platform->has_modules())
-            p += "." + id(p, at.module->name);
-        auto app = p + "." + id(p, at.application->name);
+        auto app = app_path(at);
+        if (view_.collapsed(*at.application))
+            return app;
         threads_[app].insert(thread);
         return app + "." + id(app, thread);
     }
@@ -187,7 +188,7 @@ class D2Writer
     {
         for (const auto& c : resolution_.connections)
         {
-            if (!filter_.is_included(c))
+            if (!view_.drawn(c))
                 continue;
             edges_.push_back({path(c.pub_at, c.pub.thread), path(c.sub_at, c.sub.thread), c.pub,
                               edge_classes(c.sub, c.pub.dynamic || c.sub.dynamic || c.loose)});
@@ -195,7 +196,7 @@ class D2Writer
 
         for (const auto& u : resolution_.unsubscribed)
         {
-            if (params_.omit_disconnected || u.entry.is_inner_pub || !filter_.is_included(u))
+            if (!view_.drawn_unsubscribed(u))
                 continue;
             auto app = app_path(u.at);
             auto placeholder = placeholder_id(app, false);
@@ -208,9 +209,9 @@ class D2Writer
 
         for (const auto& u : resolution_.unpublished)
         {
-            bool required = u.entry.necessity == goby::middleware::Necessity::REQUIRED;
-            if ((params_.omit_disconnected && !required) || !filter_.is_included(u))
+            if (!view_.drawn_unpublished(u))
                 continue;
+            bool required = u.entry.necessity == goby::middleware::Necessity::REQUIRED;
             auto app = app_path(u.at);
             auto placeholder = placeholder_id(app, true);
             PubSubEntry placeholder_pub = u.entry;
@@ -272,7 +273,10 @@ class D2Writer
                 continue;
             auto platform_id = id("", platform.name);
             os_ << platform_id << ": {\n  class: platform\n";
-            label("  ", platform_id, platform.name);
+            label("  ", platform_id,
+                  platform.has_modules()
+                      ? platform.name
+                      : view_.container_label(platform.name, platform.modules.front()));
 
             for (const auto& module : platform.modules)
             {
@@ -284,7 +288,7 @@ class D2Writer
                         continue;
                     auto module_id = id(platform_id, module.name);
                     os_ << indent << module_id << ": {\n" << indent << "  class: module\n";
-                    label(indent + "  ", module_id, module.name);
+                    label(indent + "  ", module_id, view_.container_label(module.name, module));
                     parent += "." + module_id;
                     indent += "  ";
                 }
@@ -292,12 +296,18 @@ class D2Writer
                 for (const auto& app_p : module.applications)
                 {
                     const auto& app = app_p.second;
-                    if (!filter_.is_node_included(app.name))
+                    if (!filter_.is_node_included(app.name) || view_.folded(app))
                         continue;
                     auto app_id = id(parent, app.name);
                     auto app_path = parent + "." + app_id;
                     os_ << indent << app_id << ": {\n" << indent << "  class: application\n";
                     label(indent + "  ", app_id, app.name);
+                    if (view_.collapsed(app))
+                    {
+                        auto tooltip = pubs_tooltip(app_path);
+                        if (!tooltip.empty())
+                            os_ << indent << "  tooltip: " << d2_quoted(tooltip) << "\n";
+                    }
 
                     // drawn threads (a base class is drawn as its most derived class), and any
                     // thread an edge names
@@ -305,8 +315,7 @@ class D2Writer
                     for (const auto& thread_p : app.threads)
                     {
                         const auto& thread = *thread_p.second;
-                        if (filter_.is_node_included(thread.most_derived_name()) &&
-                            filter_.is_thread_included(app, thread))
+                        if (!view_.collapsed(app) && view_.thread_drawn(app, thread))
                             threads[thread.most_derived_name()] = thread.known;
                     }
                     for (const auto& thread : threads_[app_path]) threads.emplace(thread, true);
@@ -331,25 +340,32 @@ class D2Writer
                       const std::string& thread, bool known)
     {
         auto thread_id = id(app_path, thread);
+        auto display = display_thread_name(thread);
         os_ << indent << thread_id << ": { class: thread";
-        if (thread_id != thread)
-            os_ << "; label: " << d2_quoted(thread);
+        if (thread_id != display)
+            os_ << "; label: " << d2_quoted(display);
         if (!known)
             os_ << "; style.stroke-dash: 3";
 
-        const auto& pubs = pubs_by_thread_[app_path + "." + thread_id];
-        if (!pubs.empty())
-        {
-            std::string tooltip;
-            for (const auto& p : pubs)
-            {
-                const auto& pub = std::get<2>(p);
-                tooltip += (tooltip.empty() ? "" : "\n") + pub.publish_index_str() + ": " +
-                           pub.display_group() + " | " + pub.scheme + " | " + pub.type;
-            }
+        auto tooltip = pubs_tooltip(app_path + "." + thread_id);
+        if (display != thread)
+            tooltip = thread + (tooltip.empty() ? "" : "\n") + tooltip;
+        if (!tooltip.empty())
             os_ << "; tooltip: " << d2_quoted(tooltip);
-        }
         os_ << " }\n";
+    }
+
+    // the publications drawn from a shape, one per line
+    std::string pubs_tooltip(const std::string& path)
+    {
+        std::string tooltip;
+        for (const auto& p : pubs_by_thread_[path])
+        {
+            const auto& pub = std::get<2>(p);
+            tooltip += (tooltip.empty() ? "" : "\n") + pub.publish_index_str() + ": " +
+                       pub.display_group() + " | " + pub.scheme + " | " + pub.type;
+        }
+        return tooltip;
     }
 
     void write_edges()
@@ -382,6 +398,7 @@ class D2Writer
     const Resolution& resolution_;
     const D2Params& params_;
     ViewFilter filter_;
+    DiagramView view_;
     PublishIndexer indexer_;
 
     std::map<std::string, std::string> ids_;

@@ -1,0 +1,10 @@
+# Goby's own applications beside a project's: gobyd is folded into its platform and goby_coroner
+# drawn as one box, unless --expand_goby_apps (real interface files from Goby, in goby/)
+deployment: goby_apps
+platforms:
+  - name: auv
+    run:
+      - { application: gobyd, file: goby/gobyd_interface.yml }
+      - nav_driver
+      - controller
+      - { application: goby_coroner, file: goby/goby_coroner_interface.yml }

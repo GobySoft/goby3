@@ -1,0 +1,91 @@
+digraph goby_apps { 
+	splines=ortho
+	newrank=true
+	subgraph cluster_0 {
+		label=<<b>auv</b>>
+		fontcolor="#006400"
+		penwidth=2
+		pencolor="#00640020"
+		subgraph cluster_1 {
+			label=<<b>controller</b>>
+			fontcolor="#104e8b"
+			penwidth=2
+			pencolor="#104e8b20"
+			auv_nomodule_controller_Controller[penwidth=2,color="#551a8b20"]
+		}
+		auv_nomodule_controller_Controller->auv_nomodule_nav_driver_nav_58__58_Driver[fontsize=7,headlabel="P5",taillabel="P5",xlabel=<P5[command]>,color="#104e8b",style=tapered,tooltip="P5: nav::command | PROTOBUF | nav::protobuf::Command",labeltooltip="P5: nav::command | PROTOBUF | nav::protobuf::Command",headtooltip="P5: nav::command | PROTOBUF | nav::protobuf::Command",penwidth=0.5,arrowhead=vee,arrowsize=0.3]
+		subgraph cluster_2 {
+			label=<<b>goby_coroner</b>>
+			fontcolor="#104e8b"
+			penwidth=2
+			pencolor="#104e8b20"
+			auv_nomodule_goby_coroner_goby_58__58_apps_58__58_zeromq_58__58_Coroner[penwidth=2,color="#551a8b20"]
+		}
+		subgraph cluster_3 {
+			label=<<b>gobyd</b>>
+			fontcolor="#104e8b"
+			penwidth=2
+			pencolor="#104e8b20"
+			auv_nomodule_gobyd__40_lambda_32_at_32__47_usr_47_include_47_goby_47_middleware_47_coroner_47_coroner_46_h_58_64_58_13_41_[penwidth=2,color="#551a8b20"]
+			auv_nomodule_gobyd__40_lambda_32_at_32__47_usr_47_include_47_goby_47_middleware_47_terminate_47_terminate_46_h_58_85_58_17_41_[penwidth=2,color="#551a8b20"]
+			auv_nomodule_gobyd__40_lambda_32_at_32__47_usr_47_include_47_goby_47_middleware_47_transport_47_intervehicle_46_h_58_847_58_37_41__no_subscribers__35_551a8b [label="",style=invis] 
+auv_nomodule_gobyd__40_lambda_32_at_32__47_usr_47_include_47_goby_47_middleware_47_transport_47_intervehicle_46_h_58_847_58_37_41_->auv_nomodule_gobyd__40_lambda_32_at_32__47_usr_47_include_47_goby_47_middleware_47_transport_47_intervehicle_46_h_58_847_58_37_41__no_subscribers__35_551a8b[fontsize=7,headlabel="T2",taillabel="T2",xlabel=<T2[modem_subscription_forward_rx]>,color="#551a8b",style=solid,tooltip="T2: goby::middleware::intervehicle::modem_subscription_forward_rx | PROTOBUF | goby::middleware::intervehicle::protobuf::Subscription",labeltooltip="T2: goby::middleware::intervehicle::modem_subscription_forward_rx | PROTOBUF | goby::middleware::intervehicle::protobuf::Subscription",headtooltip="T2: goby::middleware::intervehicle::modem_subscription_forward_rx | PROTOBUF | goby::middleware::intervehicle::protobuf::Subscription",penwidth=0.5,arrowhead=vee,arrowsize=0.3]
+			auv_nomodule_gobyd__40_lambda_32_at_32__47_usr_47_include_47_goby_47_middleware_47_transport_47_intervehicle_46_h_58_847_58_37_41_[penwidth=2,color="#551a8b20"]
+			auv_nomodule_gobyd_goby_58__58_middleware_58__58_InterVehiclePortal_60_class_32_goby_58__58_zeromq_58__58_InterProcessPortalImplementation_60_class_32_goby_58__58_middleware_58__58_InterThreadTransporter_44__32_goby_58__58_middleware_58__58_InterProcessPortalBase_44__32_struct_32_goby_58__58_zeromq_58__58_detail_58__58_InterProcessTag_62__32__62__no_subscribers__35_551a8b [label="",style=invis] 
+auv_nomodule_gobyd_goby_58__58_middleware_58__58_InterVehiclePortal_60_class_32_goby_58__58_zeromq_58__58_InterProcessPortalImplementation_60_class_32_goby_58__58_middleware_58__58_InterThreadTransporter_44__32_goby_58__58_middleware_58__58_InterProcessPortalBase_44__32_struct_32_goby_58__58_zeromq_58__58_detail_58__58_InterProcessTag_62__32__62_->auv_nomodule_gobyd_goby_58__58_middleware_58__58_InterVehiclePortal_60_class_32_goby_58__58_zeromq_58__58_InterProcessPortalImplementation_60_class_32_goby_58__58_middleware_58__58_InterThreadTransporter_44__32_goby_58__58_middleware_58__58_InterProcessPortalBase_44__32_struct_32_goby_58__58_zeromq_58__58_detail_58__58_InterProcessTag_62__32__62__no_subscribers__35_551a8b[fontsize=7,headlabel="T3",taillabel="T3",xlabel=<T3[modem_subscription_forward_rx]>,color="#551a8b",style=solid,tooltip="T3: goby::middleware::intervehicle::modem_subscription_forward_rx | PROTOBUF | goby::middleware::intervehicle::protobuf::Subscription",labeltooltip="T3: goby::middleware::intervehicle::modem_subscription_forward_rx | PROTOBUF | goby::middleware::intervehicle::protobuf::Subscription",headtooltip="T3: goby::middleware::intervehicle::modem_subscription_forward_rx | PROTOBUF | goby::middleware::intervehicle::protobuf::Subscription",penwidth=0.5,arrowhead=vee,arrowsize=0.3]
+			auv_nomodule_gobyd_goby_58__58_middleware_58__58_InterVehiclePortal_60_class_32_goby_58__58_zeromq_58__58_InterProcessPortalImplementation_60_class_32_goby_58__58_middleware_58__58_InterThreadTransporter_44__32_goby_58__58_middleware_58__58_InterProcessPortalBase_44__32_struct_32_goby_58__58_zeromq_58__58_detail_58__58_InterProcessTag_62__32__62_[penwidth=2,color="#551a8b20"]
+			auv_nomodule_gobyd_goby_58__58_middleware_58__58_coroner_58__58_Application_60_class_32_goby_58__58_apps_58__58_zeromq_58__58_Daemon_62_[penwidth=2,color="#551a8b20"]
+			auv_nomodule_gobyd_goby_58__58_middleware_58__58_terminate_58__58_Application_60_class_32_goby_58__58_apps_58__58_zeromq_58__58_Daemon_62_[penwidth=2,color="#551a8b20"]
+			auv_nomodule_gobyd_unknown[penwidth=2,color="#551a8b20"]
+			auv_nomodule_gobyd_goby_58__58_middleware_58__58_InterVehiclePortal_60_class_32_goby_58__58_zeromq_58__58_InterProcessPortalImplementation_60_class_32_goby_58__58_middleware_58__58_InterThreadTransporter_44__32_goby_58__58_middleware_58__58_InterProcessPortalBase_44__32_struct_32_goby_58__58_zeromq_58__58_detail_58__58_InterProcessTag_62__32__62__no_publishers__35_551a8b  
+auv_nomodule_gobyd_goby_58__58_middleware_58__58_InterVehiclePortal_60_class_32_goby_58__58_zeromq_58__58_InterProcessPortalImplementation_60_class_32_goby_58__58_middleware_58__58_InterThreadTransporter_44__32_goby_58__58_middleware_58__58_InterProcessPortalBase_44__32_struct_32_goby_58__58_zeromq_58__58_detail_58__58_InterProcessTag_62__32__62__no_publishers__35_551a8b->auv_nomodule_gobyd_goby_58__58_middleware_58__58_InterVehiclePortal_60_class_32_goby_58__58_zeromq_58__58_InterProcessPortalImplementation_60_class_32_goby_58__58_middleware_58__58_InterThreadTransporter_44__32_goby_58__58_middleware_58__58_InterProcessPortalBase_44__32_struct_32_goby_58__58_zeromq_58__58_detail_58__58_InterProcessTag_62__32__62_[fontsize=7,headlabel="T11",taillabel="T11",xlabel=<T11[modem_driver_ready]>,color="#551a8b",style=solid,tooltip="T11: goby::middleware::intervehicle::modem_driver_ready | CXX_OBJECT | _Bool",labeltooltip="T11: goby::middleware::intervehicle::modem_driver_ready | CXX_OBJECT | _Bool",headtooltip="T11: goby::middleware::intervehicle::modem_driver_ready | CXX_OBJECT | _Bool",penwidth=0.5,arrowhead=vee,arrowsize=0.3]
+			auv_nomodule_gobyd_goby_58__58_middleware_58__58_InterVehiclePortal_60_class_32_goby_58__58_zeromq_58__58_InterProcessPortalImplementation_60_class_32_goby_58__58_middleware_58__58_InterThreadTransporter_44__32_goby_58__58_middleware_58__58_InterProcessPortalBase_44__32_struct_32_goby_58__58_zeromq_58__58_detail_58__58_InterProcessTag_62__32__62__no_publishers__35_551a8b  
+auv_nomodule_gobyd_goby_58__58_middleware_58__58_InterVehiclePortal_60_class_32_goby_58__58_zeromq_58__58_InterProcessPortalImplementation_60_class_32_goby_58__58_middleware_58__58_InterThreadTransporter_44__32_goby_58__58_middleware_58__58_InterProcessPortalBase_44__32_struct_32_goby_58__58_zeromq_58__58_detail_58__58_InterProcessTag_62__32__62__no_publishers__35_551a8b->auv_nomodule_gobyd_goby_58__58_middleware_58__58_InterVehiclePortal_60_class_32_goby_58__58_zeromq_58__58_InterProcessPortalImplementation_60_class_32_goby_58__58_middleware_58__58_InterThreadTransporter_44__32_goby_58__58_middleware_58__58_InterProcessPortalBase_44__32_struct_32_goby_58__58_zeromq_58__58_detail_58__58_InterProcessTag_62__32__62_[fontsize=7,headlabel="T12",taillabel="T12",xlabel=<T12[subscription_report]>,color="#551a8b",style=solid,tooltip="T12: goby::middleware::intervehicle::subscription_report | CXX_OBJECT | goby::middleware::intervehicle::protobuf::SubscriptionReport",labeltooltip="T12: goby::middleware::intervehicle::subscription_report | CXX_OBJECT | goby::middleware::intervehicle::protobuf::SubscriptionReport",headtooltip="T12: goby::middleware::intervehicle::subscription_report | CXX_OBJECT | goby::middleware::intervehicle::protobuf::SubscriptionReport",penwidth=0.5,arrowhead=vee,arrowsize=0.3]
+		}
+		subgraph cluster_4 {
+			label=<<b>nav_driver</b>>
+			fontcolor="#104e8b"
+			penwidth=2
+			pencolor="#104e8b20"
+			auv_nomodule_nav_driver_nav_58__58_Driver->auv_nomodule_nav_driver_nav_58__58_SerialThread[fontsize=7,headlabel="T4",taillabel="T4",xlabel=<T4[raw_out]>,color="#551a8b",style=solid,tooltip="T4: nav::raw_out | CXX_OBJECT | std::string",labeltooltip="T4: nav::raw_out | CXX_OBJECT | std::string",headtooltip="T4: nav::raw_out | CXX_OBJECT | std::string",penwidth=0.5,arrowhead=vee,arrowsize=0.3]
+			auv_nomodule_nav_driver_nav_58__58_Driver[penwidth=2,color="#551a8b20"]
+			auv_nomodule_nav_driver_nav_58__58_SerialThread->auv_nomodule_nav_driver_nav_58__58_Driver[fontsize=7,headlabel="T5",taillabel="T5",xlabel=<T5[raw_in]>,color="#551a8b",style=solid,tooltip="T5: nav::raw_in | CXX_OBJECT | std::string",labeltooltip="T5: nav::raw_in | CXX_OBJECT | std::string",headtooltip="T5: nav::raw_in | CXX_OBJECT | std::string",penwidth=0.5,arrowhead=vee,arrowsize=0.3]
+			auv_nomodule_nav_driver_nav_58__58_SerialThread[penwidth=2,color="#551a8b20"]
+		}
+		auv_nomodule_nav_driver_nav_58__58_Driver->auv_nomodule_controller_Controller[fontsize=7,headlabel="P2",taillabel="P2",xlabel=<P2[fix]>,color="#104e8b",style=bold,tooltip="P2: nav::fix | PROTOBUF | nav::protobuf::Fix",labeltooltip="P2: nav::fix | PROTOBUF | nav::protobuf::Fix",headtooltip="P2: nav::fix | PROTOBUF | nav::protobuf::Fix",penwidth=0.5,arrowhead=vee,arrowsize=0.3]
+		auv_nomodule_controller_Controller_no_publishers_red  
+auv_nomodule_controller_Controller_no_publishers_red->auv_nomodule_controller_Controller[fontsize=7,headlabel="P11",taillabel="P11",xlabel=<P11[depth]>,color="red",style=bold,tooltip="P11: nav::depth | PROTOBUF | nav::protobuf::Depth",labeltooltip="P11: nav::depth | PROTOBUF | nav::protobuf::Depth",headtooltip="P11: nav::depth | PROTOBUF | nav::protobuf::Depth",penwidth=0.5,arrowhead=vee,arrowsize=0.3]
+		auv_nomodule_controller_Controller_no_publishers__35_cd8500  
+auv_nomodule_controller_Controller_no_publishers__35_cd8500->auv_nomodule_controller_Controller[fontsize=7,headlabel="M0",taillabel="M0",xlabel=<M0[science]>,color="#cd8500",style=solid,tooltip="M0: payload::science | PROTOBUF | payload::protobuf::Science",labeltooltip="M0: payload::science | PROTOBUF | payload::protobuf::Science",headtooltip="M0: payload::science | PROTOBUF | payload::protobuf::Science",penwidth=0.5,arrowhead=vee,arrowsize=0.3]
+	}
+	auv_nomodule_nav_driver_nav_58__58_Driver_no_subscribers__35_006400 [label="",style=invis] 
+auv_nomodule_nav_driver_nav_58__58_Driver->auv_nomodule_nav_driver_nav_58__58_Driver_no_subscribers__35_006400[fontsize=7,headlabel="V0",taillabel="V0",xlabel=<V0[status;1]>,color="#006400",style=solid,tooltip="V0: nav::status;1 | DCCL | nav::protobuf::Status",labeltooltip="V0: nav::status;1 | DCCL | nav::protobuf::Status",headtooltip="V0: nav::status;1 | DCCL | nav::protobuf::Status",penwidth=0.5,arrowhead=vee,arrowsize=0.3]
+	auv_nomodule_controller_Controller
+ [label=<<font color="#551a8b">Controller</font><br/><font color="#104e8b" point-size="10">P5: </font><b><font point-size="10">nav::command</font></b><br/><font point-size="6">PROTOBUF</font><br/><font point-size="8">nav::protobuf::Command</font><br/>>,shape=box,style=solid]
+	auv_nomodule_controller_Controller_no_publishers__35_cd8500
+ [label=<<font color="#cd8500" point-size="10">M0: </font><b><font point-size="10">payload::science</font></b><br/><font point-size="6">PROTOBUF</font><br/><font point-size="8">payload::protobuf::Science</font><br/>>,penwidth=0]
+	auv_nomodule_controller_Controller_no_publishers_red
+ [label=<<font color="#104e8b" point-size="10">P11: </font><b><font point-size="10">nav::depth</font></b><br/><font point-size="6">PROTOBUF</font><br/><font point-size="8">nav::protobuf::Depth</font><br/>>,penwidth=0]
+	auv_nomodule_goby_coroner_goby_58__58_apps_58__58_zeromq_58__58_Coroner
+ [label=<<font color="#551a8b">goby::apps::zeromq::Coroner</font><br/>>,shape=box,style=solid]
+	auv_nomodule_gobyd__40_lambda_32_at_32__47_usr_47_include_47_goby_47_middleware_47_coroner_47_coroner_46_h_58_64_58_13_41_
+ [label=<<font color="#551a8b">lambda (coroner.h:64)</font><br/>>,shape=box,style=dashed,tooltip="(lambda at /usr/include/goby/middleware/coroner/coroner.h:64:13)"]
+	auv_nomodule_gobyd__40_lambda_32_at_32__47_usr_47_include_47_goby_47_middleware_47_terminate_47_terminate_46_h_58_85_58_17_41_
+ [label=<<font color="#551a8b">lambda (terminate.h:85)</font><br/>>,shape=box,style=dashed,tooltip="(lambda at /usr/include/goby/middleware/terminate/terminate.h:85:17)"]
+	auv_nomodule_gobyd__40_lambda_32_at_32__47_usr_47_include_47_goby_47_middleware_47_transport_47_intervehicle_46_h_58_847_58_37_41_
+ [label=<<font color="#551a8b">lambda (intervehicle.h:847)</font><br/><font color="#551a8b" point-size="10">T2: </font><b><font point-size="10">goby::middleware::intervehicle::modem_subscription_forward_rx</font></b><br/><font point-size="6">PROTOBUF</font><br/><font point-size="8">goby::middleware::intervehicle::protobuf::Subscription</font><br/>>,shape=box,style=dashed,tooltip="(lambda at /usr/include/goby/middleware/transport/intervehicle.h:847:37)"]
+	auv_nomodule_gobyd_goby_58__58_middleware_58__58_InterVehiclePortal_60_class_32_goby_58__58_zeromq_58__58_InterProcessPortalImplementation_60_class_32_goby_58__58_middleware_58__58_InterThreadTransporter_44__32_goby_58__58_middleware_58__58_InterProcessPortalBase_44__32_struct_32_goby_58__58_zeromq_58__58_detail_58__58_InterProcessTag_62__32__62_
+ [label=<<font color="#551a8b">goby::middleware::InterVehiclePortal&lt;...&gt;</font><br/><font color="#551a8b" point-size="10">T3: </font><b><font point-size="10">goby::middleware::intervehicle::modem_subscription_forward_rx</font></b><br/><font point-size="6">PROTOBUF</font><br/><font point-size="8">goby::middleware::intervehicle::protobuf::Subscription</font><br/>>,shape=box,style=dashed,tooltip="goby::middleware::InterVehiclePortal<class goby::zeromq::InterProcessPortalImplementation<class goby::middleware::InterThreadTransporter, goby::middleware::InterProcessPortalBase, struct goby::zeromq::detail::InterProcessTag> >"]
+	auv_nomodule_gobyd_goby_58__58_middleware_58__58_InterVehiclePortal_60_class_32_goby_58__58_zeromq_58__58_InterProcessPortalImplementation_60_class_32_goby_58__58_middleware_58__58_InterThreadTransporter_44__32_goby_58__58_middleware_58__58_InterProcessPortalBase_44__32_struct_32_goby_58__58_zeromq_58__58_detail_58__58_InterProcessTag_62__32__62__no_publishers__35_551a8b
+ [label=<<font color="#551a8b" point-size="10">T11: </font><b><font point-size="10">goby::middleware::intervehicle::modem_driver_ready</font></b><br/><font point-size="6">CXX_OBJECT</font><br/><font point-size="8">_Bool</font><br/><font color="#551a8b" point-size="10">T12: </font><b><font point-size="10">goby::middleware::intervehicle::subscription_report</font></b><br/><font point-size="6">CXX_OBJECT</font><br/><font point-size="8">goby::middleware::intervehicle::protobuf::SubscriptionReport</font><br/>>,penwidth=0]
+	auv_nomodule_gobyd_goby_58__58_middleware_58__58_coroner_58__58_Application_60_class_32_goby_58__58_apps_58__58_zeromq_58__58_Daemon_62_
+ [label=<<font color="#551a8b">goby::middleware::coroner::Application&lt;...&gt;</font><br/>>,shape=box,style=dashed,tooltip="goby::middleware::coroner::Application<class goby::apps::zeromq::Daemon>"]
+	auv_nomodule_gobyd_goby_58__58_middleware_58__58_terminate_58__58_Application_60_class_32_goby_58__58_apps_58__58_zeromq_58__58_Daemon_62_
+ [label=<<font color="#551a8b">goby::middleware::terminate::Application&lt;...&gt;</font><br/>>,shape=box,style=dashed,tooltip="goby::middleware::terminate::Application<class goby::apps::zeromq::Daemon>"]
+	auv_nomodule_gobyd_unknown
+ [label=<<font color="#551a8b">unknown</font><br/>>,shape=box,style=dashed]
+	auv_nomodule_nav_driver_nav_58__58_Driver
+ [label=<<font color="#551a8b">nav::Driver</font><br/><font color="#551a8b" point-size="10">T4: </font><b><font point-size="10">nav::raw_out</font></b><br/><font point-size="6">CXX_OBJECT</font><br/><font point-size="8">std::string</font><br/><font color="#104e8b" point-size="10">P2: </font><b><font point-size="10">nav::fix</font></b><br/><font point-size="6">PROTOBUF</font><br/><font point-size="8">nav::protobuf::Fix</font><br/><font color="#006400" point-size="10">V0: </font><b><font point-size="10">nav::status;1</font></b><br/><font point-size="6">DCCL</font><br/><font point-size="8">nav::protobuf::Status</font><br/>>,shape=box,style=solid]
+	auv_nomodule_nav_driver_nav_58__58_SerialThread
+ [label=<<font color="#551a8b">nav::SerialThread</font><br/><font color="#551a8b" point-size="10">T5: </font><b><font point-size="10">nav::raw_in</font></b><br/><font point-size="6">CXX_OBJECT</font><br/><font point-size="8">std::string</font><br/>>,shape=box,style=solid]
+}

@@ -20,10 +20,9 @@ goby_platform: {
   class: platform
   goby_gps: {
     class: application
-    GPSDClient: { class: thread; label: "goby::apps::zeromq::GPSDClient"; tooltip: "T0: tcp_out | CXX_OBJECT | goby::middleware::protobuf::IOData\nP0: goby::middleware::groups::gpsd::att | PROTOBUF | goby::middleware::protobuf::gpsd::Attitude\nP1: goby::middleware::groups::gpsd::sky | PROTOBUF | goby::middleware::protobuf::gpsd::SkyView\nP2: goby::middleware::groups::gpsd::tpv | PROTOBUF | goby::middleware::protobuf::gpsd::TimePositionVelocity\nP4: goby::configuration | PROTOBUF | goby::apps::zeromq::protobuf::GPSDConfig" }
-    HealthMonitorThread: { class: thread; label: "goby::middleware::HealthMonitorThread<struct goby::zeromq::detail::InterProcessTag>" }
-    TCPClientThread: { class: thread; label: "goby::middleware::io::detail::TCPClientThread<tcp_in, tcp_out, goby::middleware::io::PubSubLayer::INTERTHREAD, goby::middleware::io::PubSubLayer::INTERTHREAD, class goby::middleware::protobuf::TCPClientConfig, goby::zeromq::SimpleThread>"; tooltip: "T11: tcp_in | CXX_OBJECT | goby::middleware::protobuf::IOData\nT12: tcp_in | CXX_OBJECT | goby::middleware::protobuf::IOStatus\nT13: tcp_in | CXX_OBJECT | goby::middleware::protobuf::TCPClientEvent\nT14: tcp_in | CXX_OBJECT | enum goby::middleware::io::ThreadState" }
-    no_publisher: { class: placeholder; label: "no publisher" }
+    GPSDClient: { class: thread; label: "goby::apps::zeromq::GPSDClient"; tooltip: "T0: tcp_out | CXX_OBJECT | goby::middleware::protobuf::IOData\nP0: goby::middleware::groups::gpsd::att | PROTOBUF | goby::middleware::protobuf::gpsd::Attitude\nP1: goby::middleware::groups::gpsd::sky | PROTOBUF | goby::middleware::protobuf::gpsd::SkyView\nP2: goby::middleware::groups::gpsd::tpv | PROTOBUF | goby::middleware::protobuf::gpsd::TimePositionVelocity" }
+    HealthMonitorThread: { class: thread; label: "goby::middleware::HealthMonitorThread<...>"; tooltip: "goby::middleware::HealthMonitorThread<struct goby::zeromq::detail::InterProcessTag>" }
+    TCPClientThread: { class: thread; label: "goby::middleware::io::detail::TCPClientThread<...>"; tooltip: "goby::middleware::io::detail::TCPClientThread<tcp_in, tcp_out, goby::middleware::io::PubSubLayer::INTERTHREAD, goby::middleware::io::PubSubLayer::INTERTHREAD, class goby::middleware::protobuf::TCPClientConfig, goby::zeromq::SimpleThread>\nT11: tcp_in | CXX_OBJECT | goby::middleware::protobuf::IOData\nT12: tcp_in | CXX_OBJECT | goby::middleware::protobuf::IOStatus\nT13: tcp_in | CXX_OBJECT | goby::middleware::protobuf::TCPClientEvent\nT14: tcp_in | CXX_OBJECT | enum goby::middleware::io::ThreadState" }
     no_subscriber: { class: placeholder; label: "no subscriber" }
   }
 }
@@ -32,8 +31,6 @@ goby_platform.goby_gps.TCPClientThread -> goby_platform.goby_gps.GPSDClient: "T1
 goby_platform.goby_gps.TCPClientThread -> goby_platform.goby_gps.GPSDClient: "T13 [tcp_in]" { class: interthread; tooltip: "T13: tcp_in | CXX_OBJECT | goby::middleware::protobuf::TCPClientEvent" }
 goby_platform.goby_gps.TCPClientThread -> goby_platform.goby_gps.no_subscriber: "T14 [tcp_in]" { class: interthread; tooltip: "T14: tcp_in | CXX_OBJECT | enum goby::middleware::io::ThreadState" }
 goby_platform.goby_gps.TCPClientThread -> goby_platform.goby_gps.no_subscriber: "T12 [tcp_in]" { class: interthread; tooltip: "T12: tcp_in | CXX_OBJECT | goby::middleware::protobuf::IOStatus" }
-goby_platform.goby_gps.GPSDClient -> goby_platform.goby_gps.no_subscriber: "P4 [configuration]" { class: interprocess; tooltip: "P4: goby::configuration | PROTOBUF | goby::apps::zeromq::protobuf::GPSDConfig" }
 goby_platform.goby_gps.GPSDClient -> goby_platform.goby_gps.no_subscriber: "P0 [att]" { class: interprocess; tooltip: "P0: goby::middleware::groups::gpsd::att | PROTOBUF | goby::middleware::protobuf::gpsd::Attitude" }
 goby_platform.goby_gps.GPSDClient -> goby_platform.goby_gps.no_subscriber: "P1 [sky]" { class: interprocess; tooltip: "P1: goby::middleware::groups::gpsd::sky | PROTOBUF | goby::middleware::protobuf::gpsd::SkyView" }
 goby_platform.goby_gps.GPSDClient -> goby_platform.goby_gps.no_subscriber: "P2 [tpv]" { class: interprocess; tooltip: "P2: goby::middleware::groups::gpsd::tpv | PROTOBUF | goby::middleware::protobuf::gpsd::TimePositionVelocity" }
-goby_platform.goby_gps.no_publisher -> goby_platform.goby_gps.GPSDClient: "P6 [datum_update]" { class: interprocess; tooltip: "P6: goby::datum_update | PROTOBUF | goby::middleware::protobuf::DatumUpdate" }

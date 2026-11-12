@@ -15,3 +15,6 @@ gps_stub | goby_gps_interface.yml | | | d2
 modules | modules.yml | | | d2
 run_features | run_features.yml | | | d2
 dynamic_fleet_expanded | dynamic_fleet.yml | --expand_instances | -expand-instances | d2
+goby_apps | goby_apps.yml | |
+goby_apps_expanded | goby_apps.yml | --expand_goby_apps | -expand-goby-apps
+goby_apps | goby_apps.yml | | | d2

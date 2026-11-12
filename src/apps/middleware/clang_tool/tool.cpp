@@ -110,6 +110,11 @@ static cl::opt<bool>
                     cl::desc("For '-viz', draw each of a platform's instances: separately"),
                     cl::cat(Goby3ToolCategory));
 
+static cl::opt<bool> ExpandGobyApps(
+    "expand-goby-apps",
+    cl::desc("For '-viz', draw Goby's own applications (gobyd, goby_*) with their threads"),
+    cl::cat(Goby3ToolCategory));
+
 static cl::opt<bool>
     IncludeAll("include-all",
                cl::desc("For '-viz', include all groups, include goby internal groups"),
@@ -146,6 +151,7 @@ int main(int argc, const char** argv)
                                                 OmitNodeRegex,
                                                 OmitInterThread,
                                                 ExpandInstances,
+                                                IncludeAll ? true : ExpandGobyApps,
                                                 Format};
 
         return goby::clang::visualize(SharedOptionsParser->getSourcePathList(), params);

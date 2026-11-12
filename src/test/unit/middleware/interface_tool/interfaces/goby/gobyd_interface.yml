@@ -1,0 +1,94 @@
+application: gobyd
+interprocess:
+  publishes:
+    - group: goby::health::response
+      scheme: PROTOBUF
+      type: goby::middleware::protobuf::ProcessHealth
+      thread: "(lambda at /usr/include/goby/middleware/coroner/coroner.h:64:13)"
+    - group: goby::terminate::response
+      scheme: PROTOBUF
+      type: goby::middleware::protobuf::TerminateResponse
+      thread: "(lambda at /usr/include/goby/middleware/terminate/terminate.h:85:17)"
+  subscribes:
+    - group: goby::health::request
+      scheme: PROTOBUF
+      type: goby::middleware::protobuf::HealthRequest
+      necessity: optional
+      thread: "goby::middleware::coroner::Application<class goby::apps::zeromq::Daemon>"
+    - group: goby::terminate::request
+      scheme: PROTOBUF
+      type: goby::middleware::protobuf::TerminateRequest
+      necessity: optional
+      thread: "goby::middleware::terminate::Application<class goby::apps::zeromq::Daemon>"
+    - group: goby::terminate::result
+      scheme: PROTOBUF
+      type: goby::middleware::protobuf::TerminateResult
+      necessity: optional
+      thread: unknown
+interthread:
+  threads:
+    - name: "(lambda at /usr/include/goby/middleware/coroner/coroner.h:64:13)"
+      known: false
+      publishes:
+        - group: goby::health::response
+          scheme: PROTOBUF
+          type: goby::middleware::protobuf::ProcessHealth
+          inner: true
+      subscribes:
+        []
+    - name: "(lambda at /usr/include/goby/middleware/terminate/terminate.h:85:17)"
+      known: false
+      publishes:
+        - group: goby::terminate::response
+          scheme: PROTOBUF
+          type: goby::middleware::protobuf::TerminateResponse
+          inner: true
+      subscribes:
+        []
+    - name: "(lambda at /usr/include/goby/middleware/transport/intervehicle.h:847:37)"
+      known: false
+      publishes:
+        - group: goby::middleware::intervehicle::modem_subscription_forward_rx
+          scheme: PROTOBUF
+          type: goby::middleware::intervehicle::protobuf::Subscription
+      subscribes:
+        []
+    - name: "goby::middleware::InterVehiclePortal<class goby::zeromq::InterProcessPortalImplementation<class goby::middleware::InterThreadTransporter, goby::middleware::InterProcessPortalBase, struct goby::zeromq::detail::InterProcessTag> >"
+      known: false
+      bases:
+        - goby::middleware::InnerTransporterInterface<class goby::middleware::InterVehicleTransporterBase<class goby::middleware::InterVehiclePortal<class goby::zeromq::InterProcessPortalImplementation<class goby::middleware::InterThreadTransporter, goby::middleware::InterProcessPortalBase, struct goby::zeromq::detail::InterProcessTag> >, class goby::zeromq::InterProcessPortalImplementation<class goby::middleware::InterThreadTransporter, goby::middleware::InterProcessPortalBase, struct goby::zeromq::detail::InterProcessTag> >, class goby::zeromq::InterProcessPortalImplementation<class goby::middleware::InterThreadTransporter, goby::middleware::InterProcessPortalBase, struct goby::zeromq::detail::InterProcessTag> >
+        - goby::middleware::InterVehicleTransporterBase<class goby::middleware::InterVehiclePortal<class goby::zeromq::InterProcessPortalImplementation<class goby::middleware::InterThreadTransporter, goby::middleware::InterProcessPortalBase, struct goby::zeromq::detail::InterProcessTag> >, class goby::zeromq::InterProcessPortalImplementation<class goby::middleware::InterThreadTransporter, goby::middleware::InterProcessPortalBase, struct goby::zeromq::detail::InterProcessTag> >
+        - goby::middleware::Poller<class goby::middleware::InterVehicleTransporterBase<class goby::middleware::InterVehiclePortal<class goby::zeromq::InterProcessPortalImplementation<class goby::middleware::InterThreadTransporter, goby::middleware::InterProcessPortalBase, struct goby::zeromq::detail::InterProcessTag> >, class goby::zeromq::InterProcessPortalImplementation<class goby::middleware::InterThreadTransporter, goby::middleware::InterProcessPortalBase, struct goby::zeromq::detail::InterProcessTag> > >
+        - goby::middleware::PollerInterface
+        - goby::middleware::StaticTransporterInterface<class goby::middleware::InterVehicleTransporterBase<class goby::middleware::InterVehiclePortal<class goby::zeromq::InterProcessPortalImplementation<class goby::middleware::InterThreadTransporter, goby::middleware::InterProcessPortalBase, struct goby::zeromq::detail::InterProcessTag> >, class goby::zeromq::InterProcessPortalImplementation<class goby::middleware::InterThreadTransporter, goby::middleware::InterProcessPortalBase, struct goby::zeromq::detail::InterProcessTag> >, class goby::zeromq::InterProcessPortalImplementation<class goby::middleware::InterThreadTransporter, goby::middleware::InterProcessPortalBase, struct goby::zeromq::detail::InterProcessTag> >
+      publishes:
+        - group: goby::middleware::intervehicle::modem_subscription_forward_rx
+          scheme: PROTOBUF
+          type: goby::middleware::intervehicle::protobuf::Subscription
+      subscribes:
+        - group: goby::middleware::intervehicle::modem_driver_ready
+          scheme: CXX_OBJECT
+          type: _Bool
+          necessity: optional
+        - group: goby::middleware::intervehicle::subscription_report
+          scheme: CXX_OBJECT
+          type: goby::middleware::intervehicle::protobuf::SubscriptionReport
+          necessity: optional
+    - name: "goby::middleware::coroner::Application<class goby::apps::zeromq::Daemon>"
+      known: false
+      publishes:
+        []
+      subscribes:
+        []
+    - name: "goby::middleware::terminate::Application<class goby::apps::zeromq::Daemon>"
+      known: false
+      publishes:
+        []
+      subscribes:
+        []
+    - name: unknown
+      known: false
+      publishes:
+        []
+      subscribes:
+        []
