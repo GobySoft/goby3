@@ -1,0 +1,9 @@
+protobuf_generate_cpp_dccl(PROTO_SRCS PROTO_HDRS test.proto)
+
+add_executable(goby_test_middleware_publisher_subscriber_options test.cpp ${PROTO_SRCS} ${PROTO_HDRS})
+target_link_libraries(goby_test_middleware_publisher_subscriber_options goby dccl)
+# designated initializers, as applications would use Publisher/Subscriber::Options
+set_target_properties(goby_test_middleware_publisher_subscriber_options PROPERTIES CXX_STANDARD 20)
+
+add_test(goby_test_middleware_publisher_subscriber_options
+  ${goby_BIN_DIR}/goby_test_middleware_publisher_subscriber_options)

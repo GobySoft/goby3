@@ -85,6 +85,7 @@ void goby::moos::FrontSeatTranslation::convert_desired_setpoints()
                                                  boost::units::degree::degrees);
         buffer.erase(heading_it);
     }
+    // degrees, though NAV_PITCH and NAV_ROLL are published in radians
     auto pitch_it = buffer.find("DESIRED_PITCH");
     if (pitch_it != buffer.end())
     {

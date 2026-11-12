@@ -6,6 +6,7 @@ The built-in tabs include:
 
 1. Commander: A form for allowing users to publish any Protobuf message on the *intervehicle* or *interprocess* layer. This is typically used for sending commands from an operator to one or more vehicles over the *intervehicle* layer.
 2. Scope: A live table showing the latest of all groups containing Protobuf messages  published in the *interprocess* layer, and the ability to show a streaming history of any group. This is a helpful debugging tool, and can be thought of as the GUI equivalent of `goby zeromq subscribe`.
+3. Map: A map of the operating area, drawn with [Leaflet](https://leafletjs.com).
 
 ## Common Configuration
 
@@ -18,6 +19,7 @@ Several configuration values can be set regardless of the tabs in use:
 - `add_home_tab`: Defaults to true - set false to omit the Home tab.
 - `add_scope_tab`: Defaults to true - set false to omit the Scope tab.
 - `add_commander_tab`: Defaults to true - set false to omit the Commander tab.
+- `add_map_tab`: Defaults to true - set false to omit the Map tab.
 
 To access `goby_liaison` from the client side, open a web browser to `http://<http_address>:<http_port>`
 
@@ -102,6 +104,48 @@ The default configuration is usually sufficient, but you can customize many of t
 	- max_history_items: Max number of history items show (circular buffer): Defaults to 100.
 	- max_message_size_bytes: Messages larger than this size are omitted to reduce CPU load. Defaults to 2048B.
 
+
+## Map
+
+The `goby_liaison` Map shows the vehicles reporting on the *interprocess* layer, each as an arrow pointing along its heading with a track of where it has been. The layer control at the map's top right chooses the background, which the browser fetches from public servers and remembers per viewer. By default the bases are [GEBCO](https://www.gebco.net) bathymetry (worldwide, about 450 m resolution), [OpenStreetMap](https://www.openstreetmap.org) and Esri's [Ocean basemap](https://www.arcgis.com/home/item.html?id=1e126e7520f9466c9ca28b8f28b5e500) (whose terms of use apply); the overlays are NOAA's [chart display service](https://nauticalcharts.noaa.gov) as NOAA depths (soundings, contours and depth shading) and NOAA chart (everything else), both on, a full nautical chart in US waters and transparent elsewhere, and the [OpenSeaMap](https://www.openseamap.org) seamarks (off).
+
+Positions come from `goby.middleware.frontseat.protobuf.NodeStatus` on `goby::middleware::frontseat::node_status`, as published by `goby_frontseat_interface`. Vehicles are named by `NodeStatus.name`. Positions received over the *intervehicle* layer must be republished on *interprocess* to be shown.
+
+The list below the map shows each vehicle's heading, speed, depth, latitude and longitude, and the age of its last position, plus its pitch, roll, altitude and local x and y once any vehicle reports them. Click a row to centre on that vehicle, or choose it under Follow to keep it centred (dragging the map stops following). Vehicles that have not reported for `stale_timeout_seconds` are faded and show their age beside their name; Show age does this for every vehicle. The Trail slider sets how far back each track is drawn, from Off through 30 s to 2 h, or All; points age out of the trail even when a vehicle stops reporting. Show depth adds a gauge beside each vehicle below the surface: the surface at the top, 5000 m at the bottom on a log scale, with ticks at 10, 100 and 1000 m. Tracks start when the browser opens the page.
+
+Add ENC uploads an S-57 electronic navigational chart: a cell's `.000` file, or a `.zip` of cells such as those NOAA publishes. Liaison stores it under `enc_dir`, converts it with GDAL's `ogr2ogr` (which must be on the `PATH`, e.g. from `gdal-bin`), and draws it for every viewer as an overlay named after the cell: depth areas, land, contours, and aids to navigation and hazards with their names on hover. The soundings of every cell are a separate overlay, ENC soundings, shown from zoom 15, with the depth units each cell declares named in the map's corner. This is a simplified display for situational awareness, not a certified chart. Uploads are limited by Wt's `max-request-size`, set to 128 MB in the docroot's `wt_config.xml`.
+
+- pb_map_config
+	- source: Position sources, replacing the default NodeStatus source:
+		+ kind: NODE_STATUS (`NodeStatus`) or GPSD_TPV (`goby.middleware.protobuf.gpsd.TimePositionVelocity` from `goby_gps`).
+		+ group_regex: Defaults to `goby::middleware::frontseat::node_status` or `goby::middleware::groups::gpsd::tpv`.
+		+ name_override: Vehicle name for messages without one (always used for GPSD_TPV). Defaults to this platform's name.
+	- fit_on_first_fix: Zoom to the first vehicle position received. Defaults to true.
+	- track_length: Most track points kept per vehicle. Defaults to 5000.
+	- track_min_move_meters: Minimum movement before a new track point is added. Defaults to 1.
+	- stale_timeout_seconds: Defaults to 60.
+	- show_age: Start with Show age checked. Defaults to false.
+	- show_depth: Start with Show depth checked. Defaults to false.
+	- trail_seconds: Initial Trail, rounded to the slider's nearest step; 0 for none, negative for every kept point. Defaults to 600.
+	- tile_layer: The layers offered in the layer control, replacing the default layers:
+		+ name: Label in the layer control. Defaults to the URL's host.
+		+ url_template: Leaflet URL template, e.g. `https://tile.openstreetmap.org/{z}/{x}/{y}.png`, or the service URL for `wms`. Tiles placed under `tiles/` in the docroot can be referenced as `tiles/{z}/{x}/{y}.png`.
+		+ wms: Request from a WMS service: `layers` (required), `format`, `version`, `styles`.
+		+ attribution: HTML attribution shown in the corner of the map.
+		+ min_zoom, max_zoom: Zoom range the layer is shown at.
+		+ max_native_zoom: Highest zoom the server has tiles for; beyond it, its tiles are enlarged.
+		+ overlay: Set true for a layer drawn above the base and switched on and off by itself; otherwise it is one of the bases to choose between, the first selected to start.
+		+ shown: Whether an overlay starts switched on. Defaults to true.
+		+ depth_units: Units of the depths the layer labels, named in the map's bottom-left corner while it is shown (feet for the default NOAA chart).
+		+ tile_size: Pixels per WMS image; 512 means fewer requests and fewer labels cut at image edges. Defaults to 256.
+		+ opacity: 0 to 1.
+	- blank_background: Set true to draw no tiles, e.g. without network access.
+	- enc_upload: Offer Add ENC. Defaults to true.
+	- enc_dir: Where uploaded ENCs are kept. Defaults to `$HOME/.goby/liaison/enc`.
+	- initial_lat, initial_lon, initial_zoom: Initial view.
+	- map_height: in pixels
+
+Leaflet itself is served from the docroot so the map works without network access. `goby_liaison` passes the docroot's `wt_config.xml` to Wt, which sets the `leafletJSURL` and `leafletCSSURL` properties. If you set `WT_CONFIG_XML` or pass `--config` in `additional_wt_http_params`, that file is used instead and must set these two properties for the map to load. If these point at a CDN that the browser cannot reach, opening the Map tab stops that browser's Liaison session (reload to recover).
 
 ## Writing your own tab
 

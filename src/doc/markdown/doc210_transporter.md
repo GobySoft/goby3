@@ -117,6 +117,15 @@ The Publisher can contain the following:
 * A callback for receiving acknowledgments. Since **intervehicle** links are typically unreliable, it can sometimes be helpful to know if a publication was actually received by one or more subscribers. If this callback is provided, `ack_required` is automatically set true in the DynamicBuffer configuration.
 * A callback for receiving expired messages. If a message exceeds its time-to-live without being acknowledged, this function is called, so the publisher can take further action (re-publish an updated message, post a warning, etc.)
 
+If the message doesn't store the group (for example, every message of the type uses the same group), set `group_in_message = false` instead of providing a callback that does nothing. The matching Subscriber then needs `group_in_message = false` too, and takes every received message of that type to be in the subscribed group.
+
+Publisher and Subscriber can also be constructed from their `Options` struct, which names each of these, so that with C++20 designated initializers:
+
+```
+goby::middleware::Publisher<Nav> publisher({.cfg = cfg, .acked_func = on_ack});
+goby::middleware::Subscriber<Nav> subscriber({.cfg = cfg, .group_in_message = false});
+```
+
 ### Subscriber
 
 On the **intervehicle** layer, subscriptions are published DCCL messages themselves (goby::middleware::intervehicle::protobuf::Subscription). A goby::middleware::InterVehiclePortal does not actually send any data "on the wire" unless a subscriber exists for a given publication.
@@ -128,7 +137,11 @@ Given this, the configuration for goby::middleware::Subscriber looks similar to 
 * A goby::middleware::protobuf::TransporterConfig message that contains the desired publisher_id(s) and also possibly the DynamicBuffer configuration. If both the Publisher and Subscriber define buffer configuration, they are merged as described in the documentation for goby::acomms::DynamicBuffer.
 * A callback for extracting the *group* from the subscribed DCCL message. As explained in the Publisher section above, the *group* must be embedded in the DCCL message (if it is not goby::middleware::Group::broadcast_group). This callback is used to provide the Goby middleware with the group as defined for this particular DCCL message.
 * Since the Subscription is just another DCCL message that could be lost on an unreliable link, a callback can be registered for successful subscription (acknowledgement of the Subscription message by a publisher node). When this function is called, the subscribing node knows the subscription has been set up successfully.
-* A callback for expired subscriptions (if the Subscription message reaches its TTL without being acknowledged by one or publisher nodes).
+* A callback for expired subscriptions (if the Subscription message reaches its TTL without being acknowledged by one or publisher nodes, or if it is replaced before being sent, reported as `EXPIRED_SUPERSEDED`).
+
+Only one Subscription message is queued per publisher for a given type, group and configuration. A newer subscription with the same action (such as a re-subscription, or the same subscription made by another process on the vehicle) replaces the queued one and stands in for it: when the message that was sent is acknowledged or expires, every subscriber whose subscription it replaced is notified as well. A newer subscription with the opposite action (an unsubscribe queued behind a subscribe, or vice versa) drops the queued one, which is reported as `EXPIRED_SUPERSEDED`.
+
+Setting `republish_on_receive: true` in the TransporterConfig's `intervehicle` settings also publishes each received message on the inner layer (e.g. interprocess) in the subscribed group, so it can be logged or used by other subscribers without republishing it in the callback. It is false by default.
 
 ## Group
 

@@ -376,7 +376,7 @@ class InterProcessForwarder
         // Capture alive_ by value (shared_ptr copy) so the lambda can detect
         // when the forwarder has been destroyed and avoid use-after-free.
         auto alive = alive_;
-        auto inner_publication_lambda = [=](std::shared_ptr<const Data> d)
+        auto inner_publication_lambda = [this, alive, group](std::shared_ptr<const Data> d)
         {
             if (*alive)
                 this->inner().template publish_dynamic<Data, scheme>(d, group);
@@ -432,8 +432,9 @@ class InterProcessForwarder
                      const std::string& group_regex = ".*")
     {
         auto alive = alive_;
-        auto inner_publication_lambda = [=](const std::vector<unsigned char>& data, int scheme,
-                                            const std::string& type, const Group& group)
+        auto inner_publication_lambda = [this, alive](const std::vector<unsigned char>& data,
+                                                      int scheme, const std::string& type,
+                                                      const Group& group)
         {
             if (!*alive)
                 return;

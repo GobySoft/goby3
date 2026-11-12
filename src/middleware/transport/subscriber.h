@@ -74,6 +74,37 @@ template <typename Data> class Subscriber
     {
     }
 
+    /// \brief Everything a Subscriber can be given, named, so that it can be initialized with
+    /// C++20 designated initializers, e.g.
+    /// \code
+    /// goby::middleware::Subscriber<Nav> subscriber({.cfg = cfg, .group_func = nav_group});
+    /// \endcode
+    struct Options
+    {
+        /// Additional metadata for this subscribe
+        goby::middleware::protobuf::TransporterConfig cfg{};
+        /// Returns the group from the message (see the full constructor)
+        group_func_type group_func{};
+        /// Called when a subscription request reaches a publisher
+        subscribed_func_type subscribed_func{};
+        /// Called when a subscription request expires without reaching any publishers
+        subscribe_expired_func_type subscribe_expired_func{};
+        /// Sets link data (e.g. the sender) in received messages
+        set_link_data_func_type set_link_data_func{};
+        /// False when the group isn't stored in the message, e.g. when every message of this type
+        /// uses the same group. Then no group_func is needed for a non-broadcast group, and every
+        /// received message of this type is taken to be in the subscribed group.
+        bool group_in_message{true};
+    };
+
+    /// \brief Construct a Subscriber from Options
+    explicit Subscriber(Options options)
+        : Subscriber(options.cfg, options.group_func, options.subscribed_func,
+                     options.subscribe_expired_func, options.set_link_data_func)
+    {
+        group_in_message_ = options.group_in_message;
+    }
+
     ~Subscriber() {}
 
     /// \return the metadata configuration
@@ -95,6 +126,9 @@ template <typename Data> class Subscriber
 
     bool has_group_func() const { return bool(group_func_); }
 
+    /// \brief False if the group isn't stored in the message (see Options::group_in_message)
+    bool group_in_message() const { return group_in_message_; }
+
     /// \brief Sets the link data in the message using the set_link_data_func. Only intended to be called by the various transporters.
     void set_link_data(Data& data, const intervehicle::protobuf::Header& header) const
     {
@@ -108,6 +142,7 @@ template <typename Data> class Subscriber
     subscribed_func_type subscribed_func_;
     subscribe_expired_func_type subscribe_expired_func_;
     set_link_data_func_type set_link_data_func_;
+    bool group_in_message_{true};
 };
 } // namespace middleware
 } // namespace goby

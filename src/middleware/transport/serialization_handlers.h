@@ -29,6 +29,7 @@
 #include <memory>
 #include <regex>
 #include <thread>
+#include <type_traits>
 #include <unordered_map>
 
 #include "goby/exception.h"
@@ -183,7 +184,8 @@ class SerializationSubscription : public SerializationHandlerBase<>
         auto msg = SerializerParserHelper<Data, scheme_id>::parse(bytes_begin, bytes_end,
                                                                   actual_end, type_name_);
 
-        if (subscribed_group() == subscriber_.group(*msg) && handler_)
+        if ((!subscriber_.group_in_message() || subscribed_group() == subscriber_.group(*msg)) &&
+            handler_)
             handler_(msg);
 
         return actual_end;
@@ -212,6 +214,16 @@ class IntervehicleSerializationSubscription
                                           const Subscriber<Data>& subscriber = Subscriber<Data>())
         : handler_(handler),
           type_name_(SerializerParserHelper<Data, scheme_id>::type_name()),
+          group_(group),
+          subscriber_(subscriber)
+    {
+    }
+
+    /// \brief Subscription to a type named at run time (e.g. Data = google::protobuf::Message)
+    IntervehicleSerializationSubscription(HandlerType handler, std::string type_name,
+                                          const Group& group, const Subscriber<Data>& subscriber)
+        : handler_(handler),
+          type_name_(std::move(type_name)),
           group_(group),
           subscriber_(subscriber)
     {
@@ -262,7 +274,8 @@ class IntervehicleSerializationSubscription
 
         subscriber_.set_link_data(*msg, header);
 
-        if (subscribed_group() == subscriber_.group(*msg) && handler_)
+        if ((!subscriber_.group_in_message() || subscribed_group() == subscriber_.group(*msg)) &&
+            handler_)
             handler_(msg);
 
         return actual_end;
@@ -287,8 +300,12 @@ class PublisherCallback : public SerializationHandlerBase<Metadata>
     {
     }
 
+    /// \brief Callback for a single publication: the handler is given \p data as published, not
+    /// the message decoded from the ack or expiry, which encoding may have rounded
     PublisherCallback(HandlerType handler, const Data& data)
-        : handler_(handler), type_name_(SerializerParserHelper<Data, scheme_id>::type_name(data))
+        : handler_(handler),
+          type_name_(SerializerParserHelper<Data, scheme_id>::type_name(data)),
+          original_(copy(data))
     {
     }
 
@@ -328,18 +345,34 @@ class PublisherCallback : public SerializationHandlerBase<Metadata>
     CharIterator _post(CharIterator bytes_begin, CharIterator bytes_end, const Metadata& md) const
     {
         CharIterator actual_end;
+        // decoded even when the original is held, to find where this message ends
         auto msg = SerializerParserHelper<Data, scheme_id>::parse(bytes_begin, bytes_end,
                                                                   actual_end, type_name_);
 
         if (handler_)
-            handler_(*msg, md);
+            handler_(original_ ? *original_ : *msg, md);
         return actual_end;
+    }
+
+    static std::shared_ptr<const Data> copy(const Data& data)
+    {
+        if constexpr (std::is_same_v<Data, google::protobuf::Message>)
+        {
+            std::shared_ptr<google::protobuf::Message> c(data.New());
+            c->CopyFrom(data);
+            return c;
+        }
+        else
+        {
+            return std::make_shared<const Data>(data);
+        }
     }
 
   private:
     HandlerType handler_;
     const std::string type_name_;
     Group group_{Group(Group::broadcast_group)};
+    std::shared_ptr<const Data> original_;
 };
 
 /// \brief Represents an unsubscription to a serialized data type (interprocess and outer layers).

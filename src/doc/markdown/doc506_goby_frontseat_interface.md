@@ -51,6 +51,18 @@ To use the MOOS-IvP interface, complete the `[goby.moos.protobuf.moos_helm]` con
 ```
 and at a minimum run MOOSDB and pHelmIvP.
 
+The MOOS variables exchanged with the helm use these units. Note that pitch and roll differ by direction: `NAV_PITCH` and `NAV_ROLL` are radians (as in MOOS-IvP's uSimMarineV22), while `DESIRED_PITCH` and `DESIRED_ROLL` are degrees.
+
+| Direction | Variables | Units |
+|---|---|---|
+| Published | `NAV_X`, `NAV_Y`, `NAV_Z`, `NAV_DEPTH`, `NAV_ALTITUDE` | meters |
+| Published | `NAV_LAT`, `NAV_LONG`, `NAV_HEADING`, `NAV_HEADING_OVER_GROUND` | degrees |
+| Published | `NAV_YAW`, `NAV_PITCH`, `NAV_ROLL` | radians |
+| Published | `NAV_SPEED` (through water if known, else over ground), `NAV_SPEED_OVER_GROUND` | m/s |
+| Read | `DESIRED_HEADING`, `DESIRED_PITCH`, `DESIRED_ROLL` | degrees |
+| Read | `DESIRED_DEPTH`, `DESIRED_ALTITUDE` | meters |
+| Read | `DESIRED_SPEED`, `DESIRED_Z_RATE` | m/s |
+
 ## Vehicle Interface
 
 The Vehicle Interface connects the vehicle API to Goby3. It is a subclass of `goby::middleware::frontseat::InterfaceBase` which is defined in
@@ -88,7 +100,7 @@ The `goby_frontseat_interface` has one required configuration block:
 - frontseat_cfg: Passed to the frontseat driver
 	+ type: Vehicle type
 	+ require_helm: Set false if the vehicle can run missions without a helm (Default: true)
-	+ *name*: Omit: it is automatically set to `interprocess.platform`. This configuration variable exists here  exists for iFrontSeat support.
+	+ *name*: Vehicle name in the published `NodeStatus`. Defaults to `interprocess.platform`; set it when more than one vehicle shares a `gobyd`.
 	+ *origin*: Omit: it is automatically set to `app.geodesy.lat/lon_origin`. This configuration variable exists here for iFrontSeat support.
 	
 You can set `[goby.moos.protobuf.moos_helm]` if using MOOS-IvP; see above.

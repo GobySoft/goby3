@@ -193,6 +193,12 @@ message ExpireData
         EXPIRED_NO_SUBSCRIBERS = 1;
         EXPIRED_TIME_TO_LIVE_EXCEEDED = 2;
         EXPIRED_BUFFER_OVERFLOW = 3;
+        // replaced before transmission: a publication by a newer one with
+        // clear_pending, or a queued subscription by one with the opposite
+        // action for the same type, group and configuration. A queued
+        // subscription replaced by an equivalent one (possibly from another
+        // local subscriber) is not expired but acked or expired with it.
+        EXPIRED_SUPERSEDED = 4;
     }
     required ExpireReason reason = 3;
 

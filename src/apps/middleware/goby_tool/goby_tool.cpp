@@ -80,6 +80,7 @@ goby::apps::middleware::GobyTool::GobyTool()
         app_cfg().app().binary(), app_cfg().app().tool_cfg(),
         goby::apps::middleware::protobuf::GobyToolConfig::Action_descriptor());
 
+    int exit_code = 0;
     if (!tool_helper.perform_action(app_cfg().action()))
     {
         switch (app_cfg().action())
@@ -106,11 +107,11 @@ goby::apps::middleware::GobyTool::GobyTool()
                 break;
 
             case goby::apps::middleware::protobuf::GobyToolConfig::log:
-                tool_helper.run_subtool<goby::apps::middleware::UnifiedLogTool>();
+                exit_code = tool_helper.run_subtool<goby::apps::middleware::UnifiedLogTool>();
                 break;
 
             case goby::apps::middleware::protobuf::GobyToolConfig::protobuf:
-                tool_helper.run_subtool<goby::apps::middleware::ProtobufTool>();
+                exit_code = tool_helper.run_subtool<goby::apps::middleware::ProtobufTool>();
                 break;
 
             default:
@@ -121,5 +122,5 @@ goby::apps::middleware::GobyTool::GobyTool()
         }
     }
 
-    quit(0);
+    quit(exit_code);
 }
