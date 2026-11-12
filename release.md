@@ -251,7 +251,6 @@ Dropped support for Ubuntu Focal (EOL April 2025) and Debian Bullseye (oldstable
 
 
 
-****************
 
 ## Version 3.1.5a
 
@@ -282,7 +281,6 @@ Dropped support for Ubuntu Focal (EOL April 2025) and Debian Bullseye (oldstable
 - Fixed bug in DynamicBuffer where messages in ack-wait were causing the priority contest to end prematurely (throwing a DynamicBufferNoDataException even when valid data existed to return)
 - Fix bug where InterProcessTransporterBase was not always picking the correct scheme overload when using the publish_dynamic/subscribe_dynamic functions.
 
-****************
 
 ## Version 3.1.4
 
@@ -291,13 +289,12 @@ Dropped support for Ubuntu Focal (EOL April 2025) and Debian Bullseye (oldstable
 - Add ability to close log file with STOP_LOGGING request to goby_logger.
 
 
-****************
 
 ## Version 3.1.3
 
 ### General
 
-- Updates to configuration reader (called by ProtobufConfigurator) to better support creation of command line tools (of the style 'tool <action> <subaction> [--options]'). New `goby::middleware::ToolHelper` class for tools to use.
+- Updates to configuration reader (called by ProtobufConfigurator) to better support creation of command line tools (of the style `tool <action> <subaction> [--options]`). New `goby::middleware::ToolHelper` class for tools to use.
 	+ Support for environmental variables
 	+ Support for custom positional parameters to replace default `<cfg_file> <app_name>`
 	+ Support for custom short (e.g., '-l' for '--library') command line options.
@@ -326,7 +323,6 @@ Dropped support for Ubuntu Focal (EOL April 2025) and Debian Bullseye (oldstable
 
 
 
-****************
 
 ## Version 3.1.2
 
@@ -335,7 +331,6 @@ Dropped support for Ubuntu Focal (EOL April 2025) and Debian Bullseye (oldstable
 - Added IPv6 support to most components
 
 
-****************
 
 ## Version 3.1.1
 
@@ -348,8 +343,7 @@ Dropped support for Ubuntu Focal (EOL April 2025) and Debian Bullseye (oldstable
 
 Updated nlohmann JSON to 3.11.2
 
-****************
-Version 3.1.0
+## Version 3.1.0
 
 ### Middleware
 
@@ -370,8 +364,7 @@ Version 3.1.0
 - Create common functions for responding to goby_terminate and goby_coroner and add these to gobyd/goby_intervehicle_portal and TimerThread to get full responses for goby_coroner
 - Improve Protobuf log plugin: recursively add field extensions to ensure we pick them all up at log writing time. 
 
-****************
-Version 3.0.17
+## Version 3.0.17
 
 ### MOOS
 
@@ -398,21 +391,19 @@ Version 3.0.17
 - Fix computation of buffer size in DynamicBuffer when several unacked messages are in the buffer
 - Remove deprecation warnings for newer ZMQ and Boost (for Ubuntu 22.04 and newer).
 
-****************
-Version 3.0.16
+## Version 3.0.16
 
 ### Build
 
-Support for Mac OS X builds
-Support for DCCL 4.1 (forthcoming)
+- Support for Mac OS X builds
+- Support for DCCL 4.1 (forthcoming)
 
 ### MOOS
 
 Blackout changed to double from int
 iFrontSeat publishes NAV_YAW
 
-****************
-Version 3.0.15
+## Version 3.0.15
 
 ### Acomms
 
@@ -432,8 +423,7 @@ Version 3.0.15
 
 - Fix build with MOOS enabled and ZeroMQ disabled
 
-****************
-Version 3.0.14
+## Version 3.0.14
 
 ### Bugs
 
@@ -441,16 +431,14 @@ Version 3.0.14
 - Fix bug where intermodule subscriptions only go to the first subscriber.
 
 
-****************
-Version 3.0.13
+## Version 3.0.13
 
 ### Bugs
 
 - Add missing codec_version to all Goby DCCL messages (required by DCCL4).
 - Fix bug in goby_moos_gateway where subscriptions won't happen after MOOS is connected
 
-****************
-Version 3.0.12
+## Version 3.0.12
 
 ### Bugs
 
@@ -458,8 +446,7 @@ Version 3.0.12
 - Switch Thread to use steady_clock to calculate loop() to reduce strange behavior if the system clock jumps (e.g. due to NTP correction on startup).
 
 
-****************
-Version 3.0.11
+## Version 3.0.11
 
 ### Debian packages
 
@@ -471,8 +458,7 @@ Version 3.0.11
 
 - Add support for Proj.6+ API while maintaining support for Proj.4 old API.
 
-****************
-Version 3.0.10
+## Version 3.0.10
 
 ### FrontSeat
 
@@ -484,8 +470,7 @@ Version 3.0.10
 - Fix Goby log tool to always pick up extensions.
 - Support updates in released DCCL4
 
-****************
-Version 3.0.9
+## Version 3.0.9
 
 ### Logging
 
@@ -512,8 +497,7 @@ Various efficiency improvements in Scope (fixes https://github.com/GobySoft/goby
 
 
 
-****************
-Version 3.0.8
+## Version 3.0.8
 
 ### Liaison
 - Support for oneof in Commander fields
@@ -521,8 +505,7 @@ Version 3.0.8
 ### Bugs
 - Fix "Host not found" errors in various apps using Boost ASIO when loopback is the only interface configured.
 
-****************
-Version 3.0.7
+## Version 3.0.7
 
 ### Middleware
 - Change goby::middleware::Group numeric value from uint8 to uint32
@@ -540,8 +523,7 @@ Version 3.0.7
 - Fix bug parsing MOOS log file when pLogger block is involved ("log=" value)
 - Add wildcard trigger option to TranslatorBase
 
-****************
-Version 3.0.6
+## Version 3.0.6
 
 ### Util
 
@@ -552,8 +534,7 @@ Version 3.0.6
 - Add scheme to output of HDF5 file as field '_scheme_' to allow distinguishing between DCCL and PROTOBUF messages.
 
 
-****************
-Version 3.0.5
+## Version 3.0.5
 
 ### Middleware
 
@@ -565,11 +546,9 @@ Version 3.0.5
 - Add symlink for latest log in goby_logger.
 
 
-****************
 
 
-****************
-Version 3.0.4
+## Version 3.0.4
 
 ### Middleware
 
@@ -584,8 +563,7 @@ Version 3.0.4
 - Fix bug in AIS encoding for negative lat/lon (was undefined behavior, but exhibits the problem only on ARM processors)
 
 
-****************
-Version 3.0.3
+## Version 3.0.3
 
 ### Middleware
 
@@ -594,16 +572,14 @@ Version 3.0.3
 - Add parsing of RTE and WPL messages from OpenCPN for receiving data from the map (routes and waypoints).
 - Added regex for optionally omitting certain groups and/or nodes from the goby_clang_tool visualization.
 
-****************
-Version 3.0.2
+## Version 3.0.2
 
 ### Middleware
 
 - Support for intermodule in goby_clang_tool
 - Added extensions to frontseat and health messages
 
-****************
-Version 3.0.1
+## Version 3.0.1
 
 ### Bug fixes
 
@@ -611,45 +587,39 @@ Version 3.0.1
 
 
 
-****************
-Version 3.0.0
+## Version 3.0.0
 
 First stable release of Goby3 nested communications middleware.
 
-****************
-Version 3.0.0~beta*
+## Version 3.0.0~beta*
 
 ### Middleware
 
 Increasingly stable look at the new Goby3 nested communications middleware. See examples at https://github.com/GobySoft/goby3-examples.
 
-****************
-Version 3.0.0~alpha*
+## Version 3.0.0~alpha*
 
 ### Middleware
 
 Early look at the new Goby3 nested communications middleware. See examples at https://github.com/GobySoft/goby3-examples.
 
-Goby Release Notes (Major version 2)
+# Goby Release Notes (Major version 2)
 
-****************
-Version 2.1.13
+## Version 2.1.13
 
 ### Bug fixes
 - Fix to Dynamic Protobuf unit test for changes in DCCL 3.0.10
 
 See https://github.com/GobySoft/goby/compare/2.1.12a...2.1.13
 
-****************
-Version 2.1.12a
+## Version 2.1.12a
 
 ### Bug fixes
 - Fixed version.h header macros (regression introduced by clang-format)
 
 See https://github.com/GobySoft/goby/compare/2.1.12...2.1.12a
 
-****************
-Version 2.1.12
+## Version 2.1.12
 
 ### Code aesthetics
 - Consistent code formatting using clang-format style
@@ -659,8 +629,7 @@ Version 2.1.12
 
 See https://github.com/GobySoft/goby/compare/2.1.11...2.1.12
 
-****************
-Version 2.1.11
+## Version 2.1.11
 
 ### MOOS
 - Working iFrontSeat driver for OceanServer Iver3 vehicles (listen-mode only)
@@ -673,8 +642,7 @@ Version 2.1.11
 
 See https://github.com/GobySoft/goby/compare/2.1.10...2.1.11
 
-****************
-Version 2.1.10
+## Version 2.1.10
 
 ### MOOS
 - Started iFrontSeat driver for OceanServer Iver3 vehicles (listen-mode only)
@@ -685,8 +653,7 @@ Version 2.1.10
 
 See https://github.com/GobySoft/goby/compare/2.1.9...2.1.10
 
-****************
-Version 2.1.9
+## Version 2.1.9
 
 Bug fix release.
 
@@ -697,8 +664,7 @@ Bug fix release.
 See https://github.com/GobySoft/goby/compare/2.1.8...2.1.9
 
 
-****************
-Version 2.1.8
+## Version 2.1.8
 
 ### Acomms
 - Significant reduction in data usage by IridiumDriver by using DCCL to compress the ModemTransmission wrapper message
@@ -719,8 +685,7 @@ Version 2.1.8
 
 See https://github.com/GobySoft/goby/compare/2.1.7...2.1.8
 
-****************
-Version 2.1.7
+## Version 2.1.7
 
 - Minor compilation updates for non-Ubuntu systems.
 
@@ -729,8 +694,7 @@ Version 2.1.7
 
 See https://github.com/GobySoft/goby/compare/2.1.6...2.1.7
 
-****************
-Version 2.1.6
+## Version 2.1.6
 ### Acomms
 
  - New driver for the Teledyne Benthos ATM-900 series acoustic modems
@@ -741,18 +705,15 @@ Version 2.1.6
 
 
 See https://github.com/GobySoft/goby/compare/2.1.5...2.1.6
-****************
-Version 2.1.5
+## Version 2.1.5
 ### MOOS
 - Bug fix for "register_time" in GobyMOOSApp to allow use with MOOSTimeWarp #15 
 - Bug fix for "inverse_publish" in moos_translators #14 
 - Cleanups for Dependencies list.
 
 See https://github.com/GobySoft/goby/compare/2.1.4...2.1.5
->>>>>>> 2.1
 
-****************
-Version 2.1.4
+## Version 2.1.4
 
 ### MOOS
 
@@ -760,14 +721,12 @@ Version 2.1.4
 
 See https://github.com/GobySoft/goby/compare/2.1.3...2.1.4
 
-****************
-Version 2.1.3
+## Version 2.1.3
 
 This release contains minor bug fixes.
 
 See https://github.com/GobySoft/goby/compare/2.1.2a...2.1.3
-****************
-Version 2.1.2
+## Version 2.1.2
 
 ### Acomms 
 
@@ -791,24 +750,22 @@ Version 2.1.2
 
 Various bug fixes. See https://github.com/GobySoft/goby/compare/2.1.1...2.1.2
 
-****************
-Version 2.1.1
+## Version 2.1.1
 
-= Acomms = 
+### Acomms
 - DCCL is now its own project separate from Goby: http://libdccl.org. Removed DCCL code and added dependency on libdccl. Left backwards-compatible API in goby/acomms/dccl to allow seamless transition for previous Goby users. One exception: users of Google Protocol Buffers versions prior to 2.5.0 will need to change all DCCL .proto files to import the DCCL extensions .proto instead of the Goby one. That is:
-  From:
-        import "goby/acomms/protobuf/dccl_option_extensions.proto";
-  To:
-        import "dccl/protobuf/option_extensions.proto";
+  - From: `import "goby/acomms/protobuf/dccl_option_extensions.proto";`
+  - To: `import "dccl/protobuf/option_extensions.proto";`
 - Updated IridiumDriver to handle the Iridium Short Burst Data (SBD) protocol in addition to the previously available RUDICS protocol. Removed shore-based components of IridiumDriver (now it is only for the mobile side). Removed dependency on the goby_pb library and so IridiumDriver has moved into the goby_acomms library.
 - Removed goby_rudics_shore and added new IridiumShoreDriver to handle all shore-based SBD ("DirectIP") and RUDICS protocol transactions.
 
-= MOOS = 
+### MOOS
 -  Added failure handling in pAcommsHandler for multiple modems - can try to use one of the listen modems as the new primary modem, or restart the modem with a configurable backoff period. 
 
-= PB =
+### PB
 - Protocol Change! Switched order of group and protobuf name in ZMQ identifier string. Thus, version 2.1 goby_pb is not backwards compatible with 2.0.
 
+```text
 bzr log --line -n0 -r tag:2.0.6..
 
 586: Toby Schneider 2015-09-21 Release 2.1.1
@@ -903,7 +860,7 @@ bzr log --line -n0 -r tag:2.0.6..
 556: Toby Schneider 2015-03-18 [merge] Merge bug fixes from 2.0
   513.1.41: Toby Schneider 2015-03-06 Fixes for Clang in OSX Yosemite
   513.1.40: Toby Schneider 2014-11-07 [merge] Merge from ST8c
-    513.5.3: Toby Schneider 2014-10-04 Fixed bug in MMDriver where  would clear both a  and then a 
+    513.5.3: Toby Schneider 2014-10-04 Fixed bug in MMDriver where  would clear both a  and then a
     513.5.2: Toby Schneider 2014-10-03 Added option to disable use of DTR
     513.5.1: Toby Schneider 2014-10-01 Workaround for partial frame bug in MM2
   513.1.39: Toby Schneider 2014-09-24 Added transition for Iridium driver to Answer state to correctly return to ready if the call disconnects in the process of being answered (RING -> ATA -> NO CARRIER)
@@ -951,16 +908,17 @@ bzr log --line -n0 -r tag:2.0.6..
 535: Toby Schneider 2014-08-27 [merge] Merge from 2.0
   513.1.38: Toby Schneider 2014-08-25 Added subscription for pAcommsHandler on ACOMMS_MAC_INITIATE_TRANSMISSION for folks to handle MAC externally
   513.1.37: Toby Schneider 2014-08-01 {2.0.6} Increment version
+```
 
-****************
-Version 2.0.6
+## Version 2.0.6
 
-= Acomms = 
+### Acomms
 - MOSH Client allowing support for the MOSH shell (mosh.mit.edu) over Goby. Requires use of a patched version of MOSH available at https://github.com/tsaubergine/mosh/tree/mosh-goby
 - Fixes to goby_file_transfer
 - DCCL ModemDriverStatus message reports status of a given driver - used by goby_modemdriver.
 - Support for the WHOI Micro-Modem Flexible Data Protocol (FDP)
 
+```text
 bzr log --line -n0 -r tag:2.0.5..
 
 546: Toby Schneider 2014-07-31 Support for the Micro-Modem 2 FDP
@@ -979,20 +937,20 @@ bzr log --line -n0 -r tag:2.0.5..
 539: Toby Schneider 2014-04-08 {2.0.6~rc1} Initially working MOSH relay over Goby UDP driver (at 320 bytes/sec)
 538: Toby Schneider 2014-04-08 1. Reworked application_base run() method to take the configuration object as an argument (instead of requiring that the Application class have a static configuration object (this was causing problems properly constructing the protobuf configuration for some compilers). Changed all derived applications to use this new structure. 2. Started framework for mosh relay client
 537: Toby Schneider 2014-04-01 {2.0.5} Release 2.0.5
+```
 
-*****************
-Version 2.0.5
+## Version 2.0.5
 
-= Acomms =
+### Acomms
 - New IridiumDriver that handles the Iridium RUDICS protocol (phone-call style of data transfer)
 
-= MOOS =
+### MOOS
 - New MOOS application iFrontSeat (and corresponding additions to libgoby_moos) that provide an extensible interface to the low-level control ("frontseat") of an autonomous vehicle
       - Driver for iFrontSeat for the Bluefin 21" and 9" family of vehicles (libgoby_frontseat_bluefin)
       - New drivers can be written outside of Goby and are runtime loaded by iFrontSeat
 - libgoby_moos and Goby MOOS applications (pAcommsHandler, iFrontSeat, etc) compile and runs on MOOS 10 (and still supports pre-10 (SVN revision 2376) MOOS)
 
-= PB = 
+### PB
 - New application goby_modemdriver that allows provides a ZeroMQ interface to the following Goby ModemDrivers:
       - goby::acomms::MMDriver (WHOI Micro-Modem)
       - goby::pb::PBDriver (store-and-forward driver using ZeroMQ and goby_store_server [SQLite])
@@ -1001,6 +959,7 @@ Version 2.0.5
 - goby_bridge updated to use goby_modemdriver instead of having the ModemDriver components directly in the application
 - goby_file_transfer that works with goby_bridge to allow arbitrary file transfer over a Goby link.
 
+```text
 bzr log --line -n0 -r tag:2.0.4..
 
 534: Toby Schneider 2014-03-25 Remove Xerces from default dependencies install
@@ -1115,13 +1074,14 @@ bzr log --line -n0 -r tag:2.0.4..
 468: Toby Schneider 2013-08-09 Folder for standalone modem driver
 467: Toby Schneider 2013-08-09 Framework for Iridium driver
 466: Toby Schneider 2013-08-09 {2.0.4} Updated moos_goby_liaison script to use exec to avoid problems when killing the shell script doesn't kill the goby_liaison process
+```
 
-*****************
-Version 2.0.4
+## Version 2.0.4
 
 - Licensing terms slightly changed to make them completely compatible with third-party libraries: Liaison is GPL2 only (due to Wt) and goby_moos is GPL3 (because of MOOS). All other licenses remain the same (GPL3+ for binaries, LGPL3+ for libraries)
 - Fixes to make Liaison compatible with Wt 3.3.0 (which works properly with Firefox 20+; older Wt versions do not)
 
+```text
 bzr log --line -n0 -r tag:2.0.3..
 
 466: Toby Schneider 2013-08-09 {2.0.4} Updated moos_goby_liaison script to use exec to avoid problems when killing the shell script doesn't kill the goby_liaison process
@@ -1133,14 +1093,15 @@ bzr log --line -n0 -r tag:2.0.3..
 460: Toby Schneider 2013-06-18 Fixed bug in dccl test 1 that was causing garbage rejection test to not run
 459: Toby Schneider 2013-06-13 Updated arithmetic coder to properly pick closest symbol (not floor)
 458: Toby Schneider 2013-05-10 {2.0.3} Updated release notes
+```
 
-*****************
-Version 2.0.3
+## Version 2.0.3
 
 - Addition to DCCL and goby_bridge to allow forwarding of encrypted messages without unencrypting.
 - Added Bluefin Comms Driver (for using the SonarDyne Avtrak acoustic modem via the Bluefin NMEA interface: See Bluefin Payload Interface Guid v1.8 dated 04-04-13 and newer.
 - For the MOOS translators: TECHNIQUE_FORMAT returns the default field instead of the empty string for unset fields.
 
+```text
 bzr log --line -n0 -r tag:2.0.2..
 
 457: Toby Schneider 2013-05-10 {2.0.3} Incremented version number and release date
@@ -1154,10 +1115,10 @@ bzr log --line -n0 -r tag:2.0.2..
 449: Toby Schneider 2013-03-18 {2.0.3~beta1} Release 2.0.3~beta1
 448: Toby Schneider 2013-03-14 1. Possible to decode DCCL header without decrypting body; 2. Possible to pass messages through route without decrypting
 447: Toby Schneider 2013-02-28 {2.0.2} Incremented version to 2.0.2
+```
 
 
-*****************
-Version 2.0.2
+## Version 2.0.2
 
 - First stable release of Goby version 2!
 - A handful of minor breaking changes from the 2.0.1 release candidates to support a standalone DCCLv3+
@@ -1165,6 +1126,7 @@ Version 2.0.2
   - Changed (goby.field).dccl to (dccl.field) and (goby.msg).dccl to (dccl.msg)
 - Goby Liaison loads all modules using shared libraries instead of having the MOOS components compiled in. This makes it truly generic and extensible.
 
+```text
 bzr log --line -n0 -r tag:2.0.1~rc4..
 
 445: Toby Schneider 2013-02-28 Tweaks and corrections to developer documentation
@@ -1239,14 +1201,15 @@ bzr log --line -n0 -r tag:2.0.1~rc4..
 388: Chris Murphy 2012-09-19 Adding stdexcept as a dependency, since std::runtime_error is used.
 387: Toby Schneider 2012-08-24 [merge] {2.0.1~rc4} Merge correcting fix for build system bug fix from 2.0-dsop, release 2.0.1~rc4
   321.2.11: Toby Schneider 2012-08-24 Actually fixed dynamic protobuf test
+```
 
 
-*****************
-Version 2.0.1~rc3
-Version 2.0.1~rc4
+## Version 2.0.1~rc3
+## Version 2.0.1~rc4
 
 - Build system fixes
 
+```text
 bzr log --line -n0 -r tag:2.0.1~rc2..
 
 387: Toby Schneider 2012-08-24 [merge] {2.0.1~rc4} Merge correcting fix for build system bug fix from 2.0-dsop, release 2.0.1~rc4
@@ -1259,13 +1222,14 @@ bzr log --line -n0 -r tag:2.0.1~rc2..
   321.2.6: Toby Schneider 2012-08-08 Backported new arithmetic extensions from 2.0 main
 385: Toby Schneider 2012-08-23 Added adaptive arithmetic coding
 384: Toby Schneider 2012-08-23 {2.0.1~rc2} Release 2.0.1~rc2
+```
 
-*****************
-Version 2.0.1~rc2
+## Version 2.0.1~rc2
 
 - Release candidate 2: Added a arithmetic encoder to finish thesis work. 
 - Various bug fixes (see below)
 
+```text
 bzr log --line -n0 -r tag:2.0.1~rc1..
 
 384: Toby Schneider 2012-08-23 {2.0.1~rc2} Release 2.0.1~rc2
@@ -1350,9 +1314,9 @@ bzr log --line -n0 -r tag:2.0.1~rc1..
 348: Toby Schneider 2012-05-15 fixed bug with pAcommsHandler fails to add 'prefix' to subscribed variables
 347: Toby Schneider 2012-05-10 added % to udpdriver test to avoid unintentional overflow
 346: Toby Schneider 2012-05-07 {2.0.1~rc1} Release 2.0.1~rc1
+```
 
-*****************
-Version 2.0.1~rc1
+## Version 2.0.1~rc1
 
 - Release candidate 1: all version 2 functionality complete; documentation still needs to be finished.
 - Wire format of DCCL message changed to be little-endian for both body and header (previously header was big-endian and body was little-endian). This release is wire-incompatible with previous betas.
@@ -1360,6 +1324,7 @@ Version 2.0.1~rc1
 - "dccllite" option added for compiling DCCL alone with a minimum of other dependencies within Goby and external.
 - Basic router and two drivers added to support "traditional" networking (TCP / UDP) over slow links (predominantly Iridium)
 
+```text
 bzr log --line -n0 -r 285..
 
 345: Toby Schneider 2012-05-07 {2.0.1~rc1} added new acomms chapter
@@ -1440,11 +1405,11 @@ bzr log --line -n0 -r 285..
 287: Toby Schneider 2012-02-29 fixes ACK bug on multi-frame messages
 286: Toby Schneider 2012-02-23 backwards compatibility for Goby1 TesMoosApp verbosity settings and made Liaison modal dialogs configurable in size
 285: Toby Schneider 2012-02-22 {2.0.0-beta4} release 2.0.0-beta4
+```
 
 
 
-*****************
-Version 2.0.0-beta4
+## Version 2.0.0-beta4
 
 - MOOS Functionality (pAcommsHandler) complete, including backwards compatibility with version 1.
 - New MOOS Application pTranslator that can be used for general purpose string<-->Google conversions
@@ -1453,6 +1418,7 @@ Version 2.0.0-beta4
   - liaison_scope complete for MOOS scoping
 - moos_gateway_g backported from 3.0 to interface goby_liaison with a MOOS community
 
+```text
 bzr log --line -n0 -r 224..
 
 285: Toby Schneider 2012-02-22 release 2.0.0-beta4
@@ -1465,7 +1431,7 @@ bzr log --line -n0 -r 224..
 278: Toby Schneider 2012-02-09 added compiled-in options for Liaision docroot so most of the time users won't have to specify it
 277: Toby Schneider 2012-02-09 added basic rounding to x,y <--> lat,lon algorithms to avoid precision based differences
 276: Toby Schneider 2012-02-09 fixed unnecessary warning from mm_driver about expected frames never being received, added index level specification for MOOS translator
-275: Toby Schneider 2012-02-08 fixed direct double equality comparison 
+275: Toby Schneider 2012-02-08 fixed direct double equality comparison
 274: Toby Schneider 2012-02-07 More substantial cleanups in glog entries
 273: Toby Schneider 2012-02-07 fixed compile problem with newer versions of boost filesystem
 272: Toby Schneider 2012-02-06 a whole bunch of minor fixes and improvements discovered when integrating pAcommsHandler into missions-dsop (LAMSS)
@@ -1532,10 +1498,11 @@ bzr log --line -n0 -r 224..
 226: Toby Schneider 2011-11-16 renamed proto files to reflect goby module
 225: Toby Schneider 2011-11-10 Dynamic Protobuf Manager now looks in the compiled-in pool; also added test for it
 224: Toby Schneider 2011-11-10 added missing library depends for libgoby_moos.so
+```
 
-*****************
-Version 2.0.0-beta3
+## Version 2.0.0-beta3
 
+```text
 bzr log --line -n0 -r 200..
 
 223: Toby Schneider 2011-11-10 pAcommsHandler compiles, but is almost certainly broken. Release 2.0.0-beta3
@@ -1562,11 +1529,12 @@ bzr log --line -n0 -r 200..
 202: Toby Schneider 2011-09-21 tests now are set with full path
 201: Toby Schneider 2011-09-20 another unsigned/signed comparison warning squashed
 200: Toby Schneider 2011-09-20 another missing header
+```
 
-*****************
-Version 2.0.0-beta1
+## Version 2.0.0-beta1
 
-bzr log --line -n0 
+```text
+bzr log --line -n0
 
 199: Toby Schneider 2011-09-20 changed version number for 2.0.0-beta1
 198: Toby Schneider 2011-09-20 fixed incorrect headers
@@ -1860,7 +1828,7 @@ bzr log --line -n0
   60.2.13: mituser 2011-01-12 fixed unsigned for int
   60.2.12: mituser 2011-01-12 minor fix to output properly missing LBL beacon values
   60.2.11: toby 2011-01-12 added compatibility for REMUS LBL
-  60.2.10: toby 2011-01-12 started work on .proto files for acomms p.2 
+  60.2.10: toby 2011-01-12 started work on .proto files for acomms p.2
   60.2.9: toby 2011-01-12 started work on .proto files for acomms
   60.2.8: mituser 2011-01-11 more robust Wt finding
   60.2.7: toby 2011-01-11 updated defaults for the CMakeLists
@@ -1955,3 +1923,4 @@ bzr log --line -n0
 3: toby schneider 2009-12-03 incorporated utility libraries and fixed compile problems with libmmdriver
 2: toby schneider 2009-12-02 completed transition to CMake
 1: toby schneider 2009-12-01 initial commit
+```
