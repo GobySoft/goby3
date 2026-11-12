@@ -17,6 +17,10 @@
 - `subscribe_dynamic()` and `subscribe_type_regex()` take a `Necessity` template parameter, as `subscribe()` does, so subscriptions made through them can be required. It defaults to `OPTIONAL`. Python and Julia `interface.yml` subscriptions take `necessity: required|recommended|optional`.
 - A type-regex subscription now matches any type published to its group in `goby_clang_tool` and `goby interface` output, since the regex is known only at run time.
 
+### Language bindings
+
+- `goby_gen_cpp` (Python) and `goby_gen_cpp` / `goby_gen_julia` (Julia) no longer print a "Generating ... from ..." line for each file they write, so a build that generates bindings is quiet. `--verbose` (Python) or `verbose=true` (Julia) prints them.
+
 ### Bugs
 
 - Fixed interprocess connections in deployment diagrams crossing module boundaries. Each module is its own `gobyd`, so an interprocess publication now reaches only subscribers in its own module; intermodule still spans the platform. Previously such edges were drawn to a node in the publisher's module that did not exist.
