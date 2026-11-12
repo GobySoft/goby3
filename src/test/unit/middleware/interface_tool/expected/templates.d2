@@ -1,0 +1,26 @@
+vars: { d2-config: { layout-engine: elk } }
+direction: right
+classes: {
+  platform: { style.stroke: "#006400"; style.font-color: "#006400"; style.stroke-width: 2; style.fill: transparent }
+  module: { style.stroke: "#cd8500"; style.font-color: "#cd8500"; style.stroke-width: 2; style.fill: transparent }
+  application: { style.stroke: "#104e8b"; style.font-color: "#104e8b"; style.stroke-width: 2; style.fill: transparent }
+  thread: { style.stroke: "#551a8b"; style.font-color: "#551a8b" }
+  placeholder: { shape: text; style.font-color: "#888888" }
+  interthread: { style.stroke: "#551a8b"; style.font-size: 10 }
+  interprocess: { style.stroke: "#104e8b"; style.font-size: 10 }
+  intermodule: { style.stroke: "#cd8500"; style.font-size: 10 }
+  intervehicle: { style.stroke: "#006400"; style.font-size: 10 }
+  required: { style.stroke-width: 3 }
+  recommended: { style.stroke-dash: 6 }
+  regex: { style.stroke-dash: 2 }
+  dynamic: { style.stroke-dash: 4 }
+  unmet: { style.stroke: red; style.stroke-width: 3 }
+}
+auv: {
+  class: platform
+  sampler: {
+    class: application
+    Sampler: { class: thread; label: "nav::Sampler<...>"; tooltip: "nav::Sampler&lt;class nav::Filter&gt;\nP0: nav::samples | CXX_OBJECT | std::vector&lt;nav::Sample&gt;" }
+  }
+}
+auv.sampler.Sampler -> auv.sampler.Sampler: "P0 [samples]" { class: interprocess; tooltip: "P0: nav::samples | CXX_OBJECT | std::vector&lt;nav::Sample&gt;" }

@@ -69,6 +69,23 @@ inline std::string d2_quoted(const std::string& s)
     return out + "\"";
 }
 
+// d2 renders a tooltip as Markdown and parses the HTML, so a template argument list such as
+// <class Foo> would be read as a tag
+inline std::string d2_tooltip(const std::string& s)
+{
+    std::string escaped;
+    for (char c : s)
+    {
+        if (c == '<')
+            escaped += "&lt;";
+        else if (c == '>')
+            escaped += "&gt;";
+        else
+            escaped += c;
+    }
+    return d2_quoted(escaped);
+}
+
 /// \brief Writes a deployment as D2 (https://d2lang.com): the same containers, colors and edge
 /// conventions as the DOT output, with styles defined once as classes
 class D2Writer
@@ -306,7 +323,7 @@ class D2Writer
                     {
                         auto tooltip = pubs_tooltip(app_path);
                         if (!tooltip.empty())
-                            os_ << indent << "  tooltip: " << d2_quoted(tooltip) << "\n";
+                            os_ << indent << "  tooltip: " << d2_tooltip(tooltip) << "\n";
                     }
 
                     // drawn threads (a base class is drawn as its most derived class), and any
@@ -351,7 +368,7 @@ class D2Writer
         if (display != thread)
             tooltip = thread + (tooltip.empty() ? "" : "\n") + tooltip;
         if (!tooltip.empty())
-            os_ << "; tooltip: " << d2_quoted(tooltip);
+            os_ << "; tooltip: " << d2_tooltip(tooltip);
         os_ << " }\n";
     }
 
@@ -386,8 +403,8 @@ class D2Writer
                 os_ << "]";
             }
             os_ << "; tooltip: "
-                << d2_quoted(pub_label + ": " + e.pub.display_group() + " | " + e.pub.scheme +
-                             " | " + e.pub.type)
+                << d2_tooltip(pub_label + ": " + e.pub.display_group() + " | " + e.pub.scheme +
+                              " | " + e.pub.type)
                 << " }\n";
         }
     }
