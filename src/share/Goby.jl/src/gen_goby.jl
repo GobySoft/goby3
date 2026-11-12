@@ -201,10 +201,10 @@ GOBY_JULIA_DEFINE_MODULE(APPLICATION_NAME)
 """)
 end
 
-function goby_gen_cpp(in_yaml::String, out_cpp::String, includes)
+function goby_gen_cpp(in_yaml::String, out_cpp::String, includes; verbose::Bool=false)
 
-    println("Generating $(out_cpp) from $(in_yaml)")
-    
+    verbose && println("Generating $(out_cpp) from $(in_yaml)")
+
     interface_yaml = YAML.load_file(in_yaml)
 
     layers = ("interthread", "interprocess", "intermodule")
@@ -290,15 +290,15 @@ function collect_groups(interface_yaml, layers)
 end
 
 """
-    goby_gen_julia(in_yaml, out_jl)
+    goby_gen_julia(in_yaml, out_jl; verbose=false)
 
 Writes the Julia side of the interface: the groups an application publishes and subscribes to,
 by name rather than as repeated string literals, and one accessor per portal. A group the
 generated C++ has no case for already terminates the application through GOBY_JULIA_FAIL when
 the call is reached; the constant moves that to an UndefVarError naming the typo.
 """
-function goby_gen_julia(in_yaml::String, out_jl::String)
-    println("Generating $(out_jl) from $(in_yaml)")
+function goby_gen_julia(in_yaml::String, out_jl::String; verbose::Bool=false)
+    verbose && println("Generating $(out_jl) from $(in_yaml)")
 
     interface_yaml = YAML.load_file(in_yaml)
     layers = ("interthread", "interprocess", "intermodule")
