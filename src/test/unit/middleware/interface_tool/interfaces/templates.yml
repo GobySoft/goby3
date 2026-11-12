@@ -1,0 +1,6 @@
+# template argument lists in thread names and types, which D2 tooltips must escape
+deployment: templates
+platforms:
+  - name: auv
+    run:
+      - sampler
