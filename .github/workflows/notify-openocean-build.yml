@@ -1,0 +1,46 @@
+# Asks openocean-build to package each push to the default branch as a
+# continuous build (https://github.com/openocean-software/openocean-build).
+# openocean-build looks up and verifies the new head itself, so this only
+# says which project.
+#
+# The token comes from openocean-build's dispatch GitHub App, whose only
+# permission is Actions: write on openocean-build. Its ID and private key are
+# this repository's OOS_DISPATCH_APP_ID variable and OOS_DISPATCH_APP_KEY secret.
+name: Notify openocean-build
+
+on:
+  push:
+    branches: ["3.0"]
+  pull_request:
+    paths:
+      - .github/workflows/notify-openocean-build.yml
+
+permissions: {}
+
+jobs:
+  notify:
+    runs-on: ubuntu-latest
+    # Fork pull requests don't get the App's credentials
+    if: github.event_name == 'push' || github.event.pull_request.head.repo.full_name == github.repository
+    steps:
+      - name: Get a token for openocean-build
+        id: token
+        uses: actions/create-github-app-token@fee1f7d63c2ff003460e3d139729b119787bc349 # v2.2.2
+        with:
+          app-id: ${{ vars.OOS_DISPATCH_APP_ID }}
+          private-key: ${{ secrets.OOS_DISPATCH_APP_KEY }}
+          owner: openocean-software
+          repositories: openocean-build
+
+      - name: Start openocean-build's continuous build
+        if: github.event_name == 'push'
+        env:
+          GH_TOKEN: ${{ steps.token.outputs.token }}
+        run: gh workflow run continuous.yml --repo openocean-software/openocean-build --ref main -f project=goby3
+
+      # A pull request that changes this workflow only checks that the token can see the workflow
+      - name: Check access to openocean-build's continuous workflow
+        if: github.event_name == 'pull_request'
+        env:
+          GH_TOKEN: ${{ steps.token.outputs.token }}
+        run: gh workflow view continuous.yml --repo openocean-software/openocean-build
