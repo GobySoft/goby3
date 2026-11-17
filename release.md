@@ -1,5 +1,11 @@
 # Goby Release Notes (Major version 3)
 
+## Version 3.7.1
+
+### Bugs
+
+- Fixed the JANUS driver dropping broadcast packets, and its automatic ACK answering packets addressed to other nodes ([#483](https://github.com/GobySoft/goby3/pull/483)).
+
 ## Version 3.7.0
 
 ### Middleware

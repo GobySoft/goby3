@@ -40,6 +40,7 @@
 #include <boost/algorithm/string/split.hpp>          // for split
 #include <boost/algorithm/string/trim.hpp>           // for trim, trim_copy
 
+#include "goby/acomms/acomms_constants.h"          // for BROADCAST_ID
 #include "goby/acomms/protobuf/modem_message.pb.h" // for ModemTransmi...
 #include "goby/time/system_clock.h"                // for SystemClock
 #include "goby/time/types.h"                       // for MicroTime
@@ -356,15 +357,17 @@ void goby::acomms::JanusDriver::do_work(){
         if (janus_packet_get_validity(packet_rx) && janus_packet_get_cargo_error(packet_rx) == 0){
             packet_parsed = parse_janus_packet(packet_rx, params_rx->verbose);
             if (packet_parsed.cargo_size > 0){
-                if (driver_cfg_.modem_id() == packet_parsed.destination_id || packet_parsed.destination_id == -1){
+                bool is_broadcast = packet_parsed.destination_id == goby::acomms::BROADCAST_ID;
+                bool is_ours = packet_parsed.destination_id == driver_cfg_.modem_id();
+                if (is_ours || is_broadcast || packet_parsed.destination_id == -1){
                     to_modem_transmission(packet_parsed,modem_msg);
                     ModemDriverBase::signal_receive(modem_msg);
+                    // acks only supported for 16-1 since we require a destination id
+                    if(is_ours && !is_broadcast && packet_parsed.ack_request && (rx_class_id == 16 && rx_application_type == 1) )
+                        send_ack(packet_parsed.station_id, packet_parsed.destination_id, modem_msg.frame_start());
                 } else {
                     glog.is(DEBUG1) && glog << "Ignoring msg because it is not meant for us." << std::endl;
-                } 
-                // acks only supported for 16-1 since we require a destination id
-                if(packet_parsed.ack_request && (rx_class_id == 16 && rx_application_type == 1) )
-                    send_ack(packet_parsed.station_id, packet_parsed.destination_id, modem_msg.frame_start());
+                }
             } else{
                 glog.is(DEBUG1) && glog << "Recieved message with no cargo" << std::endl;
             }
