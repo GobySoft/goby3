@@ -13,6 +13,7 @@ Pkg.activate(ARGS[1], io = devnull)
 using Goby
 using Test
 using ThreadPools
+using YAML
 
 const LIBRARY = joinpath(@__DIR__, "libgoby_test_julia_app.so")
 
@@ -73,6 +74,33 @@ const LIBRARY = joinpath(@__DIR__, "libgoby_test_julia_app.so")
 
         # one accessor per portal, named for the layer when no alias is given
         @test GobyJuliaTestAppGoby.interprocess() == Goby.INTERPROCESS
+        @test GobyJuliaTestAppGoby.interthread() == Goby.INTERTHREAD
+        @test GobyJuliaTestAppGoby.groups.status == "status"
+    end
+
+    # interthread: in interface.yml becomes a contract that Goby.jl holds INTERTHREAD calls to,
+    # and a manifest that goby_clang_tool -gen adds to the application's interface file
+    @testset "interthread contract" begin
+        @test Goby.interthread_contract_declared()
+        entries = Goby.interthread_contract_entries
+        publication = only(filter(e -> e.kind == :publish, entries))
+        subscription = only(filter(e -> e.kind == :subscribe, entries))
+        @test publication.task == :Main
+        @test subscription.task == :Worker
+        @test subscription.necessity == :required
+        @test subscription.capacity == 5
+        @test subscription.overflow == :drop_oldest
+
+        Goby.resolve_interthread_contract!()
+        @test subscription.type == Any
+
+        manifest = YAML.load_file(joinpath(@__DIR__, "goby_test_julia_app_julia_interthread.yml"))
+        @test manifest["application"] == "goby_test_julia_app"
+        subscribes = manifest["julia_interthread"]["subscribes"]
+        @test subscribes == [Dict("task" => "Worker", "group" => "status", "type" => "Any",
+                                  "necessity" => "required", "capacity" => 5,
+                                  "overflow" => "drop_oldest")]
+        @test length(manifest["julia_interthread"]["publishes"]) == 1
     end
 
     # Subscribing on a layer the C++ side owns is registered twice: once as a callback to run,
@@ -109,17 +137,38 @@ const LIBRARY = joinpath(@__DIR__, "libgoby_test_julia_app.so")
     @testset "delivery routing" begin
         key = (Int32(Goby.INTERPROCESS), Int(Goby.PROTOBUF), "NavigationReport",
                GobyJuliaTestAppGoby.groups.rx)
-        main_channel = Goby.MultiThread.task_interthread_channels[Goby.MultiThread.main_task_id]
+        main_inbox = Goby.MultiThread.task_inboxes[Goby.MultiThread.main_task_id]
 
         # nothing has registered for this one, so it goes to Main as it did before tasks could
         # subscribe for themselves
-        @test Goby.MultiThread.cxx_subscriber_channels(key) == [main_channel]
+        @test Goby.MultiThread.cxx_subscriber_inboxes(key) == [main_inbox]
 
         Goby.MultiThread.record_cxx_subscriber(key, Goby.MultiThread.main_task_id)
-        @test Goby.MultiThread.cxx_subscriber_channels(key) == [main_channel]
+        @test Goby.MultiThread.cxx_subscriber_inboxes(key) == [main_inbox]
 
         # recording the same task twice must not deliver the message to it twice
         Goby.MultiThread.record_cxx_subscriber(key, Goby.MultiThread.main_task_id)
-        @test Goby.MultiThread.cxx_subscriber_channels(key) == [main_channel]
+        @test Goby.MultiThread.cxx_subscriber_inboxes(key) == [main_inbox]
+    end
+
+    # INTERTHREAD is carried between the task modules of Goby.run(app, Main, [modules...]).
+    # Before any run, or in one run as a single task, there is nothing to carry it: a
+    # publication used to go to the generated C++, which has no case for the layer, and a
+    # subscription was registered and never delivered to.
+    @testset "INTERTHREAD needs task modules" begin
+        @test !Goby.is_multithreaded
+        @test_throws ErrorException Goby.publish(nothing, Goby.INTERTHREAD, "status", (ready = true,))
+
+        Goby.is_single_task_running = true
+        try
+            @test_throws ErrorException Goby.subscribe(nothing, Goby.INTERTHREAD, "status", s -> nothing)
+        finally
+            Goby.is_single_task_running = false
+        end
+
+        # the C++ transporters have no per-subscription queue for these to configure
+        @test_throws ArgumentError Goby.subscribe(nothing, Goby.INTERPROCESS,
+                                                  GobyJuliaTestAppGoby.groups.rx, s -> nothing;
+                                                  capacity = 10)
     end
 end

@@ -315,8 +315,127 @@ interprocess:
         for name in sorted(os.listdir(directory)):
             with self.subTest(case=name):
                 interface = gen.load(os.path.join(directory, name))
+                # the format allows interthread queue settings that only Julia implements
+                if any(entry.delivery for _, entry in interface.interthread_entries):
+                    with self.assertRaises(gen.InterfaceError):
+                        gen.generate_python(interface, "_x_goby", [], name)
+                    continue
                 module = gen.generate_python(interface, "_x_goby", [], name)
                 compile(module, "x_goby.py", "exec")
+
+
+INTERTHREAD_CONTRACT = """
+application:
+  name: PythonDemo
+  cpp_type: goby::zeromq::SingleThreadApplication
+  config:
+    scheme: PROTOBUF
+    type: project.config.protobuf.PythonDemoConfig
+
+interthread:
+  publishes:
+    - group: nav
+      scheme: PROTOBUF
+      type: project.protobuf.NavigationReport
+      thread: NavPublisher
+  subscribes:
+    - group: nav
+      scheme: PROTOBUF
+      type: project::protobuf::NavigationReport
+      thread: DepthWatcher
+      necessity: required
+    - group: depth_alert
+      scheme: NATIVE
+      type: DepthAlert
+"""
+
+
+class InterthreadContractTest(unittest.TestCase):
+    """interthread: declared in interface.yml becomes a contract the bus enforces, and a manifest
+    that goby_clang_tool -gen adds to the application's interface file."""
+
+    def setUp(self):
+        self.interface = parse_yaml(INTERTHREAD_CONTRACT)
+
+    def test_threads_and_native_types_are_parsed(self):
+        self.assertTrue(self.interface.declares_interthread)
+        kinds = [(kind, entry.group, entry.thread) for kind, entry in self.interface.interthread_entries]
+        self.assertEqual(
+            kinds,
+            [
+                ("publish", "nav", "NavPublisher"),
+                ("subscribe", "nav", "DepthWatcher"),
+                ("subscribe", "depth_alert", ""),
+            ],
+        )
+        self.assertEqual(self.interface.subscribes[1].scheme, "NATIVE")
+
+    def test_without_the_section_there_is_no_contract(self):
+        interface = parse_yaml(SINGLE_PORTAL)
+        self.assertFalse(interface.declares_interthread)
+        module = gen.generate_python(interface, "_python_demo_goby", [], "interface.yml")
+        self.assertNotIn("interthread_contract", module)
+
+    def test_generated_module_declares_the_contract(self):
+        module = gen.generate_python(self.interface, "_python_demo_goby", [], "interface.yml")
+        compile(module, "python_demo_goby.py", "exec")
+        self.assertIn("goby.interthread_contract([", module)
+        # types are written as Python names them, whichever scoping interface.yml used
+        self.assertIn(
+            '{"kind": "subscribe", "group": "nav", "type": "project.protobuf.NavigationReport", '
+            '"thread": \'DepthWatcher\', "necessity": "required"},',
+            module,
+        )
+        self.assertIn('"group": "depth_alert", "type": "DepthAlert", "thread": None', module)
+
+    def test_manifest(self):
+        import yaml
+
+        manifest = yaml.safe_load(gen.generate_manifest(self.interface, "demo_target", "x.yml"))
+        self.assertEqual(manifest["application"], "demo_target")
+        section = manifest["python_interthread"]
+        self.assertEqual(
+            section["publishes"],
+            [{"thread": "NavPublisher", "group": "nav", "type": "project.protobuf.NavigationReport"}],
+        )
+        self.assertEqual(
+            section["subscribes"][1],
+            {"group": "depth_alert", "type": "DepthAlert", "necessity": "optional"},
+        )
+
+    def test_manifest_without_the_section_names_only_the_application(self):
+        manifest = gen.generate_manifest(parse_yaml(SINGLE_PORTAL), "demo_target", "x.yml")
+        self.assertNotIn("python_interthread", manifest)
+        self.assertIn('application: "demo_target"', manifest)
+
+    def test_queue_settings_are_refused_when_generating(self):
+        interface = parse_yaml(
+            INTERTHREAD_CONTRACT.replace("necessity: required", "necessity: required\n      capacity: 5")
+        )
+        for generate in (
+            lambda: gen.generate_python(interface, "_x_goby", [], "x.yml"),
+            lambda: gen.generate_cpp(interface, [], "_x_goby", "x.yml"),
+        ):
+            with self.assertRaisesRegex(gen.InterfaceError, "capacity"):
+                generate()
+
+    def test_native_is_interthread_only(self):
+        with self.assertRaisesRegex(gen.InterfaceError, "NATIVE"):
+            parse_yaml(SINGLE_PORTAL.replace("scheme: PROTOBUF\n      type: project.protobuf.CommsTx",
+                                             "scheme: NATIVE\n      type: CommsTx"))
+
+    def test_one_thread_may_not_declare_an_entry_twice_but_two_threads_may(self):
+        twice = INTERTHREAD_CONTRACT + """    - group: depth_alert
+      scheme: NATIVE
+      type: DepthAlert
+"""
+        with self.assertRaises(gen.InterfaceError):
+            parse_yaml(twice)
+        parse_yaml(INTERTHREAD_CONTRACT + """    - group: depth_alert
+      scheme: NATIVE
+      type: DepthAlert
+      thread: Logger
+""")
 
 
 class ModuleNameTest(unittest.TestCase):

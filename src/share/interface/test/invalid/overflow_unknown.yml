@@ -1,0 +1,14 @@
+# overflow is one of block, drop_oldest, drop_newest or error
+application:
+  name: BadDemo
+  cpp_type: goby::zeromq::SingleThreadApplication
+  config:
+    scheme: PROTOBUF
+    type: project.config.protobuf.BadDemoConfig
+
+interthread:
+  subscribes:
+    - group: work
+      scheme: NATIVE
+      type: Work
+      overflow: drop_all

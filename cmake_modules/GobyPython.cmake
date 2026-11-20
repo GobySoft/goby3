@@ -26,6 +26,13 @@
 #   PROTO_IMPORT_DIRS ${project_INC_DIR}
 # gives messages.nav_pb2. Goby's own include directory is always searched, after these.
 #
+# Also writes <TARGET>_python_interthread.yml beside the module: the interthread contract
+# declared in INTERFACE_YML, which goby_export_interface() hands to goby_clang_tool so that the
+# application's interface file includes its Python threads. Its path is the target's
+# GOBY_INTERTHREAD_MANIFEST property. When the project exports interface files
+# (export_goby_interfaces, with a generate_interfaces() command), this calls
+# generate_interfaces(TARGET <name>), as goby_add_app() does.
+#
 # MAIN writes a launcher named after TARGET into LAUNCHER_DIRECTORY, which runs it with the
 # PYTHONPATH it needs. Omit MAIN for an application that is started another way.
 #
@@ -34,6 +41,9 @@
 #   <TARGET>_PYTHON_DIRECTORY   directory holding the module and the extension
 #   <TARGET>_PYTHON_PROTO_DIR   directory holding the modules generated from PYTHON_PROTOS
 #   <TARGET>_PYTHONPATH         all of the above, and Goby's own when it is not installed
+#
+# Sets GOBY_PYTHON_HAS_INTERTHREAD_CONTRACT: interface.yml may declare interthread, which is
+# enforced, and goby_add_python_app() writes the manifest.
 #
 # Requires pybind11 and the goby Python package (for goby_gen_cpp).
 #
@@ -211,6 +221,8 @@ find_path(GOBY_DCCL_PROTO_DIR dccl/option_extensions.proto)
 # The include directory holding Goby's own .proto files, in this project or in a consumer of it.
 # Resolved when an application is declared rather than here: neither variable is necessarily set
 # by the time this module is included.
+set(GOBY_PYTHON_HAS_INTERTHREAD_CONTRACT TRUE)
+
 function(GOBY_RESOLVE_PROTO_DIR out_var)
   if(GOBY_PROTO_DIR)
     set(${out_var} "${GOBY_PROTO_DIR}" PARENT_SCOPE)
@@ -274,6 +286,7 @@ function(GOBY_ADD_PYTHON_APP)
 
   set(_cpp_out "${_out_dir}/${GAPA_TARGET}.cpp")
   set(_python_out "${_out_dir}/${_python_module}.py")
+  set(_manifest_out "${_out_dir}/${GAPA_TARGET}_python_interthread.yml")
 
   set(_include_args)
   foreach(_include ${GAPA_INCLUDES})
@@ -286,10 +299,12 @@ function(GOBY_ADD_PYTHON_APP)
   endforeach()
 
   add_custom_command(
-    OUTPUT "${_cpp_out}" "${_python_out}"
+    OUTPUT "${_cpp_out}" "${_python_out}" "${_manifest_out}"
     COMMAND ${GOBY_GEN_CPP_COMMAND} "${_interface_yml}"
             --cpp-out "${_cpp_out}"
             --python-out "${_python_out}"
+            --interthread-manifest "${_manifest_out}"
+            --target "${GAPA_TARGET}"
             --module "${_module_name}"
             ${_include_args} ${_proto_module_args}
     DEPENDS "${_interface_yml}" ${GOBY_GEN_CPP_DEPENDS}
@@ -313,6 +328,7 @@ function(GOBY_ADD_PYTHON_APP)
 
   set_target_properties(${GAPA_TARGET} PROPERTIES
     OUTPUT_NAME "${_module_name}"
+    GOBY_INTERTHREAD_MANIFEST "${_manifest_out}"
     LIBRARY_OUTPUT_DIRECTORY "${_out_dir}")
 
   target_link_libraries(${GAPA_TARGET} PRIVATE ${GAPA_LINK_LIBRARIES})
@@ -423,6 +439,10 @@ export PYTHONPATH
 exec \"${_launcher_python}\" \"${_main}\" \"$@\"
 "
       FILE_PERMISSIONS OWNER_READ OWNER_WRITE OWNER_EXECUTE GROUP_READ GROUP_EXECUTE WORLD_READ WORLD_EXECUTE)
+  endif()
+
+  if(export_goby_interfaces AND COMMAND generate_interfaces)
+    generate_interfaces(TARGET ${GAPA_TARGET})
   endif()
 
   set(${GAPA_TARGET}_PYTHON_MODULE "${_python_module}" PARENT_SCOPE)

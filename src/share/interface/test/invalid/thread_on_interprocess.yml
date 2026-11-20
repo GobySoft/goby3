@@ -1,0 +1,14 @@
+# a C++ portal belongs to the application, not to one of its threads
+application:
+  name: BadDemo
+  cpp_type: goby::zeromq::SingleThreadApplication
+  config:
+    scheme: PROTOBUF
+    type: project.config.protobuf.BadDemoConfig
+
+interprocess:
+  publishes:
+    - group: project::groups::status
+      scheme: PROTOBUF
+      type: project.protobuf.Status
+      thread: Reporter

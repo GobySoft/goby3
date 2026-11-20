@@ -34,12 +34,15 @@ which is what a C++ thread's ``InterProcessForwarder`` does with its inner inter
 transporter.
 """
 
+import builtins
 import functools
+import importlib
 import queue
 import sys
 import threading
 import traceback
 
+from . import _runtime
 from . import time as goby_time
 from ._schemes import INTERTHREAD
 
@@ -103,12 +106,142 @@ class _Subscription:
         self.callback = callback
 
 
+class InterthreadContractError(Exception):
+    """An interthread publication or subscription disagrees with the contract in interface.yml."""
+
+
+def _warn(text):
+    if _runtime.extension() is not None:
+        from . import glog
+
+        glog.warn(text)
+    else:
+        print(f"Goby: warning: {text}", file=sys.stderr)
+
+
+def _resolve_type(name):
+    """The class an interface.yml type names: a protobuf message, a builtin, a class in
+    ``__main__``, or a class reached by its dotted import path."""
+    try:
+        from google.protobuf import symbol_database
+
+        return symbol_database.Default().GetSymbol(name)
+    except (ImportError, KeyError):
+        pass
+
+    parts = name.split(".")
+    candidates = [builtins, sys.modules.get("__main__")]
+    for split in range(len(parts) - 1, 0, -1):
+        try:
+            candidates.append((importlib.import_module(".".join(parts[:split])), parts[split:]))
+        except ImportError:
+            continue
+
+    for candidate in candidates:
+        root, path = candidate if isinstance(candidate, tuple) else (candidate, parts)
+        value = root
+        for part in path:
+            value = getattr(value, part, None)
+            if value is None:
+                break
+        if isinstance(value, type):
+            return value
+
+    raise InterthreadContractError(
+        f"type '{name}' in interface.yml is not defined: define it in the application's main "
+        f"module, give its import path, or pass the module that generates a protobuf message to "
+        f"the generator with --proto-module"
+    )
+
+
+def _thread_names(owner):
+    """The names an interface.yml thread: matches for an application or thread: its class and
+    every base class, so that an entry naming a base class covers its subclasses."""
+    return {cls.__name__ for cls in type(owner).__mro__}
+
+
+class Contract:
+    """The interthread contract declared in interface.yml, which the generated module hands to
+    the bus. Once there is one, every interthread publication and subscription is held to it."""
+
+    def __init__(self, entries):
+        self._lock = threading.Lock()
+        self._entries = [dict(entry, resolved=None, made=False) for entry in entries]
+        self._resolved = False
+
+    def resolve(self):
+        """Resolves the type names, which have to wait until the application has defined them."""
+        with self._lock:
+            if self._resolved:
+                return
+            for entry in self._entries:
+                entry["resolved"] = _resolve_type(entry["type"])
+            self._resolved = True
+
+    def _matching(self, kind, group, owner):
+        self.resolve()
+        on_group = [e for e in self._entries if e["kind"] == kind and e["group"] == group]
+        names = _thread_names(owner)
+        mine = [e for e in on_group if e["thread"] is None or e["thread"] in names]
+        if mine:
+            return mine
+
+        verb = "publishes" if kind == "publish" else "subscribes"
+        who = type(owner).__name__
+        if not on_group:
+            raise InterthreadContractError(
+                f"{who} {verb} on interthread group '{group}', which interface.yml does not "
+                f"declare: add it under interthread: {verb}"
+            )
+        declared = ", ".join(sorted({e["thread"] for e in on_group if e["thread"]}))
+        raise InterthreadContractError(
+            f"{who} {verb} on interthread group '{group}', which interface.yml declares only for "
+            f"{declared}: give the entry thread: {who}, or leave thread out"
+        )
+
+    def check_publish(self, owner, group, message):
+        mine = self._matching("publish", group, owner)
+        if not any(isinstance(message, e["resolved"]) for e in mine):
+            declared = " or ".join(sorted({e["type"] for e in mine}))
+            raise InterthreadContractError(
+                f"{type(owner).__name__} published a {type(message).__name__} on '{group}', "
+                f"which interface.yml declares as {declared}"
+            )
+
+    def subscription_type(self, owner, group, message_type):
+        """The type to subscribe with: the declared one, which the callback must accept."""
+        mine = self._matching("subscribe", group, owner)
+        for entry in mine:
+            if message_type is None or issubclass(entry["resolved"], message_type):
+                with self._lock:
+                    entry["made"] = True
+                return entry["resolved"]
+
+        declared = " or ".join(sorted({e["type"] for e in mine}))
+        raise InterthreadContractError(
+            f"a callback taking {getattr(message_type, '__name__', message_type)} cannot receive "
+            f"{declared}, which interface.yml declares for the subscription of "
+            f"{type(owner).__name__} to '{group}'"
+        )
+
+    def report_unmade(self):
+        with self._lock:
+            unmade = [e for e in self._entries if e["kind"] == "subscribe" and not e["made"]]
+        for entry in unmade:
+            who = f"thread {entry['thread']}" if entry["thread"] else "any thread"
+            _warn(
+                f"interface.yml declares a {entry['necessity']} interthread subscription of {who} "
+                f"to '{entry['group']}', but nothing made it during startup"
+            )
+
+
 class Bus:
     """Interthread publish/subscribe, shared by every thread of the process."""
 
     def __init__(self):
         self._lock = threading.Lock()
         self._subscriptions = {}
+        self.contract = None
 
     def subscribe(self, group, message_type, callback, mailbox):
         with self._lock:
@@ -146,6 +279,16 @@ class Bus:
 
 
 bus = Bus()
+
+
+def interthread_contract(entries):
+    """Declares the interthread contract. Called by the module generated from interface.yml.
+
+    :param entries: one mapping per declared publication or subscription, with ``kind``
+        (``publish`` or ``subscribe``), ``group``, ``type`` (its name), ``thread`` (a class name,
+        or None for any thread) and ``necessity``
+    """
+    bus.contract = Contract(entries)
 
 
 class _Construction:

@@ -1,0 +1,14 @@
+# capacity configures the bindings' own interthread queues; the C++ layers have none
+application:
+  name: BadDemo
+  cpp_type: goby::zeromq::SingleThreadApplication
+  config:
+    scheme: PROTOBUF
+    type: project.config.protobuf.BadDemoConfig
+
+interprocess:
+  subscribes:
+    - group: project::groups::status
+      scheme: PROTOBUF
+      type: project.protobuf.Status
+      capacity: 10

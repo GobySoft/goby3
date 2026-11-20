@@ -154,14 +154,18 @@ class Transporter:
     def publish(self, group, message):
         """Publishes ``message`` to ``group`` on this layer.
 
-        On the interthread layer the message is any Python object and the group is any string.
-        On the other layers the message is a protobuf message and the publication must be
-        declared in the application's ``interface.yml``.
+        On the interthread layer the message is any Python object and the group is any string,
+        unless ``interface.yml`` declares the layer: then the group, the message's type and the
+        publishing thread must be declared there. On the other layers the message is a protobuf
+        message and the publication must be declared in the application's ``interface.yml``.
 
         :param group: the group, e.g. ``groups.modem_tx``
         :param message: the message to publish
         """
         if self._layer == INTERTHREAD:
+            contract = _interthread.bus.contract
+            if contract is not None:
+                contract.check_publish(self._owner, str(group), message)
             _interthread.bus.publish(str(group), message)
             return
 
@@ -189,8 +193,10 @@ class Transporter:
             self.interprocess().subscribe(groups.modem_rx, self.on_rx)
 
         On the interthread layer the type may be omitted entirely, and the subscription then
-        takes every object published on the group. On the other layers the subscription must be
-        declared in the application's ``interface.yml``.
+        takes every object published on the group. When ``interface.yml`` declares the layer, the
+        subscription must be declared there and takes the declared type, which the callback must
+        accept. On the other layers the subscription must be declared in the application's
+        ``interface.yml``.
 
         The callback runs on the thread that subscribed.
         """
@@ -206,6 +212,9 @@ class Transporter:
             raise TypeError(f"{callback!r} is not callable")
 
         if self._layer == INTERTHREAD:
+            contract = _interthread.bus.contract
+            if contract is not None:
+                message_type_ = contract.subscription_type(self._owner, str(group), message_type_)
             self._owner._goby_service_required()
             _interthread.bus.subscribe(
                 str(group), message_type_, callback, self._owner._goby_mailbox
@@ -254,6 +263,7 @@ class ApplicationMixin:
         self._goby_serviced = False
         self._goby_loop_period = None
         self._goby_loop_next = 0.0
+        self._goby_startup_checked = False
         super().__init__(loop_frequency_hertz)
 
     def __init_subclass__(cls, **kwargs):
@@ -414,6 +424,21 @@ class ApplicationMixin:
     def _goby_service(self):
         """Runs the work the application's threads have handed it."""
         self._goby_mailbox.service()
+        self._goby_check_startup()
+
+    def _goby_check_startup(self):
+        """Reports the declared interthread subscriptions nothing made, once every thread
+        launched so far has been constructed, which is where threads subscribe."""
+        if self._goby_startup_checked:
+            return
+        contract = _interthread.bus.contract
+        if contract is not None and any(
+            runner._thread is None and runner.is_alive() for runner in self._goby_threads.values()
+        ):
+            return
+        self._goby_startup_checked = True
+        if contract is not None:
+            contract.report_unmade()
 
     def _goby_loop_due(self):
         period = self._goby_loop_period
@@ -546,7 +571,12 @@ def run(application_class, argv=None, config=None, config_text=None):
     # that -- from an import, or a previous run in the same process -- is stale
     goby_time._reset_cache()
 
+    # names in interface.yml are resolved once the application has defined what they name
+    if _interthread.bus.contract is not None:
+        _interthread.bus.contract.resolve()
+
     application = application_class()
+    application._goby_check_startup()
     try:
         return application._run()
     finally:

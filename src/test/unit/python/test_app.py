@@ -97,6 +97,37 @@ class InterthreadTest(unittest.TestCase):
         self.assertEqual(received, [{"not": "a protobuf message"}])
 
 
+class InterthreadContractTest(unittest.TestCase):
+    """interface.yml declares interthread, so the generated module declares a contract, and the
+    generator writes the manifest goby_clang_tool -gen adds to the interface file."""
+
+    def test_the_generated_module_declares_the_contract(self):
+        from goby import _interthread
+
+        contract = _interthread.bus.contract
+        self.assertIsNotNone(contract)
+        # the declared types are protobuf messages, registered by the module's imports
+        contract.resolve()
+
+    def test_the_manifest_is_written_beside_the_module(self):
+        import os
+
+        import yaml
+
+        path = os.path.join(
+            os.path.dirname(app_module.__file__), "goby_test_python_app_python_interthread.yml"
+        )
+        with open(path, encoding="utf-8") as handle:
+            manifest = yaml.safe_load(handle)
+        self.assertEqual(manifest["application"], "goby_test_python_app")
+        section = manifest["python_interthread"]
+        self.assertEqual(
+            section["publishes"],
+            [{"group": "thread_status", "type": "goby.test.python.protobuf.CommsTx"}],
+        )
+        self.assertEqual(section["subscribes"][0]["group"], "thread_request")
+
+
 class ConfigureTest(unittest.TestCase):
     """The command line handling Python applications inherit from ProtobufConfigurator."""
 

@@ -62,7 +62,8 @@ Threads are written in Python too, and launched by the application::
 
 The interthread layer is implemented in Python rather than through the C++
 ``InterThreadTransporter``, so an interthread message is any Python object and an interthread
-group is any string.
+group is any string. Once ``interface.yml`` declares the layer, every interthread publication and
+subscription is held to that declaration.
 
 See ``share/goby/interface/README.md`` for the ``interface.yml`` format, which is shared with the
 Julia bindings.
@@ -84,7 +85,7 @@ from ._application import (
     message_type,
     run,
 )
-from ._interthread import Thread
+from ._interthread import InterthreadContractError, Thread, interthread_contract
 from ._runtime import bind as _bind_extension
 from ._schemes import (
     ALL_SCHEMES,
@@ -113,6 +114,7 @@ __all__ = [
     "INTERMODULE",
     "INTERPROCESS",
     "INTERTHREAD",
+    "InterthreadContractError",
     "JSON",
     "MAVLINK",
     "MarshallingScheme",
@@ -123,6 +125,7 @@ __all__ = [
     "Transporter",
     "__version__",
     "glog",
+    "interthread_contract",
     "message_type",
     "run",
     "time",

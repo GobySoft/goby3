@@ -1,0 +1,35 @@
+# An interthread contract: the groups each thread publishes and subscribes to, and their types.
+# NATIVE names a type of the bound language rather than a protobuf message. An entry without
+# thread applies to any thread.
+application:
+  name: InterthreadDemo
+  cpp_type: goby::zeromq::SingleThreadApplication
+  config:
+    scheme: PROTOBUF
+    type: project.config.protobuf.InterthreadDemoConfig
+
+interthread:
+  publishes:
+    - group: nav
+      scheme: PROTOBUF
+      type: project.protobuf.NavigationReport
+      thread: Producer
+    - group: depth_alert
+      scheme: NATIVE
+      type: DepthAlert
+  subscribes:
+    - group: nav
+      scheme: PROTOBUF
+      type: project.protobuf.NavigationReport
+      thread: Consumer
+      necessity: required
+    - group: depth_alert
+      scheme: NATIVE
+      type: DepthAlert
+      thread: Main
+
+interprocess:
+  publishes:
+    - group: project::groups::nav
+      scheme: PROTOBUF
+      type: project.protobuf.NavigationReport

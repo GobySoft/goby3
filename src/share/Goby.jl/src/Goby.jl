@@ -7,8 +7,15 @@ using ProtoBuf
 export publish, subscribe
 
 is_multithreaded = false
+# a single-task Goby.run() is under way, which has no task modules to carry INTERTHREAD
+is_single_task_running = false
 
 include("GobyMultiThread.jl")
+include("InterthreadContract.jl")
+
+using .MultiThread: InterthreadOverflowError, InterthreadDeadlockError
+
+is_interthread(layer) = Int32(layer) == Int32(Goby.INTERTHREAD)
 
 # main task Protobuf publish
 # TODO: add more schemes as additional publish functions
@@ -16,8 +23,11 @@ include("GobyMultiThread.jl")
     publish(app, layer, group, msg)
 
 Publish a message `msg` using this `app` (CxxWrap'd Goby App) to this `layer` (e.g., Goby.INTERPROCESS), using this `group` (string). Current `msg` must be an AbstractProtoBufMessage generated using the ProtoBuf.jl library, unless `layer` is Goby.INTERTHREAD (in which case `msg` can be any Julia type).
+
+On Goby.INTERTHREAD, a full subscription is handled by its overflow policy (see [`subscribe`](@ref)), which may make this wait, drop a message, or throw an [`InterthreadOverflowError`](@ref).
 """
 function publish(app, layer, group::String, msg::AbstractProtoBufMessage)
+    is_interthread(layer) && !Goby.is_multithreaded && throw(MultiThread.interthread_needs_tasks_error())
     if Goby.is_multithreaded && MultiThread.check_and_publish(app, layer, group, msg)
         return
     end
@@ -39,6 +49,7 @@ end
 
 # main task (interthread)
 function publish(app, layer, group, msg)
+    is_interthread(layer) && !Goby.is_multithreaded && throw(MultiThread.interthread_needs_tasks_error())
     if Goby.is_multithreaded && MultiThread.check_and_publish(app, layer, group, msg)
         return
     end
@@ -99,14 +110,22 @@ function pb_type_from_callback(callback::Function)
 end
 
 """
-    subscribe(app, layer, group, callback::Function; scheme = Goby.NULL_SCHEME, type_name::String = "")
+    subscribe(app, layer, group, callback::Function; scheme = Goby.NULL_SCHEME, type_name::String = "",
+              capacity = 50, overflow = :block)
 
 Subscribe to messages using this `app` (CxxWrap'd Goby App) on this `layer` (e.g., Goby.INTERPROCESS), using this `group` (string). When a message is received, call the `callback` function. If `scheme` and `type_name` are not defined, they will be inferred from the type of the first argument of `callback` (currently only supports AbstractProtoBufMessage, unless `layer` is Goby.INTERTHREAD which supports all Julia types).
+
+On Goby.INTERTHREAD each subscription queues up to `capacity` messages for its task. When it is full, `overflow` decides what a publication does: `:block` waits for room, `:drop_oldest` replaces the oldest queued message, `:drop_newest` discards the new one, and `:error` throws an [`InterthreadOverflowError`](@ref) from `publish`. When `interface.yml` declares the subscription, both come from there instead.
 """
-function subscribe(app, layer, group, callback::Function; scheme = Goby.NULL_SCHEME, type_name::String = "")
+function subscribe(app, layer, group, callback::Function; scheme = Goby.NULL_SCHEME, type_name::String = "",
+                   capacity = nothing, overflow = nothing)
     layer_int::Int32 = Int32(layer)
 
-    if MultiThread.check_and_subscribe(layer, group, callback)
+    if is_interthread(layer) && Goby.is_single_task_running
+        throw(MultiThread.interthread_needs_tasks_error())
+    end
+
+    if MultiThread.check_and_subscribe(layer, group, callback; capacity = capacity, overflow = overflow)
         return
     end
 
@@ -219,6 +238,8 @@ The application is run in one thread if tasks_modules is empty, otherwise it use
 function run(goby_app, main_module = Main, task_modules = [])
     if length(task_modules) == 0
         # single threaded
+        MultiThread.check_single_task()
+        Goby.is_single_task_running = true
         if isdefined(main_module, :goby_cfg) && haskey(main_module.goby_cfg, :loop_frequency)
             Goby.cxx_set_loop_frequency_hertz(goby_app, main_module.goby_cfg[:loop_frequency])
         end

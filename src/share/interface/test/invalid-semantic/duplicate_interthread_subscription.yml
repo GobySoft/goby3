@@ -1,0 +1,19 @@
+# the same thread subscribing twice to the same group and type is a copy-paste slip: the
+# contract could not tell which entry a subscription is
+application:
+  name: BadDemo
+  cpp_type: goby::zeromq::SingleThreadApplication
+  config:
+    scheme: PROTOBUF
+    type: project.config.protobuf.BadDemoConfig
+
+interthread:
+  subscribes:
+    - group: work
+      scheme: NATIVE
+      type: Work
+      thread: Consumer
+    - group: work
+      scheme: NATIVE
+      type: Work
+      thread: Consumer

@@ -32,6 +32,13 @@
 #   include(joinpath(@__DIR__, "my_app_goby.jl"))
 #   Goby.subscribe(app, MyAppGoby.interprocess(), MyAppGoby.groups.nav, callback)
 #
+# Also writes <TARGET>_julia_interthread.yml beside it: the interthread contract declared in
+# INTERFACE_YML, which goby_export_interface() hands to goby_clang_tool so that the application's
+# interface file includes its Julia tasks. Its path is the target's GOBY_INTERTHREAD_MANIFEST
+# property. When the project exports interface files (export_goby_interfaces, with a
+# generate_interfaces() command), this calls generate_interfaces(TARGET <name>), as
+# goby_add_app() does.
+#
 # THREADS is the number of Julia threads the launcher starts the application with, which an
 # application using Goby.run()'s task modules needs: one per task module plus three, for Main,
 # the loop timer and the C++ application. It is a default, so JULIA_NUM_THREADS still wins.
@@ -47,6 +54,8 @@
 #   GOBY_JULIA_FOUND         whether the pieces needed to build a Julia application were found
 #   GOBY_JULIA_NOT_FOUND_REASON  why not, when it is FALSE
 #   GOBY_JULIA_DIR           the Goby.jl project used to run the generators
+#   GOBY_JULIA_HAS_INTERTHREAD_CONTRACT  interface.yml may declare interthread, which is
+#                            enforced, and goby_add_julia_app() writes the manifest
 #
 # Requires julia and CxxWrap.jl:
 #   julia -e 'import Pkg; Pkg.add("CxxWrap")'
@@ -120,6 +129,8 @@ endif()
 
 message(STATUS "Found Goby.jl at ${GOBY_JULIA_SRC_DIR}, JlCxx at ${GOBY_JLCXX_LOCATION}")
 
+set(GOBY_JULIA_HAS_INTERTHREAD_CONTRACT TRUE)
+
 # One target rather than one rule per application, so that two julia processes never write
 # Manifest.toml at once during a parallel build
 add_custom_command(
@@ -170,16 +181,18 @@ function(GOBY_ADD_JULIA_APP)
   # the module an application includes for its groups and layer accessors; written beside the
   # library from the same generator run, so one julia startup produces both sides
   set(_jl_out "${_out_dir}/${GAJA_TARGET}_goby.jl")
+  set(_manifest_out "${_out_dir}/${GAJA_TARGET}_julia_interthread.yml")
 
   add_custom_command(
-    OUTPUT "${_cpp_out}" "${_jl_out}"
+    OUTPUT "${_cpp_out}" "${_jl_out}" "${_manifest_out}"
     DEPENDS "${_interface_yml}"
     COMMAND "${JULIA}"
     ARGS --project=${GOBY_JULIA_DIR}
          -L "${GOBY_JULIA_DIR}/src/gen_goby.jl"
-         # two -e rather than one statement separated by ';', which CMake splits into a list
+         # separate -e rather than one statement separated by ';', which CMake splits into a list
          -e "'goby_gen_cpp(\"${_interface_yml}\",\"${_cpp_out}\",[${_include_str}])'"
          -e "'goby_gen_julia(\"${_interface_yml}\",\"${_jl_out}\")'"
+         -e "'goby_gen_interface(\"${_interface_yml}\",\"${_manifest_out}\",\"${GAJA_TARGET}\")'"
     COMMENT "Generating Goby Julia bindings for ${GAJA_TARGET} from ${GAJA_INTERFACE_YML}")
 
   add_library(${GAJA_TARGET} SHARED "${_cpp_out}" ${GAJA_SOURCES})
@@ -188,6 +201,7 @@ function(GOBY_ADD_JULIA_APP)
   add_dependencies(${GAJA_TARGET} goby_julia_pkgs)
 
   set_target_properties(${GAJA_TARGET} PROPERTIES
+    GOBY_INTERTHREAD_MANIFEST "${_manifest_out}"
     LIBRARY_OUTPUT_DIRECTORY "${_out_dir}"
     # julia dlopens the library, which has to find libcxxwrap_julia
     INSTALL_RPATH "${CMAKE_INSTALL_PREFIX}/lib;${GOBY_JLCXX_LOCATION}")
@@ -224,6 +238,10 @@ function(GOBY_ADD_JULIA_APP)
 exec \"${JULIA}\"${_thread_arg} \"${_out_dir}/${_main_name}\" \"$@\"
 "
       FILE_PERMISSIONS OWNER_READ OWNER_WRITE OWNER_EXECUTE GROUP_READ GROUP_EXECUTE WORLD_READ WORLD_EXECUTE)
+  endif()
+
+  if(export_goby_interfaces AND COMMAND generate_interfaces)
+    generate_interfaces(TARGET ${GAJA_TARGET})
   endif()
 
   set(${GAJA_TARGET}_JULIA_DIRECTORY "${_out_dir}" PARENT_SCOPE)
