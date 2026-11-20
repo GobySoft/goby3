@@ -49,14 +49,15 @@
 #include <llvm/Support/raw_ostream.h>              // for raw_string_ostream
 #include <yaml-cpp/emitter.h>                      // for operator<<, Emitter
 
-#include "actions.h"                                     // for generate
-#include "goby/middleware/marshalling/interface.h"       // for MarshallingScheme
-#include "goby/middleware/tool/interface/pubsub_entry.h" // for Layer, PubSubEntry
-#include "goby/middleware/tool/interface/yaml_raii.h"    // for YMap, YSeq
-#include "goby/middleware/transport/interface.h"         // for Necessity, Necess...
-#include "clang/ASTMatchers/ASTMatchFinder.h"            // for MatchFinder::Matc...
-#include "clang/ASTMatchers/ASTMatchers.h"               // for hasName, callee
-#include "clang/Tooling/Tooling.h"                       // for newFrontendAction...
+#include "actions.h"                                             // for generate
+#include "goby/middleware/marshalling/interface.h"               // for MarshallingScheme
+#include "goby/middleware/tool/interface/language_interthread.h" // for LanguageInterthread
+#include "goby/middleware/tool/interface/pubsub_entry.h"         // for Layer, PubSubEntry
+#include "goby/middleware/tool/interface/yaml_raii.h"            // for YMap, YSeq
+#include "goby/middleware/transport/interface.h"                 // for Necessity, Necess...
+#include "clang/ASTMatchers/ASTMatchFinder.h"                    // for MatchFinder::Matc...
+#include "clang/ASTMatchers/ASTMatchers.h"                       // for hasName, callee
+#include "clang/Tooling/Tooling.h"                               // for newFrontendAction...
 
 using goby::middleware::tool::interface::Layer;
 using goby::middleware::tool::interface::PubSubEntry;
@@ -469,7 +470,7 @@ class PubSubAggregator : public ::clang::ast_matchers::MatchFinder::MatchCallbac
             Result.Nodes.getNodeAs<clang::StringLiteral>("group_string_arg");
         const auto* group_int_lit = Result.Nodes.getNodeAs<clang::IntegerLiteral>("group_int_arg");
 
-        //        const auto* group_decl = Result.Nodes.getNodeAs<clang::Decl>("group_decl");
+        const auto* group_decl = Result.Nodes.getNodeAs<clang::VarDecl>("group_decl");
 
         const auto* type_arg = Result.Nodes.getNodeAs<clang::TemplateArgument>("type_arg");
         const auto* scheme_arg = Result.Nodes.getNodeAs<clang::TemplateArgument>("scheme_arg");
@@ -620,6 +621,8 @@ class PubSubAggregator : public ::clang::ast_matchers::MatchFinder::MatchCallbac
 
         PubSubEntry entry(layer, direction, thread, group, scheme, type, thread_is_known, necessity,
                           is_regex);
+        if (group_decl)
+            entry.group_var = group_decl->getQualifiedNameAsString();
         if (dynamic_group_expr)
         {
             entry.dynamic = true;
@@ -699,9 +702,162 @@ class PubSubAggregator : public ::clang::ast_matchers::MatchFinder::MatchCallbac
     std::map<std::string, std::set<std::string>> parents_;
 };
 
-int goby::clang::generate(::clang::tooling::ClangTool& Tool, std::string output_directory,
-                          std::string output_file, std::string target_name)
+namespace
 {
+// The thread a Julia or Python application makes an outer-layer call from. The call is made by
+// the C++ glue, which is what -gen sees, so the manifest says which thread it stands for.
+struct OuterThread
+{
+    Layer layer{Layer::UNKNOWN};
+    PubSubEntry::Direction direction{PubSubEntry::Direction::UNKNOWN};
+    // empty: any thread, which stays on the glue
+    std::string thread;
+    std::string group;
+    std::string type;
+    goby::middleware::Necessity necessity{goby::middleware::Necessity::OPTIONAL};
+};
+
+std::string check_outer_threads(const YAML::Node& node, std::vector<OuterThread>& outer)
+{
+    using goby::middleware::tool::interface::necessity_from_name;
+    if (!node.IsSequence())
+        return "'outer_threads' must be a list";
+    for (const auto& e : node)
+    {
+        if (!e.IsMap())
+            return "each entry of 'outer_threads' must be a mapping";
+        for (const auto& field : e)
+        {
+            auto key = field.first.as<std::string>();
+            if (key != "layer" && key != "direction" && key != "thread" && key != "group" &&
+                key != "type" && key != "necessity")
+                return "unknown key 'outer_threads." + key + "'";
+        }
+        for (const auto* required : {"layer", "direction", "group", "type"})
+        {
+            if (!e[required])
+                return std::string("an entry of 'outer_threads' has no '") + required + "'";
+        }
+
+        OuterThread t;
+        auto layer = e["layer"].as<std::string>();
+        if (layer == "interprocess")
+            t.layer = Layer::INTERPROCESS;
+        else if (layer == "intermodule")
+            t.layer = Layer::INTERMODULE;
+        else
+            return "'outer_threads.layer' is '" + layer + "'; it is interprocess or intermodule";
+        auto direction = e["direction"].as<std::string>();
+        if (direction == "publish")
+            t.direction = PubSubEntry::Direction::PUBLISH;
+        else if (direction == "subscribe")
+            t.direction = PubSubEntry::Direction::SUBSCRIBE;
+        else
+            return "'outer_threads.direction' is '" + direction + "'; it is publish or subscribe";
+        if (e["thread"])
+            t.thread = e["thread"].as<std::string>();
+        t.group = e["group"].as<std::string>();
+        t.type = e["type"].as<std::string>();
+        if (auto necessity = e["necessity"])
+        {
+            auto n = necessity.as<std::string>();
+            if (n != "required" && n != "recommended" && n != "optional")
+                return "'outer_threads.necessity' is '" + n +
+                       "'; it is one of required, recommended, optional";
+            t.necessity = necessity_from_name(n);
+        }
+        outer.push_back(t);
+    }
+    return "";
+}
+
+// the one language section a manifest carries, or none for an application that declares no
+// interthread; exits on a manifest that is not one
+const goby::middleware::tool::interface::LanguageInterthread*
+load_interthread_manifest(const std::string& path, YAML::Node& manifest,
+                          std::vector<OuterThread>& outer)
+{
+    using goby::middleware::tool::interface::language_interthreads;
+    auto fail = [&](const std::string& why)
+    {
+        std::cerr << "Invalid interthread manifest " << path << ": " << why << std::endl;
+        exit(EXIT_FAILURE);
+    };
+
+    try
+    {
+        manifest = YAML::LoadFile(path);
+    }
+    catch (const YAML::Exception& e)
+    {
+        fail(e.what());
+    }
+    if (!manifest.IsMap())
+        fail("it must be a mapping");
+
+    const goby::middleware::tool::interface::LanguageInterthread* found = nullptr;
+    for (const auto& kv : manifest)
+    {
+        auto key = kv.first.as<std::string>();
+        if (key == "application")
+            continue;
+        if (key == "outer_threads")
+        {
+            auto problem = check_outer_threads(kv.second, outer);
+            if (!problem.empty())
+                fail(problem);
+            continue;
+        }
+        auto it = std::find_if(language_interthreads().begin(), language_interthreads().end(),
+                               [&](const auto& language) { return language.section == key; });
+        if (it == language_interthreads().end())
+            fail("unknown key '" + key + "'");
+        if (found)
+            fail("it has both " + found->section + " and " + key);
+        found = &*it;
+        auto problem = check_language_interthread(kv.second, *it);
+        if (!problem.empty())
+            fail(problem);
+    }
+    return found;
+}
+} // namespace
+
+int goby::clang::generate(::clang::tooling::ClangTool& Tool, std::string output_directory,
+                          std::string output_file, std::string target_name,
+                          std::string interthread_manifest)
+{
+    YAML::Node manifest;
+    std::vector<OuterThread> outer_threads;
+    const goby::middleware::tool::interface::LanguageInterthread* manifest_language =
+        interthread_manifest.empty()
+            ? nullptr
+            : load_interthread_manifest(interthread_manifest, manifest, outer_threads);
+
+    // an outer-layer call of the glue, as the threads the manifest says make it
+    auto on_threads = [&](const PubSubEntry& e, Layer layer) -> std::vector<PubSubEntry>
+    {
+        std::vector<PubSubEntry> entries;
+        if (e.layer == layer)
+        {
+            for (const auto& t : outer_threads)
+            {
+                if (t.layer != layer || t.direction != e.direction || t.type != e.type ||
+                    (t.group != e.group && t.group != e.group_var))
+                    continue;
+                auto entry = e;
+                if (!t.thread.empty())
+                    entry.thread = t.thread;
+                if (e.direction == PubSubEntry::Direction::SUBSCRIBE)
+                    entry.necessity = t.necessity;
+                entries.push_back(entry);
+            }
+        }
+        if (entries.empty())
+            entries.push_back(e);
+        return entries;
+    };
+
     PubSubAggregator publish_aggregator, subscribe_aggregator;
     ::clang::ast_matchers::MatchFinder finder;
 
@@ -818,8 +974,9 @@ int goby::clang::generate(::clang::tooling::ClangTool& Tool, std::string output_
                                 // overwrite with most derived
                                 e.thread = thread;
 
-                                e.write_yaml_map(yaml_out, layer != Layer::INTERTHREAD,
-                                                 e.layer > layer, false);
+                                for (const auto& on_thread : on_threads(e, layer))
+                                    on_thread.write_yaml_map(yaml_out, layer != Layer::INTERTHREAD,
+                                                             e.layer > layer, false);
 
                                 // special case: Intervehicle publishes both PROTOBUF and DCCL version on inner layers
                                 if (e.layer > layer && e.layer == Layer::INTERVEHICLE &&
@@ -848,7 +1005,8 @@ int goby::clang::generate(::clang::tooling::ClangTool& Tool, std::string output_
                             {
                                 // overwrite with most derived
                                 e.thread = thread;
-                                e.write_yaml_map(yaml_out, layer != Layer::INTERTHREAD);
+                                for (const auto& on_thread : on_threads(e, layer))
+                                    on_thread.write_yaml_map(yaml_out, layer != Layer::INTERTHREAD);
                             }
                         }
                     }
@@ -900,6 +1058,12 @@ int goby::clang::generate(::clang::tooling::ClangTool& Tool, std::string output_
             {
                 emit_pub_sub(layer_map, {});
             }
+        }
+
+        if (manifest_language)
+        {
+            root_map.add_key(manifest_language->section);
+            yaml_out << manifest[manifest_language->section];
         }
     }
 

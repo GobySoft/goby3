@@ -74,6 +74,9 @@ inline Issue::Subject subject(const Unmatched& u)
     s.type = u.entry.type;
     if (u.entry.direction == PubSubEntry::Direction::SUBSCRIBE)
         s.necessity = necessity_name(u.entry.necessity);
+    if (u.entry.capacity > 0)
+        s.delivery =
+            "capacity " + std::to_string(u.entry.capacity) + ", overflow " + u.entry.overflow;
     return s;
 }
 

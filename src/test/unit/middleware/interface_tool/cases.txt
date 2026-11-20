@@ -19,3 +19,5 @@ goby_apps | goby_apps.yml | |
 goby_apps_expanded | goby_apps.yml | --expand_goby_apps | -expand-goby-apps
 goby_apps | goby_apps.yml | | | d2
 templates | templates.yml | | | d2
+languages | languages.yml | |
+languages | languages.yml | | | d2

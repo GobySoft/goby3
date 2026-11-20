@@ -1,0 +1,14 @@
+# a queue holds at least one message
+application:
+  name: BadDemo
+  cpp_type: goby::zeromq::SingleThreadApplication
+  config:
+    scheme: PROTOBUF
+    type: project.config.protobuf.BadDemoConfig
+
+interthread:
+  subscribes:
+    - group: work
+      scheme: NATIVE
+      type: Work
+      capacity: 0

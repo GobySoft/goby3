@@ -1,0 +1,18 @@
+# one thread declaring the same publication twice is a copy-paste slip
+application:
+  name: BadDemo
+  cpp_type: goby::zeromq::SingleThreadApplication
+  config:
+    scheme: PROTOBUF
+    type: project.config.protobuf.BadDemoConfig
+
+interprocess:
+  publishes:
+    - group: project::groups::nav
+      scheme: PROTOBUF
+      type: project.protobuf.NavigationReport
+      thread: Navigator
+    - group: project::groups::nav
+      scheme: PROTOBUF
+      type: project.protobuf.NavigationReport
+      thread: Navigator

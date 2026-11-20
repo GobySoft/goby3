@@ -1,0 +1,28 @@
+# A Python application as goby_clang_tool -gen -interthread-manifest writes it
+application: python_logger
+interprocess:
+  subscribes:
+    - group: nav::fix
+      scheme: PROTOBUF
+      type: nav::protobuf::Fix
+      necessity: required
+      thread: PythonLogger
+interthread:
+  threads:
+    - name: PythonLogger
+      known: true
+      publishes:
+        []
+      subscribes:
+        []
+python_interthread:
+  publishes:
+    - {thread: Recorder, group: record, type: logger_pb2.Record}
+    - {thread: Recorder, group: status, type: RecorderStatus}
+  subscribes:
+    # the Python bus delivers by group and type
+    - {thread: Writer, group: record, type: logger_pb2.Record, necessity: required}
+    # a subscription to object takes anything on its group
+    - {group: status, type: object, necessity: optional}
+    # no publisher sends a Summary, so this is not met
+    - {thread: Writer, group: record, type: logger_pb2.Summary, necessity: recommended}

@@ -72,6 +72,19 @@ expect_output "2/3 required met"
 check 1 goby interface validate modules.yml
 expect_output "auv/vehicle/controller \[interprocess\] no publisher for nav::depth"
 check 0 goby interface validate goby_gps_interface.yml
+# Julia tasks and Python threads, from the sections goby_clang_tool -interthread-manifest adds:
+# a Julia subscription is met by group alone, a Python one by group and type unless it takes object
+check 1 goby interface validate languages.yml
+expect_output "required-unmet  *usv/julia_tracker \[interthread\] no publisher for heartbeat (JULIA Any)"
+expect_output "recommended-unmet  *usv/python_logger \[interthread\] no publisher for record (PYTHON logger_pb2.Summary)"
+expect_output "3/4 required met"
+check 0 goby interface list languages.yml --what groups
+expect_output "subscriber  usv/julia_tracker (Smoother)  JULIA AbstractFix  required  (capacity 10, overflow drop_oldest)"
+expect_output "subscriber  usv/python_logger (any thread)  PYTHON object"
+check 0 goby interface explain languages.yml track
+expect_output "track JULIA AbstractFix, required, capacity 10, overflow drop_oldest: met"
+check 0 goby interface explain languages.yml nav::fix
+expect_output "publication   usv/julia_tracker (Estimator) \[interprocess\] nav::fix"
 check 0 goby interface validate warning_only.yml
 expect_output "recommended-unmet"
 check 1 goby interface validate warning_only.yml --strict
@@ -151,7 +164,7 @@ check 2 goby interface diff fleet.yml no_such_deployment.yml
 check 0 goby interface init "$dir/interfaces" --platform auv --output_file "$work/init.yml"
 grep -q "^      - nav_driver$" "$work/init.yml" || { echo "FAILED: init did not list nav_driver"; fail=1; }
 check 1 goby interface validate "$work/init.yml" -I "$dir/interfaces"
-expect_output "12 applications"
+expect_output "14 applications"
 check 1 goby interface init "$dir/deployments"
 
 # launch: goby_launch files from the deployment's run: lists

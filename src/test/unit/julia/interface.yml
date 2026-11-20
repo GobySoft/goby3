@@ -9,10 +9,29 @@ application:
 
 interprocess:
   publishes:
+    # only the Main task may publish this; goby_clang_tool draws it on Main
     - group: goby::test::julia::groups::tx
       scheme: PROTOBUF
       type: goby.test.julia.protobuf.CommsTx
+      thread: Main
   subscribes:
     - group: goby::test::julia::groups::rx
       scheme: PROTOBUF
       type: goby.test.julia.protobuf.CommsRx
+
+# Implemented by Goby.jl between Julia tasks, so none of this reaches the generated C++; the
+# generator turns it into the contract in the Julia module and the manifest beside it instead
+interthread:
+  publishes:
+    - group: status
+      scheme: NATIVE
+      type: Any
+      thread: Main
+  subscribes:
+    - group: status
+      scheme: NATIVE
+      type: Any
+      thread: Worker
+      necessity: required
+      capacity: 5
+      overflow: drop_oldest

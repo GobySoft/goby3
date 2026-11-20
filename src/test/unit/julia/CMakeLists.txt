@@ -27,5 +27,10 @@ target_include_directories(goby_test_julia_app PRIVATE ${CMAKE_CURRENT_SOURCE_DI
 add_test(NAME goby_test_julia_app
   COMMAND ${CMAKE_CURRENT_BINARY_DIR}/goby_test_julia_app ${GOBY_JULIA_DIR})
 
+# INTERTHREAD never reaches C++, so this needs Goby.jl alone: no generated library, no gobyd.
+# Threads let a publisher wait on a full subscription while the test drains it.
+add_test(NAME goby_test_julia_interthread
+  COMMAND ${JULIA} -t 4 ${CMAKE_CURRENT_SOURCE_DIR}/test_interthread.jl ${GOBY_JULIA_DIR})
+
 # Julia compiles its dependencies on first use, which is slow on a cold depot
-set_tests_properties(goby_test_julia_app PROPERTIES TIMEOUT 600)
+set_tests_properties(goby_test_julia_app goby_test_julia_interthread PROPERTIES TIMEOUT 600)

@@ -1,0 +1,46 @@
+vars: { d2-config: { layout-engine: elk } }
+direction: right
+classes: {
+  platform: { style.stroke: "#006400"; style.font-color: "#006400"; style.stroke-width: 2; style.fill: transparent }
+  module: { style.stroke: "#cd8500"; style.font-color: "#cd8500"; style.stroke-width: 2; style.fill: transparent }
+  application: { style.stroke: "#104e8b"; style.font-color: "#104e8b"; style.stroke-width: 2; style.fill: transparent }
+  thread: { style.stroke: "#551a8b"; style.font-color: "#551a8b" }
+  placeholder: { shape: text; style.font-color: "#888888" }
+  interthread: { style.stroke: "#551a8b"; style.font-size: 10 }
+  interprocess: { style.stroke: "#104e8b"; style.font-size: 10 }
+  intermodule: { style.stroke: "#cd8500"; style.font-size: 10 }
+  intervehicle: { style.stroke: "#006400"; style.font-size: 10 }
+  required: { style.stroke-width: 3 }
+  recommended: { style.stroke-dash: 6 }
+  regex: { style.stroke-dash: 2 }
+  dynamic: { style.stroke-dash: 4 }
+  unmet: { style.stroke: red; style.stroke-width: 3 }
+}
+usv: {
+  class: platform
+  julia_tracker: {
+    class: application
+    Estimator: { class: thread; tooltip: "T1: track | JULIA | nav.protobuf.Fix\nT2: estimate_alert | JULIA | EstimateAlert\nP0: nav::fix | PROTOBUF | nav::protobuf::Fix" }
+    JuliaTracker: { class: thread }
+    Main: { class: thread }
+    Smoother: { class: thread }
+    Watchdog: { class: thread }
+    no_publisher: { class: placeholder; label: "no publisher" }
+  }
+  python_logger: {
+    class: application
+    PythonLogger: { class: thread }
+    Recorder: { class: thread; tooltip: "T3: record | PYTHON | logger_pb2.Record\nT4: status | PYTHON | RecorderStatus" }
+    Writer: { class: thread }
+    any_thread: { class: thread; label: "any thread" }
+    no_publisher: { class: placeholder; label: "no publisher" }
+  }
+}
+usv.julia_tracker.Estimator -> usv.julia_tracker.Main: "T2 [estimate_alert]" { class: interthread; tooltip: "T2: estimate_alert | JULIA | EstimateAlert" }
+usv.julia_tracker.Estimator -> usv.julia_tracker.Smoother: "T1 [track]" { class: [interthread; required]; tooltip: "T1: track | JULIA | nav.protobuf.Fix" }
+usv.julia_tracker.Estimator -> usv.python_logger.PythonLogger: "P0 [fix]" { class: [interprocess; required]; tooltip: "P0: nav::fix | PROTOBUF | nav::protobuf::Fix" }
+usv.python_logger.Recorder -> usv.python_logger.Writer: "T3 [record]" { class: [interthread; required]; tooltip: "T3: record | PYTHON | logger_pb2.Record" }
+usv.python_logger.Recorder -> usv.python_logger.any_thread: "T4 [status]" { class: interthread; tooltip: "T4: status | PYTHON | RecorderStatus" }
+usv.julia_tracker.no_publisher -> usv.julia_tracker.Watchdog: "T5 [heartbeat]" { class: [interthread; required; unmet]; tooltip: "T5: heartbeat | JULIA | Any" }
+usv.julia_tracker.no_publisher -> usv.julia_tracker.JuliaTracker: "P1 [raw]" { class: interprocess; tooltip: "P1: nav::raw | PROTOBUF | nav::protobuf::Raw" }
+usv.python_logger.no_publisher -> usv.python_logger.Writer: "T6 [record]" { class: [interthread; recommended]; tooltip: "T6: record | PYTHON | logger_pb2.Summary" }

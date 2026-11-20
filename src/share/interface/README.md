@@ -35,7 +35,7 @@ the offending layer, group, type and scheme.
 | Key | Required | Description |
 |-----|----------|-------------|
 | `application` | **Yes** | Application metadata (see below). |
-| `interthread` | No | Interthread-layer publish/subscribe declarations. |
+| `interthread` | No | Interthread-layer publish/subscribe declarations: the contract the binding enforces between its threads (see below). |
 | `interprocess` | No | Interprocess-layer publish/subscribe declarations. |
 | `intermodule` | No | Intermodule-layer publish/subscribe declarations. |
 
@@ -100,6 +100,25 @@ Each entry may independently declare `publishes` and/or `subscribes`.
 | `scheme` | **Yes** | Marshalling scheme. Only `PROTOBUF` is currently supported. |
 | `type` | **Yes** | Protobuf message type. May be written with `.` scoping (`project.protobuf.MyMsg`) or C++ `::` scoping (`project::protobuf::MyMsg`); both are normalized to `::` in the generated C++. |
 | `necessity` | No | Subscriptions only: `required`, `recommended` or `optional` (the default). Passed to the generated `subscribe()`, so `goby_clang_tool -gen` records it and `goby interface validate` can check that a deployment provides a publisher. |
+| `thread` | No | The thread that makes the call: a Julia task module's name (`Main` for the main task), or a Python `Thread` subclass's or application class's name. The binding allows the call from that thread only, and `goby interface` draws it there rather than on the generated C++ class, which makes every outer-layer call on its behalf. Several threads may declare the same call; without `thread`, any thread may make it. |
+
+### `interthread` entries
+
+The bindings carry interthread in their own language, so its entries describe threads of that
+language rather than C++ calls, and take three more fields:
+
+| Field | Required | Description |
+|-------|----------|-------------|
+| `group` | **Yes** | The string the binding delivers on. No C++ group needs to exist. |
+| `scheme` | **Yes** | `PROTOBUF`, or `NATIVE` for any other type of the bound language. Either way the object is handed over as it is. `NATIVE` is interthread only. |
+| `type` | **Yes** | A protobuf message type, or a type of the bound language as that language names it. Resolved when the application starts. |
+| `thread` | No | A Julia task module's name (`Main` for the main task), or a Python `Thread` subclass's or application class's name. Without it the entry applies to any thread. |
+| `capacity` | No | Subscriptions only, Julia only: messages queued for the subscription, default 50. |
+| `overflow` | No | Subscriptions only, Julia only: what a publication does when the queue is full: `block` (default), `drop_oldest`, `drop_newest` or `error`. |
+
+Once a file declares `interthread`, the binding holds every interthread publication and
+subscription to it, and an undeclared one is an error. Without the section, interthread groups are
+any string and messages any value.
 
 ## Complete example
 
@@ -131,20 +150,21 @@ than generating code that silently does the wrong thing.
 | Construct | Julia | Python |
 |-----------|-------|--------|
 | `interthread`, `interprocess`, `intermodule` | yes | yes |
-| `interthread` declarations are required | yes | no |
+| `interthread` declarations are enforced once present | yes | yes |
 | `scheme: PROTOBUF` | yes | yes |
+| `scheme: NATIVE` (interthread) | yes | yes |
+| `thread` | yes | yes |
+| interthread `capacity` and `overflow` | yes | no |
 | multiple portals per layer (`alias`) | yes | yes |
 | generated module of group constants and accessors | yes | yes |
 
 Reserved for future use, and rejected by both generators today: the `intervehicle` layer, and the
 `DCCL`, `JSON`, `CSTR` and `MAVLINK` schemes.
 
-Both generators implement the `interthread` layer in their own language rather than through the
-C++ `InterThreadTransporter`, so neither generates C++ for it. The Python generator goes one step
-further and does not require the layer to be declared at all: a Python interthread group is any
-string and a Python interthread message is any Python object, so `scheme` and `type` have nothing
-to constrain. Declaring the layer is still useful — the groups become named constants in the
-generated module — and a file that declares it stays valid for both generators.
+Both bindings implement the `interthread` layer in their own language rather than through the
+C++ `InterThreadTransporter`, so neither generates C++ for it. Declaring it is optional; when it is
+declared, the groups become named constants in the generated module and the declaration is the
+contract the binding enforces.
 
 An `alias` names the accessor the application calls, but only the layer crosses into C++, so it
 cannot distinguish two portals on the same layer that declare the same scheme, type and group.
@@ -162,6 +182,13 @@ on, so an application names its groups rather than repeating the expression as a
 |--|-------|--------|
 | C++ glue | `<target>.cpp` | `<target>.cpp` |
 | language module | `<target>_goby.jl`, module `<name>Goby` | `<name_snake>_goby.py` |
+| interthread manifest | `<target>_julia_interthread.yml` | `<target>_python_interthread.yml` |
+
+The manifest holds the declared `interthread` section as an interface file would hold it, and
+the thread each outer-layer entry names (`outer_threads`). The binding's CMake function passes it
+to `goby_clang_tool -gen -interthread-manifest`, which adds the first to `<target>_interface.yml`
+and draws each glue call on the thread the second names, so that `goby interface` sees the
+application's threads.
 
 ## Conformance corpus
 

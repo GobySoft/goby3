@@ -175,6 +175,14 @@ struct PubSubEntry
     // necessity was set by the deployment rather than the code
     bool necessity_overridden{false};
 
+    // a Julia interthread subscription's queue: messages it holds, and what a full one does
+    int capacity{0};
+    std::string overflow;
+
+    // goby_clang_tool -gen only: the qualified name of the Group variable, which is how a Julia or
+    // Python interface.yml names the group
+    std::string group_var;
+
     /// \brief A dynamic group whose string goby_clang_tool could not determine
     bool unresolved() const { return dynamic && group == "*"; }
 
@@ -361,8 +369,14 @@ inline GroupMatch connection(const PubSubEntry& a, const PubSubEntry& b)
     if (match == GroupMatch::NONE)
         return match;
 
-    // a type regex is given at run time, so a regex subscription takes any type in its group
-    bool types_match = a.type == b.type || a.is_regex || b.is_regex;
+    // Goby.jl delivers interthread by group alone; the types are checked at run time instead
+    if (a.scheme == "JULIA" && b.scheme == "JULIA")
+        return match;
+
+    // a type regex is given at run time, so a regex subscription takes any type in its group;
+    // a Python interthread subscription to object takes anything published on its group
+    bool types_match = a.type == b.type || a.is_regex || b.is_regex ||
+                       (a.scheme == "PYTHON" && (a.type == "object" || b.type == "object"));
     if ((a.scheme == b.scheme || a.scheme == "CXX_OBJECT" || b.scheme == "CXX_OBJECT") &&
         types_match)
         return match;

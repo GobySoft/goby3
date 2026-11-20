@@ -22,8 +22,11 @@ end
 #end
 
 const ENTRY_KEYS = ("group", "scheme", "type")
-const SUBSCRIPTION_KEYS = ("group", "scheme", "type", "necessity")
+const PUBLICATION_KEYS = ("group", "scheme", "type", "thread")
+const SUBSCRIPTION_KEYS = ("group", "scheme", "type", "thread", "necessity")
+const INTERTHREAD_SUBSCRIPTION_KEYS = ("group", "scheme", "type", "thread", "necessity", "capacity", "overflow")
 const NECESSITIES = ("required", "recommended", "optional")
+const OVERFLOWS = ("block", "drop_oldest", "drop_newest", "error")
 const PORTAL_KEYS = ("alias", "publishes", "subscribes")
 const APPLICATION_KEYS = ("name", "cpp_type", "config")
 const CONFIG_KEYS = ("scheme", "type")
@@ -46,9 +49,32 @@ function check_keys(yaml, required, allowed, where::String)
     end
 end
 
-function check_scheme(scheme)
+# NATIVE is a value of the bound language, which only interthread -- never marshalled -- can carry
+function check_scheme(scheme, layer = "")
+    if layer == "interthread" && scheme == "NATIVE"
+        return
+    end
     if scheme != "PROTOBUF"
-        throw(InvalidInterfaceError("The only supported scheme is currently 'PROTOBUF'"))
+        throw(InvalidInterfaceError(layer == "interthread" ?
+            "The supported interthread schemes are 'PROTOBUF' and 'NATIVE'" :
+            "The only supported scheme is currently 'PROTOBUF' ('NATIVE' is interthread only)"))
+    end
+end
+
+const IDENTIFIER = r"^[A-Za-z_][A-Za-z0-9_]*$"
+
+function check_thread(s, where::String)
+    if haskey(s, "thread") && !occursin(IDENTIFIER, string(s["thread"]))
+        throw(InvalidInterfaceError("'$(where).thread' must be an identifier, got '$(s["thread"])'"))
+    end
+end
+
+function check_interthread_settings(s, where::String)
+    if haskey(s, "capacity") && !(s["capacity"] isa Integer && s["capacity"] >= 1)
+        throw(InvalidInterfaceError("'$(where).capacity' must be a positive integer, got '$(s["capacity"])'"))
+    end
+    if haskey(s, "overflow") && !(string(s["overflow"]) in OVERFLOWS)
+        throw(InvalidInterfaceError("'$(where).overflow' is '$(s["overflow"])'. Supported values are: $(join(OVERFLOWS, ", "))"))
     end
 end
 
@@ -76,33 +102,47 @@ function collect_layer(layer::String, layer_yaml)
     subscribe = []
     layer_function=haskey(layer_yaml, "alias") ? layer_yaml["alias"] : layer
     layer_enum=uppercase(layer)
+    interthread = layer == "interthread"
 
     if haskey(layer_yaml, "publishes")
         for p in layer_yaml["publishes"]
-            check_keys(p, ENTRY_KEYS, ENTRY_KEYS, "$(layer).publishes")
-            check_scheme(p["scheme"])
+            check_keys(p, ENTRY_KEYS, PUBLICATION_KEYS, "$(layer).publishes")
+            check_scheme(p["scheme"], layer)
+            check_thread(p, "$(layer).publishes")
             # Julia ::Method sig does not include scoping, so we need to remove it here
             t = to_cpp_scoping(p["type"])
-            g = to_cpp_scoping(string(p["group"]))
+            # an interthread group is the string Goby.jl delivers on, as the generated constant has it
+            g = interthread ? string(p["group"]) : to_cpp_scoping(string(p["group"]))
+            thread = string(get(p, "thread", ""))
             push!(publish, (macro_call = "GOBY_JULIA_IF_PUBLICATION($(p["scheme"]), $(layer_enum), $(layer_function), $(g), \"$(g)\", $(t))",
-                            key = (layer, p["scheme"], t, g),
-                            accessor = layer_function))
+                            key = (layer, p["scheme"], t, g, thread),
+                            accessor = layer_function,
+                            layer = layer, group = g, type = t, thread = thread,
+                            necessity = "optional", capacity = 0, overflow = ""))
         end
     end
 
     if haskey(layer_yaml, "subscribes")
         for s in layer_yaml["subscribes"]
-            check_keys(s, ENTRY_KEYS, SUBSCRIPTION_KEYS, "$(layer).subscribes")
-            check_scheme(s["scheme"])
+            keys_allowed = interthread ? INTERTHREAD_SUBSCRIPTION_KEYS : SUBSCRIPTION_KEYS
+            check_keys(s, ENTRY_KEYS, keys_allowed, "$(layer).subscribes")
+            check_scheme(s["scheme"], layer)
+            check_thread(s, "$(layer).subscribes")
+            interthread && check_interthread_settings(s, "$(layer).subscribes")
             necessity = string(get(s, "necessity", "optional"))
             if !(necessity in NECESSITIES)
                 throw(InvalidInterfaceError("'$(layer).subscribes.necessity' is '$(necessity)'. Supported values are: $(join(NECESSITIES, ", "))"))
             end
             t = to_cpp_scoping(s["type"])
-            g = to_cpp_scoping(string(s["group"]))
+            g = interthread ? string(s["group"]) : to_cpp_scoping(string(s["group"]))
+            thread = string(get(s, "thread", ""))
             push!(subscribe, (macro_call = "GOBY_JULIA_IF_SUBSCRIPTION($(s["scheme"]), $(layer_enum), $(layer_function), $(g), \"$(g)\", $(t), $(uppercase(necessity)))",
-                              key = (layer, s["scheme"], t, g),
-                              accessor = layer_function))
+                              key = (layer, s["scheme"], t, g, thread),
+                              accessor = layer_function,
+                              layer = layer, group = g, type = t, thread = thread,
+                              necessity = necessity,
+                              capacity = Int(get(s, "capacity", 50)),
+                              overflow = string(get(s, "overflow", "block"))))
         end
     end
 
@@ -111,23 +151,65 @@ end
 
 # Two entries the generated code could not tell apart. A publication or subscription is matched
 # on layer, scheme, type and group; the accessor is not part of that, so two entries agreeing on
-# all four compile to two branches with identical conditions, and the second is unreachable
-# whichever accessor the application called.
+# all four but not on the accessor compile to two branches with identical conditions, and the
+# second is unreachable whichever accessor the application called.
+#
+# Several threads may declare the same entry, which the C++ handles once. The same thread twice,
+# or an entry without thread (any thread) beside another, would leave the contract unable to
+# tell which entry a call is.
 function check_unambiguous(entries, layer_kind::String)
-    seen = Dict{Tuple{String,String,String,String},String}()
+    seen = Dict{NTuple{4,String},Tuple{String,Set{String}}}()
     for entry in entries
-        if haskey(seen, entry.key)
-            layer, scheme, type_name, group = entry.key
+        layer, scheme, type_name, group, thread = entry.key
+        key = (layer, scheme, type_name, group)
+        if !haskey(seen, key)
+            seen[key] = (entry.accessor, Set([thread]))
+            continue
+        end
+        accessor, threads = seen[key]
+        if layer != "interthread" && accessor != entry.accessor
             throw(InvalidInterfaceError(
                 "'$(layer).$(layer_kind)' declares $(type_name) on group $(group) (scheme $(scheme)) " *
-                "twice, as '$(seen[entry.key])' and '$(entry.accessor)'. Only the layer identifies a " *
+                "twice, as '$(accessor)' and '$(entry.accessor)'. Only the layer identifies a " *
                 "portal across the language boundary, so the two cannot be told apart and the second " *
                 "would never be reached."))
         end
-        seen[entry.key] = entry.accessor
+        if isempty(thread) || thread in threads || "" in threads
+            who = isempty(thread) ? "any thread" : "thread $(thread)"
+            throw(InvalidInterfaceError(
+                "'$(layer).$(layer_kind)' declares $(type_name) on group $(group) (scheme " *
+                "$(scheme)) twice for $(who) (an entry without thread covers every thread)"))
+        end
+        push!(threads, thread)
     end
 end
 
+const NECESSITY_RANK = Dict("optional" => 0, "recommended" => 1, "required" => 2)
+
+# One C++ branch per publication or subscription, however many threads declare it; a
+# subscription takes the strongest necessity any of them gives it.
+function cpp_macro_calls(entries)
+    order = []
+    best = Dict()
+    for e in entries
+        e.layer == "interthread" && continue
+        key = e.key[1:4]
+        if !haskey(best, key)
+            push!(order, key)
+            best[key] = e
+        elseif NECESSITY_RANK[e.necessity] > NECESSITY_RANK[best[key].necessity]
+            best[key] = e
+        end
+    end
+    return String[best[key].macro_call for key in order]
+end
+
+# The outer-layer entries whose call is tied to a thread, with any thread-less entry for the same
+# call: what the contract checks, and what goby_clang_tool draws on each thread.
+function threaded_outer_entries(entries)
+    threaded = Set(e.key[1:4] for e in entries if e.layer != "interthread" && !isempty(e.thread))
+    return [e for e in entries if e.layer != "interthread" && e.key[1:4] in threaded]
+end
 
 function gen_includes(io_out::IOStream, includes)
     write(io_out, "#include <goby/middleware/languages/julia/application.h>\n\n")
@@ -201,14 +283,40 @@ GOBY_JULIA_DEFINE_MODULE(APPLICATION_NAME)
 """)
 end
 
+const LAYERS = ("interthread", "interprocess", "intermodule")
+
+function collect_entries(interface_yaml)
+    publish = []
+    subscribe = []
+    for layer in LAYERS
+        if haskey(interface_yaml, layer)
+            layer_value = interface_yaml[layer]
+            for portal in (isa(layer_value, Vector) ? layer_value : [layer_value])
+                p, s = collect_layer(layer, portal)
+                append!(publish, p)
+                append!(subscribe, s)
+            end
+        end
+    end
+
+    check_unambiguous(publish, "publishes")
+    check_unambiguous(subscribe, "subscribes")
+    return (publish, subscribe)
+end
+
+function load_interface(in_yaml::String)
+    interface_yaml = YAML.load_file(in_yaml)
+    check_top_level_keys(interface_yaml, LAYERS)
+    name = application_name(interface_yaml["application"])
+    publish, subscribe = collect_entries(interface_yaml)
+    return (interface_yaml, name, publish, subscribe)
+end
+
 function goby_gen_cpp(in_yaml::String, out_cpp::String, includes; verbose::Bool=false)
 
     verbose && println("Generating $(out_cpp) from $(in_yaml)")
 
-    interface_yaml = YAML.load_file(in_yaml)
-
-    layers = ("interthread", "interprocess", "intermodule")
-    check_top_level_keys(interface_yaml, layers)
+    interface_yaml, name, publish, subscribe = load_interface(in_yaml)
 
     io_out::IOStream = open(out_cpp, "w");
     write(io_out, """\
@@ -222,24 +330,9 @@ function goby_gen_cpp(in_yaml::String, out_cpp::String, includes; verbose::Bool=
     gen_includes(io_out, includes)
     gen_application_macros(io_out, interface_yaml["application"])
 
-    publish = []
-    subscribe = []
-    for layer in layers
-        if haskey(interface_yaml, layer)
-            layer_value = interface_yaml[layer]
-            for portal in (isa(layer_value, Vector) ? layer_value : [layer_value])
-                p, s = collect_layer(layer, portal)
-                append!(publish, p)
-                append!(subscribe, s)
-            end
-        end
-    end
-
-    check_unambiguous(publish, "publishes")
-    check_unambiguous(subscribe, "subscribes")
-
-    gen_class(io_out, interface_yaml["application"]["name"],
-              String[e.macro_call for e in publish], String[e.macro_call for e in subscribe])
+    # interthread is carried between Julia tasks by Goby.jl and never reaches the C++ application
+    gen_class(io_out, name, cpp_macro_calls(publish), cpp_macro_calls(subscribe))
+    close(io_out)
 end
 
 # Every portal declared on a layer, as (accessor name, layer enum). The accessor is the alias
@@ -289,6 +382,41 @@ function collect_groups(interface_yaml, layers)
     return groups
 end
 
+# the type as Julia names it, which is where the contract looks it up
+julia_type_name(t::String) = replace(t, "::" => ".")
+
+julia_task(thread::String) = isempty(thread) ? "nothing" : ":$(thread)"
+
+# One Goby.interthread_contract call per thread. Types are written as names, resolved by
+# Goby.run once the application has defined them.
+function gen_interthread_contract(io, publish, subscribe)
+    pubs = [e for e in publish if e.layer == "interthread"]
+    subs = [e for e in subscribe if e.layer == "interthread"]
+    for thread in unique(e.thread for e in vcat(pubs, subs))
+        args = ["task = $(julia_task(thread))"]
+        entries = ["(group = \"$(e.group)\", type = \"$(julia_type_name(e.type))\")"
+                   for e in pubs if e.thread == thread]
+        isempty(entries) || push!(args, "publish = [\n        " * join(entries, ",\n        ") * "]")
+        entries = ["(group = \"$(e.group)\", type = \"$(julia_type_name(e.type))\", " *
+                   "necessity = :$(e.necessity), capacity = $(e.capacity), overflow = :$(e.overflow))"
+                   for e in subs if e.thread == thread]
+        isempty(entries) || push!(args, "subscribe = [\n        " * join(entries, ",\n        ") * "]")
+        write(io, "Goby.interthread_contract(" * join(args, ",\n    ") * ")\n")
+    end
+end
+
+function gen_outer_layer_contract(io, pubs, subs)
+    entry(e) = "(layer = :$(e.layer), group = \"$(e.group)\", type = \"$(e.type)\")"
+    for thread in unique(e.thread for e in vcat(pubs, subs))
+        args = ["task = $(julia_task(thread))"]
+        mine = [entry(e) for e in pubs if e.thread == thread]
+        isempty(mine) || push!(args, "publish = [\n        " * join(mine, ",\n        ") * "]")
+        mine = [entry(e) for e in subs if e.thread == thread]
+        isempty(mine) || push!(args, "subscribe = [\n        " * join(mine, ",\n        ") * "]")
+        write(io, "Goby.outer_layer_contract(" * join(args, ",\n    ") * ")\n")
+    end
+end
+
 """
     goby_gen_julia(in_yaml, out_jl; verbose=false)
 
@@ -296,17 +424,17 @@ Writes the Julia side of the interface: the groups an application publishes and 
 by name rather than as repeated string literals, and one accessor per portal. A group the
 generated C++ has no case for already terminates the application through GOBY_JULIA_FAIL when
 the call is reached; the constant moves that to an UndefVarError naming the typo.
+
+When the interface declares interthread, the module also declares it to Goby.jl, which then
+holds every INTERTHREAD publication and subscription to it. An outer-layer entry with a thread
+is declared too, and only that task may make the call.
 """
 function goby_gen_julia(in_yaml::String, out_jl::String; verbose::Bool=false)
     verbose && println("Generating $(out_jl) from $(in_yaml)")
 
-    interface_yaml = YAML.load_file(in_yaml)
-    layers = ("interthread", "interprocess", "intermodule")
-    check_top_level_keys(interface_yaml, layers)
-
-    name = application_name(interface_yaml["application"])
-    groups = collect_groups(interface_yaml, layers)
-    accessors = collect_accessors(interface_yaml, layers)
+    interface_yaml, name, publish, subscribe = load_interface(in_yaml)
+    groups = collect_groups(interface_yaml, LAYERS)
+    accessors = collect_accessors(interface_yaml, LAYERS)
 
     open(out_jl, "w") do io
         write(io, """\
@@ -338,9 +466,70 @@ end
         for (accessor, layer_enum) in accessors
             write(io, "$(accessor)() = Goby.$(layer_enum)\n")
         end
-        write(io, """\
 
-end # module $(name)Goby
-""")
+        if haskey(interface_yaml, "interthread")
+            write(io, "\n# the interthread contract, which Goby.jl holds every INTERTHREAD call to\n")
+            write(io, "Goby.interthread_contract()\n")
+            gen_interthread_contract(io, publish, subscribe)
+        end
+
+        outer_pubs = threaded_outer_entries(publish)
+        outer_subs = threaded_outer_entries(subscribe)
+        if !isempty(outer_pubs) || !isempty(outer_subs)
+            write(io, "\n# the task each of these outer-layer calls is declared for\n")
+            gen_outer_layer_contract(io, outer_pubs, outer_subs)
+        end
+
+        write(io, "\nend # module $(name)Goby\n")
+    end
+end
+
+yaml_string(s) = "\"" * escape_string(string(s)) * "\""
+
+"""
+    goby_gen_interface(in_yaml, out_yml, target; verbose=false)
+
+Writes the manifest for `goby_clang_tool -gen -interthread-manifest`, which adds it to the
+interface file it writes for `target`: the interthread contract, which never reaches the
+generated C++, and the task each outer-layer call is declared for, which goby_clang_tool would
+otherwise draw on the C++ glue. With neither, the manifest names the application and nothing
+else.
+"""
+function goby_gen_interface(in_yaml::String, out_yml::String, target::String; verbose::Bool=false)
+    verbose && println("Generating $(out_yml) from $(in_yaml)")
+
+    interface_yaml, name, publish, subscribe = load_interface(in_yaml)
+
+    open(out_yml, "w") do io
+        write(io, "# Generated from $(in_yaml) for goby_clang_tool -interthread-manifest\n")
+        write(io, "application: $(yaml_string(target))\n")
+
+        task_key(e) = isempty(e.thread) ? "" : "task: $(yaml_string(e.thread)), "
+        if haskey(interface_yaml, "interthread")
+            write(io, "julia_interthread:\n  publishes:\n")
+            for e in publish
+                e.layer == "interthread" || continue
+                write(io, "    - { $(task_key(e))group: $(yaml_string(e.group)), " *
+                          "type: $(yaml_string(julia_type_name(e.type))) }\n")
+            end
+            write(io, "  subscribes:\n")
+            for e in subscribe
+                e.layer == "interthread" || continue
+                write(io, "    - { $(task_key(e))group: $(yaml_string(e.group)), " *
+                          "type: $(yaml_string(julia_type_name(e.type))), necessity: $(e.necessity), " *
+                          "capacity: $(e.capacity), overflow: $(e.overflow) }\n")
+            end
+        end
+
+        outer = vcat([("publish", e) for e in threaded_outer_entries(publish)],
+                     [("subscribe", e) for e in threaded_outer_entries(subscribe)])
+        isempty(outer) && return
+        write(io, "outer_threads:\n")
+        for (direction, e) in outer
+            thread = isempty(e.thread) ? "" : "thread: $(yaml_string(e.thread)), "
+            necessity = direction == "subscribe" ? ", necessity: $(e.necessity)" : ""
+            write(io, "  - { layer: $(e.layer), direction: $(direction), $(thread)" *
+                      "group: $(yaml_string(e.group)), type: $(yaml_string(e.type))$(necessity) }\n")
+        end
     end
 end

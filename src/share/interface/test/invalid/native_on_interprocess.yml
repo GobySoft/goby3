@@ -1,0 +1,13 @@
+# NATIVE values never leave the bound language, so only interthread can carry them
+application:
+  name: BadDemo
+  cpp_type: goby::zeromq::SingleThreadApplication
+  config:
+    scheme: PROTOBUF
+    type: project.config.protobuf.BadDemoConfig
+
+interprocess:
+  publishes:
+    - group: project::groups::status
+      scheme: NATIVE
+      type: Status

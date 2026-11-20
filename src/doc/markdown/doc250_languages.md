@@ -35,6 +35,55 @@ interface.yml
 
 \image html julia-sequence.png "Sequence of calls between the Julia code, the generated C++ glue and Goby"
 
+## Declaring interthread
+
+Both bindings carry the interthread layer in their own language, so it never reaches the C++ glue
+and `goby_clang_tool` cannot see it. Declaring it in `interface.yml` is optional, and does two
+things when present:
+
+- The binding holds every interthread publication and subscription to the declaration. An
+  undeclared group, a message of the wrong type, or a thread that is not the declared one is an
+  error at the call.
+- The generator writes a manifest of it, which `goby_clang_tool -gen` adds to the application's
+  interface file. `goby interface` then draws each Julia task or Python thread as a thread of the
+  application, and `validate` checks its required subscriptions.
+
+```yaml
+interthread:
+  publishes:
+    - group: nav
+      scheme: PROTOBUF
+      type: project.protobuf.NavigationReport
+      thread: NavPublisher
+    - { group: depth_alert, scheme: NATIVE, type: DepthAlert, thread: DepthWatcher }
+  subscribes:
+    - group: nav
+      scheme: PROTOBUF
+      type: project.protobuf.NavigationReport
+      thread: DepthWatcher
+      necessity: required
+    - { group: depth_alert, scheme: NATIVE, type: DepthAlert }
+```
+
+`NATIVE` is any type of the application's own language, named as that language names it. `thread`
+is a Julia task module's name (`Main` for the main task) or a Python `Thread` subclass's or
+application class's name; without it the entry applies to any thread. Type names are resolved
+when the application starts, so a misspelt one stops it there. A Julia subscription can also set
+`capacity` and `overflow` (see below); the Python generator refuses both.
+
+Without an `interthread:` section, interthread groups are any string and messages any value, as
+before, and `goby interface` shows none of the layer.
+
+The outer layers take `thread` too. The generated C++ makes every interprocess and intermodule
+call on the application's behalf, so without it `goby interface` draws them all on the C++ class.
+With it, the binding allows the call from that thread only, and the diagram draws it there:
+
+```yaml
+interprocess:
+  publishes:
+    - { group: groups::nav, scheme: PROTOBUF, type: project.protobuf.NavigationReport, thread: DepthWatcher }
+```
+
 ## Python
 
 The Python API is class-based, mirroring the C++ application model: the application is a class,
@@ -146,8 +195,9 @@ application exits.
 
 The interthread layer is implemented in Python rather than through the C++
 `InterThreadTransporter`. Nothing crosses the language boundary, so an interthread message is any
-Python object rather than only a protobuf message, and an interthread group is any string,
-whether or not it is declared in `interface.yml`. The generated C++ has no case for the layer,
+Python object rather than only a protobuf message, and an interthread group is any string unless
+`interface.yml` declares the layer (see "Declaring interthread" above). The
+generated C++ has no case for the layer,
 which is why an application does not need `MultiThreadApplication` to use it. Every subscriber is
 handed the same object, so a message must not be modified after it is published — the rule that
 applies to the C++ `shared_ptr` publish.
@@ -333,3 +383,28 @@ and unlike Python's threads these run in parallel.
 
 Julia fixes its thread count at startup, so the application has to be launched with one thread per
 task module plus three; `goby_add_julia_app()`'s `THREADS` gives that to the generated launcher.
+
+INTERTHREAD needs task modules: an application run with `Goby.run(app)` alone has nothing to
+carry it, and a publication or subscription there is an error.
+
+Each INTERTHREAD subscription has a queue of its own, 50 messages by default. When it is full,
+its overflow policy decides what a publication does:
+
+| `overflow` | |
+|---|---|
+| `:block` (default) | waits until there is room |
+| `:drop_oldest` | replaces the oldest queued message |
+| `:drop_newest` | discards the new message |
+| `:error` | delivers to the other subscribers, then throws `Goby.InterthreadOverflowError` |
+
+```julia
+Goby.subscribe(app, Goby.INTERTHREAD, "work", handle; capacity = 100, overflow = :drop_oldest)
+```
+
+A declared subscription takes both from `interface.yml` instead. A full queue affects only the
+publishers of its own group, and a task serves its subscriptions in turn, so a busy group does not
+starve a quiet one. `Goby.interthread_stats()` reports what each subscription has queued,
+delivered and dropped.
+
+A callback runs on its task's thread, so a slow one delays that task's other work. Give a slow
+consumer a task module of its own, as a C++ application gives it a thread.

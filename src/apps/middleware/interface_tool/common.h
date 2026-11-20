@@ -141,6 +141,8 @@ inline void to_proto(const interface::Issue::Subject& s, protobuf::InterfaceEndp
     endpoint.set_type(s.type);
     if (!s.necessity.empty())
         endpoint.set_necessity(s.necessity);
+    if (!s.delivery.empty())
+        endpoint.set_delivery(s.delivery);
 }
 
 inline protobuf::InterfaceIssue::Severity to_proto(interface::Issue::Severity severity)

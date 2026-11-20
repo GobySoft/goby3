@@ -8,7 +8,7 @@
     "additionalProperties": false,
     "properties": {
         "application": { "$ref": "#/$defs/application" },
-        "interthread": { "$ref": "#/$defs/layer" },
+        "interthread": { "$ref": "#/$defs/interthread_layer" },
         "interprocess": { "$ref": "#/$defs/layer" },
         "intermodule": { "$ref": "#/$defs/layer" }
     },
@@ -58,7 +58,8 @@
                     "$ref": "#/$defs/identifier"
                 },
                 "scheme": { "$ref": "#/$defs/scheme" },
-                "type": { "$ref": "#/$defs/identifier" }
+                "type": { "$ref": "#/$defs/identifier" },
+                "thread": { "$ref": "#/$defs/thread" }
             }
         },
         "subscription": {
@@ -72,6 +73,7 @@
                 },
                 "scheme": { "$ref": "#/$defs/scheme" },
                 "type": { "$ref": "#/$defs/identifier" },
+                "thread": { "$ref": "#/$defs/thread" },
                 "necessity": {
                     "description": "How important the subscription is to the application; checked by 'goby interface validate'",
                     "enum": ["required", "recommended", "optional"]
@@ -96,6 +98,83 @@
             "oneOf": [
                 { "$ref": "#/$defs/portal" },
                 { "type": "array", "items": { "$ref": "#/$defs/portal" }, "minItems": 1 }
+            ]
+        },
+        "interthread_scheme": {
+            "description": "On interthread, which the binding implements in its own language and never marshals: PROTOBUF for a protobuf message, or NATIVE for any other value of the bound language, with type naming a type in that language.",
+            "type": "string",
+            "enum": ["PROTOBUF", "NATIVE"]
+        },
+        "thread": {
+            "description": "The thread that publishes or subscribes: a Julia task module's name (Main for the main task), or a Python Thread subclass's or application class's name. The binding enforces it, and goby interface draws the entry on that thread. Without it, the entry applies to any thread.",
+            "type": "string",
+            "pattern": "^[A-Za-z_][A-Za-z0-9_]*$"
+        },
+        "interthread_entry": {
+            "type": "object",
+            "required": ["group", "scheme", "type"],
+            "additionalProperties": false,
+            "properties": {
+                "group": {
+                    "description": "Group name: the string the binding delivers on",
+                    "$ref": "#/$defs/identifier"
+                },
+                "scheme": { "$ref": "#/$defs/interthread_scheme" },
+                "type": {
+                    "description": "A type of the bound language, or a protobuf message type",
+                    "$ref": "#/$defs/identifier"
+                },
+                "thread": { "$ref": "#/$defs/thread" }
+            }
+        },
+        "interthread_subscription": {
+            "type": "object",
+            "required": ["group", "scheme", "type"],
+            "additionalProperties": false,
+            "properties": {
+                "group": {
+                    "description": "Group name: the string the binding delivers on",
+                    "$ref": "#/$defs/identifier"
+                },
+                "scheme": { "$ref": "#/$defs/interthread_scheme" },
+                "type": {
+                    "description": "A type of the bound language, or a protobuf message type",
+                    "$ref": "#/$defs/identifier"
+                },
+                "thread": { "$ref": "#/$defs/thread" },
+                "necessity": {
+                    "description": "How important the subscription is to the application; checked by 'goby interface validate'",
+                    "enum": ["required", "recommended", "optional"]
+                },
+                "capacity": {
+                    "description": "Messages queued for this subscription before overflow applies (Julia only; default 50)",
+                    "type": "integer",
+                    "minimum": 1
+                },
+                "overflow": {
+                    "description": "What a publication does when the queue is full (Julia only; default block)",
+                    "enum": ["block", "drop_oldest", "drop_newest", "error"]
+                }
+            }
+        },
+        "interthread_portal": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+                "alias": {
+                    "description": "Name of the accessor in the bound language, when it differs from the layer name",
+                    "type": "string",
+                    "pattern": "^[A-Za-z_][A-Za-z0-9_]*$"
+                },
+                "publishes": { "type": "array", "items": { "$ref": "#/$defs/interthread_entry" } },
+                "subscribes": { "type": "array", "items": { "$ref": "#/$defs/interthread_subscription" } }
+            }
+        },
+        "interthread_layer": {
+            "description": "Implemented by the binding in its own language rather than in C++. Once declared, the binding holds every interthread publication and subscription to it.",
+            "oneOf": [
+                { "$ref": "#/$defs/interthread_portal" },
+                { "type": "array", "items": { "$ref": "#/$defs/interthread_portal" }, "minItems": 1 }
             ]
         }
     }

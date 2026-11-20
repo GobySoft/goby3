@@ -217,6 +217,8 @@ message InterfaceEndpoint
     optional string scheme = 7;
     optional string type = 8;
     optional string necessity = 9;
+    optional string delivery = 10 [(goby.field).description =
+                                       "A Julia interthread subscription's queue capacity and overflow policy"];
 }
 
 message InterfaceIssue

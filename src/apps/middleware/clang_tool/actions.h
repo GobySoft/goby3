@@ -40,7 +40,8 @@ namespace goby
 namespace clang
 {
 int generate(::clang::tooling::ClangTool& Tool, std::string output_directory,
-             std::string output_file, std::string target_name);
+             std::string output_file, std::string target_name,
+             std::string interthread_manifest = "");
 
 struct VisualizeParameters
 {

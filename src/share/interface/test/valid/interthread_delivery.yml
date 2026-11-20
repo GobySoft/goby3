@@ -1,0 +1,22 @@
+# How full an interthread subscription's queue may get, and what a publication does then. Only
+# the Julia binding implements these; the Python generator refuses them when it generates code.
+application:
+  name: InterthreadDeliveryDemo
+  cpp_type: goby::zeromq::SingleThreadApplication
+  config:
+    scheme: PROTOBUF
+    type: project.config.protobuf.InterthreadDeliveryDemoConfig
+
+interthread:
+  publishes:
+    - group: work
+      scheme: NATIVE
+      type: Work
+      thread: Producer
+  subscribes:
+    - group: work
+      scheme: NATIVE
+      type: Work
+      thread: Consumer
+      capacity: 10
+      overflow: drop_oldest

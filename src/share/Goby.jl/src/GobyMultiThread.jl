@@ -5,7 +5,7 @@ using ThreadPools
 
 ########################
 # Interthread          #
-# Using Tasks/Channels #
+# Using Tasks/Inboxes  #
 ########################
 
 struct TaskID
@@ -24,23 +24,26 @@ next_task_id = TaskID(3)
 # spawning child tasks)
 cxx_task_id = nothing
 
+# bounds the mailbox: loop ticks and traffic to and from the C++ application
+channel_size = 50
+
+include("Interthread.jl")
 
 # map of module to task_id
-task_module_to_id=Dict{Module, TaskID}()
-# map of task_id to vector of channels (used for 'check')
-task_interthread_channels=Dict{TaskID, Channel}()
-channel_size = 50
-task_interthread_channels[MultiThread.main_task_id] = Channel(channel_size)
+task_module_to_id = Dict{Module,TaskID}()
+# the name interface.yml gives each task: its module's name
+task_names = Dict{TaskID,Symbol}(main_task_id => :Main)
+task_inboxes = Dict{TaskID,TaskInbox}()
+task_inboxes[MultiThread.main_task_id] = TaskInbox(channel_size)
 
-# map of group to vector of channels (used for 'publish')
-group_interthread_channels=Dict{String, Vector{Channel}}()
-group_interthread_channels_lock = Threads.ReentrantLock()
+task_name(task_id::TaskID) = get(task_names, task_id, Symbol("thread", task_id.id))
+current_task_id() = TaskID(Threads.threadid())
 
 # which task asked for each C++ subscription, so that a message arriving on the C++ thread is
 # delivered to the task that wants it rather than always to Main. Keyed the same way the C++
 # side matches: (layer, scheme, type name, group).
-const SubscriptionKey = Tuple{Int32, Int, String, String}
-cxx_subscriber_tasks = Dict{SubscriptionKey, Vector{TaskID}}()
+const SubscriptionKey = Tuple{Int32,Int,String,String}
+cxx_subscriber_tasks = Dict{SubscriptionKey,Vector{TaskID}}()
 cxx_subscriber_tasks_lock = Threads.ReentrantLock()
 
 function record_cxx_subscriber(key::SubscriptionKey, task_id::TaskID)
@@ -54,11 +57,11 @@ function record_cxx_subscriber(key::SubscriptionKey, task_id::TaskID)
     end
 end
 
-function cxx_subscriber_channels(key::SubscriptionKey)
+function cxx_subscriber_inboxes(key::SubscriptionKey)
     Threads.lock(cxx_subscriber_tasks_lock) do
         # anything not registered goes to Main, which is where it went before tasks could subscribe
         task_ids = get(cxx_subscriber_tasks, key, [MultiThread.main_task_id])
-        return [task_interthread_channels[id] for id in task_ids]
+        return [task_inboxes[id] for id in task_ids]
     end
 end
 
@@ -67,7 +70,7 @@ end
 function check_and_publish(app, layer, group, msg)
     layer_int::Int32 = Int32(layer)
     # named up front so that the branches reporting it have it too
-    task_id = MultiThread.TaskID(Threads.threadid())
+    task_id = current_task_id()
     if layer_int == Int32(Goby.INTERTHREAD)
         publish_interthread(task_id, group, msg)
         return true
@@ -82,12 +85,17 @@ function check_and_publish(app, layer, group, msg)
     end
 end
 
-function check_and_subscribe(layer, group, callback::Function)
+function check_and_subscribe(layer, group, callback::Function; capacity = nothing,
+                             overflow = nothing)
     layer_int::Int32 = Int32(layer)
     if layer_int == Int32(Goby.INTERTHREAD)
-        task_id = MultiThread.TaskID(Threads.threadid())
-        MultiThread.subscribe_interthread(task_id, group, callback)
+        MultiThread.subscribe_interthread(current_task_id(), group, callback;
+                                          capacity = capacity, overflow = overflow)
         return true
+    end
+
+    if capacity !== nothing || overflow !== nothing
+        throw(ArgumentError("capacity and overflow apply to Goby.INTERTHREAD subscriptions only"))
     end
 
     # every other layer needs the scheme and type inferred first, so it is finished by
@@ -103,15 +111,15 @@ function check_and_cxx_subscribe(app, layer_int::Int32, type_name::String, schem
         return false
     end
 
-    task_id = MultiThread.TaskID(Threads.threadid())
+    task_id = current_task_id()
     record_cxx_subscriber((layer_int, Int(scheme), type_name, string(group)), task_id)
 
     if Threads.threadid() == MultiThread.cxx_task_id.id
         return false
     end
 
-    put!(task_interthread_channels[MultiThread.cxx_task_id],
-         (:cxx_subscribe, app, layer_int, type_name, scheme, group))
+    post!(task_inboxes[MultiThread.cxx_task_id],
+          (:cxx_subscribe, app, layer_int, type_name, scheme, group))
     return true
 end
 
@@ -123,93 +131,81 @@ function check_and_receive(layer, type_name, scheme, group, bytes)
     return false
 end
 
-function publish_interthread(task_id::TaskID, group, msg)
-    Threads.lock(group_interthread_channels_lock) do
-        if haskey(group_interthread_channels, group)
-            for channel in group_interthread_channels[group]
-                put!(channel, (:interthread_receive, group, msg))
-            end
-        end
-    end
-end
-
 # any layer the C++ side handles, not just interprocess: the layer is passed through untouched
 function publish_forward_cxx(app, layer, group, msg)
-    put!(task_interthread_channels[MultiThread.cxx_task_id], (:cxx_publish, app, layer, group, msg))
+    post!(task_inboxes[MultiThread.cxx_task_id], (:cxx_publish, app, layer, group, msg))
 end
-        
+
 function receive_forward_cxx(layer, type_name, scheme, group, bytes)
-    for channel in cxx_subscriber_channels((Int32(layer), Int(scheme), string(type_name), string(group)))
-        put!(channel, (:cxx_receive, layer, type_name, scheme, group, bytes))
+    for inbox in cxx_subscriber_inboxes((Int32(layer), Int(scheme), string(type_name), string(group)))
+        post!(inbox, (:cxx_receive, layer, type_name, scheme, group, bytes))
     end
 end
 
-
-function subscribe_interthread(task_id::TaskID, group, callback::Function)
-    Threads.lock(group_interthread_channels_lock) do
-        if !haskey(Threads.task_local_storage(), :callbacks)
-            task_local_storage(:callbacks, Dict{String, Vector{Function}}())
-        end
-        task_callbacks = task_local_storage(:callbacks)
-        
-        group_callbacks = get!(task_callbacks, group) do
-            Vector{Function}()
-        end
-        
-        push!(group_callbacks, callback)
-        
-        group_interthread_channel = get!(group_interthread_channels, group) do
-            Vector{Channel}()
-        end
-
-        push!(group_interthread_channel, task_interthread_channels[task_id])
-    end
-            
-    println("Subscribed $task_id to $group")
+# INTERTHREAD is carried between the task modules of MultiThread.run(), so an application run
+# as one task has nothing to carry it
+function interthread_needs_tasks_error()
+    ErrorException("Goby.INTERTHREAD is carried between task modules: run the application with " *
+                   "Goby.run(app, Main, [TaskModule, ...]) and publish from start(), loop() or a " *
+                   "callback once it is running")
 end
-    
+
+function check_single_task()
+    if !isempty(interthread_subscriptions()) || Goby.interthread_contract_declared()
+        throw(interthread_needs_tasks_error())
+    end
+end
+
 function run(goby_app, main_module, task_modules)
     tasks = Vector{Task}()
     Goby.is_multithreaded = true
 
-    # 1. set cxx loop frequency, defaulting to 10 Hz (used for checking channel messages)
+    # 1. set cxx loop frequency, defaulting to 10 Hz (used for checking inbox messages)
     cxx_channel_check_frequency = 10
     if isdefined(Main, :goby_cfg) && haskey(Main.goby_cfg, :cxx_channel_check_frequency)
         cxx_channel_check_frequency = Main.goby_cfg[:cxx_channel_check_frequency]
     end
     println("Setting cxx channel check frequency to $cxx_channel_check_frequency")
     Goby.cxx_set_loop_frequency_hertz(goby_app, cxx_channel_check_frequency)
-    
-    # 2. create channels
+
+    # 2. create inboxes
     for task_module in task_modules
         task_id = TaskID(MultiThread.next_task_id.id)
         task_module_to_id[task_module] = task_id
-        task_interthread_channels[task_id] = Channel(channel_size)
+        task_names[task_id] = nameof(task_module)
+        task_inboxes[task_id] = TaskInbox(channel_size)
         MultiThread.next_task_id = TaskID(MultiThread.next_task_id.id + 1)
     end
-    
+
     task_module_to_id[main_module] = MultiThread.main_task_id
-    MultiThread.cxx_task_id = TaskID(MultiThread.next_task_id.id)        
-    task_interthread_channels[MultiThread.cxx_task_id] = Channel(channel_size)
+    task_names[MultiThread.main_task_id] = nameof(main_module)
+    MultiThread.cxx_task_id = TaskID(MultiThread.next_task_id.id)
+    task_names[MultiThread.cxx_task_id] = Symbol("C++")
+    task_inboxes[MultiThread.cxx_task_id] = TaskInbox(channel_size)
 
     min_nthreads = MultiThread.cxx_task_id.id
     if Threads.nthreads() < min_nthreads
         throw(AssertionError("Must run julia with at least $min_nthreads threads (use 'julia -t $min_nthreads')"))
     end
-    
+
+    # names in interface.yml are resolved once everything they name has been defined
+    Goby.resolve_interthread_contract!()
+
     # 3. spawn tasks
     if isdefined(main_module, :start)
         main_module.start()
     end
-    
+
+    started = Threads.Atomic{Int}(0)
     for task_module in task_modules
-        push!(tasks, task_spawn(task_module))
-        
+        push!(tasks, task_spawn(task_module, started, length(task_modules)))
+
         if isdefined(task_module, :goby_cfg) && haskey(task_module.goby_cfg, :loop_function)
             push!(tasks, loop_timer(task_module))
         end
     end
-    
+    isempty(task_modules) && Goby.report_unmade_interthread_subscriptions()
+
     cxx_runner = (app) -> begin
         try
             Goby.cxx_run(app)
@@ -220,11 +216,11 @@ function run(goby_app, main_module, task_modules)
     end
     push!(tasks, ThreadPools.@tspawnat MultiThread.cxx_task_id.id cxx_runner(goby_app))
     println("Spawning main run() as task ID $MultiThread.cxx_task_id")
-   
+
     if isdefined(main_module, :goby_cfg) && haskey(main_module.goby_cfg, :loop_function)
         push!(tasks, loop_timer(main_module))
     end
-    
+
     # 4. Loop over all tasks checking messages
     while true
         task_channel_check(MultiThread.main_task_id)
@@ -237,15 +233,15 @@ function run(goby_app, main_module, task_modules)
 end
 
 
-# A task that throws takes its exception with it: run() is parked on Main's channel and would
+# A task that throws takes its exception with it: run() is parked on Main's inbox and would
 # wait there for a message the dead task will never send, so the application goes quiet with
-# nothing said. Hand the exception to Main through that same channel, which both wakes it and
+# nothing said. Hand the exception to Main through that same inbox, which both wakes it and
 # gives it something to report.
 function report_task_failure(what::String, e, backtrace)
-    put!(task_interthread_channels[MultiThread.main_task_id], (:task_failed, what, e, backtrace))
+    post!(task_inboxes[MultiThread.main_task_id], (:task_failed, what, e, backtrace))
 end
 
-function task_spawn(task_module::Module)
+function task_spawn(task_module::Module, started::Threads.Atomic{Int}, ntasks::Int)
     task_id = task_module_to_id[task_module]
     println("Spawning $run as task ID $task_id")
 
@@ -253,6 +249,10 @@ function task_spawn(task_module::Module)
         try
             if isdefined(mod, :start)
                 mod.start()
+            end
+            # the last task to finish start() is the one that knows startup is over
+            if Threads.atomic_add!(started, 1) + 1 == ntasks
+                Goby.report_unmade_interthread_subscriptions()
             end
             while true
                 task_channel_check(id)
@@ -270,8 +270,8 @@ end
 
 function cxx_loop()
     # Julia loop is called from timer trigger
-    # but we use C++ loop() to let cxx_task check its channel
-    while isready(task_interthread_channels[MultiThread.cxx_task_id])
+    # but we use C++ loop() to let cxx_task check its inbox
+    while is_ready(task_inboxes[MultiThread.cxx_task_id])
         task_channel_check(MultiThread.cxx_task_id)
     end
 end
@@ -283,7 +283,7 @@ function loop_timer(task_module::Module)
     timer = (id, mod::Module) -> begin
         try
             while true
-                put!(task_interthread_channels[id], (:loop, mod.goby_cfg[:loop_function]))
+                post!(task_inboxes[id], (:loop, mod.goby_cfg[:loop_function]))
                 sleep(1/mod.goby_cfg[:loop_frequency])
             end
         catch e
@@ -294,23 +294,20 @@ function loop_timer(task_module::Module)
 
     t = ThreadPools.@tspawnat MultiThread.timer_task_id.id timer(task_id, task_module)
     return t
-end    
+end
 
 function task_channel_check(task_id::TaskID)
-    packet = take!(task_interthread_channels[task_id])
+    item = take_next!(task_inboxes[task_id])
 
+    if item[1] == :message
+        sub = item[2]
+        sub.callback(item[3])
+        return
+    end
+
+    packet = item[2]
     type = packet[1]
-    if type == :interthread_receive
-        task_callbacks = task_local_storage(:callbacks)
-        group = packet[2]
-        msg = packet[3]
-        if haskey(task_callbacks, group)
-            callbacks = task_callbacks[group]
-            for callback in callbacks
-                callback(msg)
-            end
-        end
-    elseif type == :loop
+    if type == :loop
         loop_func = packet[2]
         loop_func()
     elseif type == :cxx_publish

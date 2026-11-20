@@ -1,0 +1,66 @@
+digraph languages { 
+	splines=ortho
+	newrank=true
+	subgraph cluster_0 {
+		label=<<b>usv</b>>
+		fontcolor="#006400"
+		penwidth=2
+		pencolor="#00640020"
+		subgraph cluster_1 {
+			label=<<b>julia_tracker</b>>
+			fontcolor="#104e8b"
+			penwidth=2
+			pencolor="#104e8b20"
+			usv_nomodule_julia_tracker_Estimator->usv_nomodule_julia_tracker_Main[fontsize=7,headlabel="T2",taillabel="T2",xlabel=<T2[estimate_alert]>,color="#551a8b",style=solid,tooltip="T2: estimate_alert | JULIA | EstimateAlert",labeltooltip="T2: estimate_alert | JULIA | EstimateAlert",headtooltip="T2: estimate_alert | JULIA | EstimateAlert",penwidth=0.5,arrowhead=vee,arrowsize=0.3]
+			usv_nomodule_julia_tracker_Estimator->usv_nomodule_julia_tracker_Smoother[fontsize=7,headlabel="T1",taillabel="T1",xlabel=<T1[track]>,color="#551a8b",style=bold,tooltip="T1: track | JULIA | nav.protobuf.Fix",labeltooltip="T1: track | JULIA | nav.protobuf.Fix",headtooltip="T1: track | JULIA | nav.protobuf.Fix",penwidth=0.5,arrowhead=vee,arrowsize=0.3]
+			usv_nomodule_julia_tracker_Estimator[penwidth=2,color="#551a8b20"]
+			usv_nomodule_julia_tracker_JuliaTracker[penwidth=2,color="#551a8b20"]
+			usv_nomodule_julia_tracker_Main[penwidth=2,color="#551a8b20"]
+			usv_nomodule_julia_tracker_Smoother[penwidth=2,color="#551a8b20"]
+			usv_nomodule_julia_tracker_Watchdog[penwidth=2,color="#551a8b20"]
+			usv_nomodule_julia_tracker_Watchdog_no_publishers_red  
+usv_nomodule_julia_tracker_Watchdog_no_publishers_red->usv_nomodule_julia_tracker_Watchdog[fontsize=7,headlabel="T5",taillabel="T5",xlabel=<T5[heartbeat]>,color="red",style=bold,tooltip="T5: heartbeat | JULIA | Any",labeltooltip="T5: heartbeat | JULIA | Any",headtooltip="T5: heartbeat | JULIA | Any",penwidth=0.5,arrowhead=vee,arrowsize=0.3]
+		}
+		usv_nomodule_julia_tracker_Estimator->usv_nomodule_python_logger_PythonLogger[fontsize=7,headlabel="P0",taillabel="P0",xlabel=<P0[fix]>,color="#104e8b",style=bold,tooltip="P0: nav::fix | PROTOBUF | nav::protobuf::Fix",labeltooltip="P0: nav::fix | PROTOBUF | nav::protobuf::Fix",headtooltip="P0: nav::fix | PROTOBUF | nav::protobuf::Fix",penwidth=0.5,arrowhead=vee,arrowsize=0.3]
+		subgraph cluster_2 {
+			label=<<b>python_logger</b>>
+			fontcolor="#104e8b"
+			penwidth=2
+			pencolor="#104e8b20"
+			usv_nomodule_python_logger_PythonLogger[penwidth=2,color="#551a8b20"]
+			usv_nomodule_python_logger_Recorder->usv_nomodule_python_logger_Writer[fontsize=7,headlabel="T3",taillabel="T3",xlabel=<T3[record]>,color="#551a8b",style=bold,tooltip="T3: record | PYTHON | logger_pb2.Record",labeltooltip="T3: record | PYTHON | logger_pb2.Record",headtooltip="T3: record | PYTHON | logger_pb2.Record",penwidth=0.5,arrowhead=vee,arrowsize=0.3]
+			usv_nomodule_python_logger_Recorder->usv_nomodule_python_logger_any_32_thread[fontsize=7,headlabel="T4",taillabel="T4",xlabel=<T4[status]>,color="#551a8b",style=solid,tooltip="T4: status | PYTHON | RecorderStatus",labeltooltip="T4: status | PYTHON | RecorderStatus",headtooltip="T4: status | PYTHON | RecorderStatus",penwidth=0.5,arrowhead=vee,arrowsize=0.3]
+			usv_nomodule_python_logger_Recorder[penwidth=2,color="#551a8b20"]
+			usv_nomodule_python_logger_Writer[penwidth=2,color="#551a8b20"]
+			usv_nomodule_python_logger_any_32_thread[penwidth=2,color="#551a8b20"]
+			usv_nomodule_python_logger_Writer_no_publishers__35_551a8b  
+usv_nomodule_python_logger_Writer_no_publishers__35_551a8b->usv_nomodule_python_logger_Writer[fontsize=7,headlabel="T6",taillabel="T6",xlabel=<T6[record]>,color="#551a8b",style=tapered,tooltip="T6: record | PYTHON | logger_pb2.Summary",labeltooltip="T6: record | PYTHON | logger_pb2.Summary",headtooltip="T6: record | PYTHON | logger_pb2.Summary",penwidth=0.5,arrowhead=vee,arrowsize=0.3]
+		}
+		usv_nomodule_julia_tracker_JuliaTracker_no_publishers__35_104e8b  
+usv_nomodule_julia_tracker_JuliaTracker_no_publishers__35_104e8b->usv_nomodule_julia_tracker_JuliaTracker[fontsize=7,headlabel="P1",taillabel="P1",xlabel=<P1[raw]>,color="#104e8b",style=solid,tooltip="P1: nav::raw | PROTOBUF | nav::protobuf::Raw",labeltooltip="P1: nav::raw | PROTOBUF | nav::protobuf::Raw",headtooltip="P1: nav::raw | PROTOBUF | nav::protobuf::Raw",penwidth=0.5,arrowhead=vee,arrowsize=0.3]
+	}
+	usv_nomodule_julia_tracker_Estimator
+ [label=<<font color="#551a8b">Estimator</font><br/><font color="#551a8b" point-size="10">T1: </font><b><font point-size="10">track</font></b><br/><font point-size="6">JULIA</font><br/><font point-size="8">nav.protobuf.Fix</font><br/><font color="#551a8b" point-size="10">T2: </font><b><font point-size="10">estimate_alert</font></b><br/><font point-size="6">JULIA</font><br/><font point-size="8">EstimateAlert</font><br/><font color="#104e8b" point-size="10">P0: </font><b><font point-size="10">nav::fix</font></b><br/><font point-size="6">PROTOBUF</font><br/><font point-size="8">nav::protobuf::Fix</font><br/>>,shape=box,style=solid]
+	usv_nomodule_julia_tracker_JuliaTracker
+ [label=<<font color="#551a8b">JuliaTracker</font><br/>>,shape=box,style=solid]
+	usv_nomodule_julia_tracker_JuliaTracker_no_publishers__35_104e8b
+ [label=<<font color="#104e8b" point-size="10">P1: </font><b><font point-size="10">nav::raw</font></b><br/><font point-size="6">PROTOBUF</font><br/><font point-size="8">nav::protobuf::Raw</font><br/>>,penwidth=0]
+	usv_nomodule_julia_tracker_Main
+ [label=<<font color="#551a8b">Main</font><br/>>,shape=box,style=solid]
+	usv_nomodule_julia_tracker_Smoother
+ [label=<<font color="#551a8b">Smoother</font><br/>>,shape=box,style=solid]
+	usv_nomodule_julia_tracker_Watchdog
+ [label=<<font color="#551a8b">Watchdog</font><br/>>,shape=box,style=solid]
+	usv_nomodule_julia_tracker_Watchdog_no_publishers_red
+ [label=<<font color="#551a8b" point-size="10">T5: </font><b><font point-size="10">heartbeat</font></b><br/><font point-size="6">JULIA</font><br/><font point-size="8">Any</font><br/>>,penwidth=0]
+	usv_nomodule_python_logger_PythonLogger
+ [label=<<font color="#551a8b">PythonLogger</font><br/>>,shape=box,style=solid]
+	usv_nomodule_python_logger_Recorder
+ [label=<<font color="#551a8b">Recorder</font><br/><font color="#551a8b" point-size="10">T3: </font><b><font point-size="10">record</font></b><br/><font point-size="6">PYTHON</font><br/><font point-size="8">logger_pb2.Record</font><br/><font color="#551a8b" point-size="10">T4: </font><b><font point-size="10">status</font></b><br/><font point-size="6">PYTHON</font><br/><font point-size="8">RecorderStatus</font><br/>>,shape=box,style=solid]
+	usv_nomodule_python_logger_Writer
+ [label=<<font color="#551a8b">Writer</font><br/>>,shape=box,style=solid]
+	usv_nomodule_python_logger_Writer_no_publishers__35_551a8b
+ [label=<<font color="#551a8b" point-size="10">T6: </font><b><font point-size="10">record</font></b><br/><font point-size="6">PYTHON</font><br/><font point-size="8">logger_pb2.Summary</font><br/>>,penwidth=0]
+	usv_nomodule_python_logger_any_32_thread
+ [label=<<font color="#551a8b">any thread</font><br/>>,shape=box,style=solid]
+}

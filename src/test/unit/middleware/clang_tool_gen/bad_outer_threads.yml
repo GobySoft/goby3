@@ -1,0 +1,4 @@
+# interthread never reaches the C++ glue, so there is no glue call to draw on a thread
+application: "dynamic_groups"
+outer_threads:
+  - { layer: interthread, direction: publish, thread: "Reporter", group: "status", type: "Any" }

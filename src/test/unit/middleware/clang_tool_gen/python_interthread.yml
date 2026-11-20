@@ -1,0 +1,7 @@
+# As goby_gen_cpp --interthread-manifest writes it for a Python application
+application: "dynamic_groups"
+python_interthread:
+  publishes:
+    - { thread: "Recorder", group: "record", type: "logger_pb2.Record" }
+  subscribes:
+    - { group: "record", type: "object", necessity: optional }

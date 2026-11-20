@@ -255,7 +255,8 @@ std::string render_human(const protobuf::InterfaceList& list,
                        << "\n";
                 for (const auto& s : g.subscriber())
                     ss << "  subscriber  " << where(s) << "  " << s.scheme() << " " << s.type()
-                       << (s.necessity() == "optional" ? "" : "  " + s.necessity()) << "\n";
+                       << (s.necessity() == "optional" ? "" : "  " + s.necessity())
+                       << (s.has_delivery() ? "  (" + s.delivery() + ")" : "") << "\n";
             }
             break;
         }
@@ -435,7 +436,8 @@ std::string render_human(const protobuf::InterfaceExplanation& explanation)
         const auto& sub = s.subscriber();
         ss << "subscription  " << where(sub) << " [" << sub.layer() << "] " << what(sub) << ", "
            << sub.necessity() << (s.necessity_set_by_deployment() ? " (set by the deployment)" : "")
-           << ": " << (s.met() ? "met" : "NOT MET") << "\n";
+           << (sub.has_delivery() ? ", " + sub.delivery() : "") << ": "
+           << (s.met() ? "met" : "NOT MET") << "\n";
         for (const auto& p : s.publisher())
             ss << "    from " << where(p) << (s.met() ? "" : " (numeric set at run time)") << "\n";
         for (const auto& reason : s.reason()) ss << "    " << reason << "\n";

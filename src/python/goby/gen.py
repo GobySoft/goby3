@@ -44,8 +44,16 @@ import yaml
 
 LAYERS = ("interthread", "interprocess", "intermodule")
 SUPPORTED_SCHEMES = ("PROTOBUF",)
+# a value of the bound language, which only interthread -- never marshalled -- can carry
+INTERTHREAD_SCHEMES = ("PROTOBUF", "NATIVE")
 ENTRY_KEYS = ("group", "scheme", "type")
-SUBSCRIPTION_KEYS = ENTRY_KEYS + ("necessity",)
+PUBLICATION_KEYS = ENTRY_KEYS + ("thread",)
+SUBSCRIPTION_KEYS = PUBLICATION_KEYS + ("necessity",)
+INTERTHREAD_SUBSCRIPTION_KEYS = SUBSCRIPTION_KEYS + ("capacity", "overflow")
+NECESSITY_RANK = {"optional": 0, "recommended": 1, "required": 2}
+# Julia only: the Python bus queues without bound and never blocks a publisher
+DELIVERY_KEYS = ("capacity", "overflow")
+OVERFLOWS = ("block", "drop_oldest", "drop_newest", "error")
 NECESSITIES = ("required", "recommended", "optional")
 PORTAL_KEYS = ("alias", "publishes", "subscribes")
 APPLICATION_KEYS = ("name", "cpp_type", "config")
@@ -71,6 +79,10 @@ class Entry:
     scheme: str
     type: str
     necessity: str = "optional"
+    # interthread only: the class that publishes or subscribes, or "" for any
+    thread: str = ""
+    # interthread only, and refused when generating: see DELIVERY_KEYS
+    delivery: tuple = ()
 
     @property
     def layer_enum(self) -> str:
@@ -93,6 +105,8 @@ class Interface:
     subscribes: List[Entry] = field(default_factory=list)
     # accessor name -> layer name, in declaration order
     accessors: Dict[str, str] = field(default_factory=dict)
+    # the file has an interthread: section, which the bus then holds every interthread call to
+    declares_interthread: bool = False
 
     @property
     def entries(self) -> List[Entry]:
@@ -100,11 +114,18 @@ class Interface:
 
     @property
     def cpp_publishes(self) -> List[Entry]:
-        return [entry for entry in self.publishes if entry.layer != "interthread"]
+        return _cpp_entries([entry for entry in self.publishes if entry.layer != "interthread"])
 
     @property
     def cpp_subscribes(self) -> List[Entry]:
-        return [entry for entry in self.subscribes if entry.layer != "interthread"]
+        return _cpp_entries([entry for entry in self.subscribes if entry.layer != "interthread"])
+
+    @property
+    def interthread_entries(self) -> List[tuple]:
+        """(kind, entry) for every declared interthread publication and subscription."""
+        return [("publish", e) for e in self.publishes if e.layer == "interthread"] + [
+            ("subscribe", e) for e in self.subscribes if e.layer == "interthread"
+        ]
 
     @property
     def groups(self) -> Dict[str, str]:
@@ -159,7 +180,14 @@ def _check_keys(mapping, required: Sequence[str], allowed: Sequence[str], where:
             )
 
 
-def _check_scheme(scheme, where: str) -> None:
+def _check_scheme(scheme, where: str, layer: str = "") -> None:
+    if layer == "interthread" and scheme in INTERTHREAD_SCHEMES:
+        return
+    if scheme == "NATIVE":
+        raise InterfaceError(
+            f"'{where}' uses scheme 'NATIVE', which only interthread can carry: the other layers "
+            f"marshal their messages for C++"
+        )
     if scheme in RESERVED_SCHEMES:
         raise InterfaceError(
             f"'{where}' uses scheme '{scheme}', which is reserved in the interface format but "
@@ -184,17 +212,21 @@ def _collect_portal(layer: str, portal, interface: Interface, where: str) -> Non
             continue
         if not isinstance(entries, list):
             raise InterfaceError(f"'{where}.{kind}' must be a list")
-        allowed = SUBSCRIPTION_KEYS if kind == "subscribes" else ENTRY_KEYS
+        if layer == "interthread":
+            allowed = INTERTHREAD_SUBSCRIPTION_KEYS if kind == "subscribes" else PUBLICATION_KEYS
+        else:
+            allowed = SUBSCRIPTION_KEYS if kind == "subscribes" else PUBLICATION_KEYS
         for entry in entries:
             entry_where = f"{where}.{kind}"
             _check_keys(entry, ENTRY_KEYS, allowed, entry_where)
-            _check_scheme(entry["scheme"], entry_where)
+            _check_scheme(entry["scheme"], entry_where, layer)
             necessity = entry.get("necessity", "optional")
             if necessity not in NECESSITIES:
                 raise InterfaceError(
                     f"'{entry_where}.necessity' is '{necessity}'. Supported values are: "
                     f"{', '.join(NECESSITIES)}"
                 )
+            _check_interthread_settings(entry, entry_where)
             destination.append(
                 Entry(
                     layer=layer,
@@ -203,32 +235,86 @@ def _collect_portal(layer: str, portal, interface: Interface, where: str) -> Non
                     scheme=entry["scheme"],
                     type=to_cpp_scoping(str(entry["type"])),
                     necessity=necessity,
+                    thread=str(entry.get("thread", "")),
+                    delivery=tuple(key for key in DELIVERY_KEYS if key in entry),
                 )
             )
 
 
+def _check_interthread_settings(entry, where: str) -> None:
+    thread = entry.get("thread")
+    if thread is not None and not re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*", str(thread)):
+        raise InterfaceError(f"'{where}.thread' must be an identifier, got '{thread}'")
+    capacity = entry.get("capacity")
+    if capacity is not None and (
+        isinstance(capacity, bool) or not isinstance(capacity, int) or capacity < 1
+    ):
+        raise InterfaceError(f"'{where}.capacity' must be a positive integer, got '{capacity}'")
+    overflow = entry.get("overflow")
+    if overflow is not None and overflow not in OVERFLOWS:
+        raise InterfaceError(
+            f"'{where}.overflow' is '{overflow}'. Supported values are: {', '.join(OVERFLOWS)}"
+        )
+
+
 def _check_unambiguous(interface: Interface) -> None:
-    """Rejects two entries the generated code could not tell apart.
+    """Rejects two entries the generated code or the contract could not tell apart.
 
     A publication or subscription is matched on layer, scheme, type and group. The accessor is
-    not part of that, so two entries agreeing on all four compile to two branches with identical
-    conditions: the first always wins and the second is unreachable, whichever accessor the
-    application called.
+    not part of that, so two entries agreeing on all four but not on the accessor compile to two
+    branches with identical conditions: the first always wins and the second is unreachable,
+    whichever accessor the application called.
+
+    Several threads may declare the same entry, which the C++ handles once. The same thread
+    twice, or an entry without thread (any thread) beside another, would leave the contract
+    unable to tell which entry a call is.
     """
     for kind, entries in (("publishes", interface.publishes), ("subscribes", interface.subscribes)):
-        seen: Dict[tuple, Entry] = {}
+        seen: Dict[tuple, tuple] = {}
         for entry in entries:
             key = (entry.layer, entry.scheme, entry.type, entry.group)
-            first = seen.get(key)
-            if first is None:
-                seen[key] = entry
+            if key not in seen:
+                seen[key] = (entry.accessor, {entry.thread})
                 continue
-            raise InterfaceError(
-                f"'{entry.layer}.{kind}' declares {entry.type} on group {entry.group} "
-                f"(scheme {entry.scheme}) twice, as '{first.accessor}' and '{entry.accessor}'. "
-                f"Only the layer identifies a portal across the language boundary, so the two "
-                f"cannot be told apart and the second would never be reached."
-            )
+            accessor, threads = seen[key]
+            if entry.layer != "interthread" and accessor != entry.accessor:
+                raise InterfaceError(
+                    f"'{entry.layer}.{kind}' declares {entry.type} on group {entry.group} "
+                    f"(scheme {entry.scheme}) twice, as '{accessor}' and '{entry.accessor}'. "
+                    f"Only the layer identifies a portal across the language boundary, so the two "
+                    f"cannot be told apart and the second would never be reached."
+                )
+            if not entry.thread or entry.thread in threads or "" in threads:
+                who = f"thread {entry.thread}" if entry.thread else "any thread"
+                raise InterfaceError(
+                    f"'{entry.layer}.{kind}' declares {entry.type} on group {entry.group} (scheme "
+                    f"{entry.scheme}) twice for {who} (an entry without thread covers every thread)"
+                )
+            threads.add(entry.thread)
+
+
+def _cpp_entries(entries: List[Entry]) -> List[Entry]:
+    """One C++ branch per publication or subscription, however many threads declare it; a
+    subscription takes the strongest necessity any of them gives it."""
+    best: Dict[tuple, Entry] = {}
+    for entry in entries:
+        key = (entry.layer, entry.scheme, entry.type, entry.group)
+        current = best.get(key)
+        if current is None or NECESSITY_RANK[entry.necessity] > NECESSITY_RANK[current.necessity]:
+            best[key] = entry
+    return list(best.values())
+
+
+def threaded_outer_entries(entries: List[Entry]) -> List[Entry]:
+    """The outer-layer entries whose call is tied to a thread, with any thread-less entry for the
+    same call: what the contract checks, and what goby_clang_tool draws on each thread."""
+    threaded = {
+        (e.layer, e.scheme, e.type, e.group) for e in entries if e.layer != "interthread" and e.thread
+    }
+    return [
+        e for e in entries
+        if e.layer != "interthread" and (e.layer, e.scheme, e.type, e.group) in threaded
+    ]
 
 
 def parse(document) -> Interface:
@@ -269,6 +355,8 @@ def parse(document) -> Interface:
         config_type=to_cpp_scoping(str(config["type"])),
     )
 
+    interface.declares_interthread = "interthread" in document
+
     for layer in LAYERS:
         if layer not in document:
             continue
@@ -294,11 +382,23 @@ def load(path: str) -> Interface:
     return parse(document)
 
 
+def check_supported(interface: Interface) -> None:
+    """Refuses what the format allows but the Python binding does not implement."""
+    for _, entry in interface.interthread_entries:
+        if entry.delivery:
+            raise InterfaceError(
+                f"interthread subscription to {entry.group} sets {' and '.join(entry.delivery)}, "
+                f"which the Python bindings do not implement: the Python interthread bus queues "
+                f"without bound and never blocks a publisher. Remove them for a Python application."
+            )
+
+
 def generate_cpp(interface: Interface, includes: Sequence[str], module: str, source: str) -> str:
     """Returns the C++ glue code implementing the declared interface.
 
     The interthread layer is left out: it is implemented in Python and never crosses into C++.
     """
+    check_supported(interface)
     lines = [
         "// ########################",
         "// #   Goby <--> Python   #",
@@ -375,6 +475,7 @@ def generate_python(
     source: str,
 ) -> str:
     """Returns the Python module that application code imports."""
+    check_supported(interface)
     base_name = interface.cpp_type.split("::")[-1]
 
     lines = [
@@ -442,6 +543,36 @@ def generate_python(
     if interface.ambiguous_groups:
         lines.append("")
 
+    if interface.declares_interthread:
+        lines += [
+            "# the interthread contract, which the bus holds every interthread call to",
+            "goby.interthread_contract([",
+        ]
+        for kind, entry in interface.interthread_entries:
+            thread = repr(entry.thread) if entry.thread else "None"
+            lines.append(
+                f'    {{"kind": "{kind}", "group": "{entry.group}", '
+                f'"type": "{to_proto_scoping(entry.type)}", "thread": {thread}, '
+                f'"necessity": "{entry.necessity}"}},'
+            )
+        lines += ["])", ""]
+
+    outer = [("publish", e) for e in threaded_outer_entries(interface.publishes)] + [
+        ("subscribe", e) for e in threaded_outer_entries(interface.subscribes)
+    ]
+    if outer:
+        lines += [
+            "# the thread each of these outer-layer calls is declared for",
+            "goby.outer_layer_contract([",
+        ]
+        for kind, entry in outer:
+            thread = repr(entry.thread) if entry.thread else "None"
+            lines.append(
+                f'    {{"kind": "{kind}", "layer": "{entry.layer}", "group": "{entry.group}", '
+                f'"type": "{entry.type}", "thread": {thread}}},'
+            )
+        lines += ["])", ""]
+
     lines += [
         "",
         f"class {base_name}(goby.ApplicationMixin, _ext._ApplicationBase):",
@@ -467,6 +598,58 @@ def generate_python(
         "",
     ]
     return "\n".join(lines)
+
+
+def _yaml_string(value: str) -> str:
+    return '"' + value.replace("\\", "\\\\").replace('"', '\\"') + '"'
+
+
+def generate_manifest(interface: Interface, target: str, source: str) -> str:
+    """Returns the manifest for ``goby_clang_tool -gen -interthread-manifest``.
+
+    It holds the interthread contract, which never reaches the generated C++, and the thread each
+    outer-layer call is declared for, which goby_clang_tool would otherwise draw on the C++ glue.
+    With neither, the manifest names the application and nothing else.
+    """
+    lines = [
+        f"# Generated from {source} for goby_clang_tool -interthread-manifest",
+        f"application: {_yaml_string(target)}",
+    ]
+    if interface.declares_interthread:
+        lines += _manifest_interthread(interface)
+
+    outer = [("publish", e) for e in threaded_outer_entries(interface.publishes)] + [
+        ("subscribe", e) for e in threaded_outer_entries(interface.subscribes)
+    ]
+    if outer:
+        lines.append("outer_threads:")
+        for direction, entry in outer:
+            fields = [f"layer: {entry.layer}", f"direction: {direction}"]
+            if entry.thread:
+                fields.append(f"thread: {_yaml_string(entry.thread)}")
+            fields += [f"group: {_yaml_string(entry.group)}", f"type: {_yaml_string(entry.type)}"]
+            if direction == "subscribe":
+                fields.append(f"necessity: {entry.necessity}")
+            lines.append("  - { " + ", ".join(fields) + " }")
+    return "\n".join(lines) + "\n"
+
+
+def _manifest_interthread(interface: Interface) -> List[str]:
+    lines = ["python_interthread:"]
+    for kind, key in (("publish", "publishes"), ("subscribe", "subscribes")):
+        lines.append(f"  {key}:")
+        for entry_kind, entry in interface.interthread_entries:
+            if entry_kind != kind:
+                continue
+            fields = []
+            if entry.thread:
+                fields.append(f"thread: {_yaml_string(entry.thread)}")
+            fields.append(f"group: {_yaml_string(entry.group)}")
+            fields.append(f"type: {_yaml_string(to_proto_scoping(entry.type))}")
+            if kind == "subscribe":
+                fields.append(f"necessity: {entry.necessity}")
+            lines.append("    - { " + ", ".join(fields) + " }")
+    return lines
 
 
 def _accessor_lines(interface: Interface) -> List[str]:
@@ -512,6 +695,15 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         help="generated Python protobuf module (e.g. project.comms_pb2) to import; repeatable",
     )
     parser.add_argument(
+        "--interthread-manifest",
+        metavar="PATH",
+        help="path of the interthread manifest to write, for goby_clang_tool -interthread-manifest",
+    )
+    parser.add_argument(
+        "--target",
+        help="application name to give the interthread manifest (default: the application name)",
+    )
+    parser.add_argument(
         "-v",
         "--verbose",
         action="store_true",
@@ -536,11 +728,21 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         print(module)
         return 0
 
-    if not args.cpp_out and not args.python_out:
-        print("goby_gen_cpp: nothing to do: pass --cpp-out and/or --python-out", file=sys.stderr)
+    if not args.cpp_out and not args.python_out and not args.interthread_manifest:
+        print(
+            "goby_gen_cpp: nothing to do: pass --cpp-out, --python-out and/or "
+            "--interthread-manifest",
+            file=sys.stderr,
+        )
         return 1
 
     source = os.path.abspath(args.interface)
+
+    try:
+        check_supported(interface)
+    except InterfaceError as error:
+        print(f"goby_gen_cpp: {error}", file=sys.stderr)
+        return 1
 
     if args.cpp_out:
         if args.verbose:
@@ -553,6 +755,12 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
             print(f"Generating {args.python_out} from {args.interface}")
         with open(args.python_out, "w", encoding="utf-8") as handle:
             handle.write(generate_python(interface, module, args.proto_module, source))
+
+    if args.interthread_manifest:
+        if args.verbose:
+            print(f"Generating {args.interthread_manifest} from {args.interface}")
+        with open(args.interthread_manifest, "w", encoding="utf-8") as handle:
+            handle.write(generate_manifest(interface, args.target or interface.name, source))
 
     return 0
 
