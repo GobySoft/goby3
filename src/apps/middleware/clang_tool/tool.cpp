@@ -65,6 +65,13 @@ static cl::opt<std::string> Format("format",
                                    cl::value_desc("dot|d2"), cl::init("dot"),
                                    cl::cat(Goby3ToolCategory));
 
+static cl::opt<std::string> InterthreadManifest(
+    "interthread-manifest",
+    cl::desc(
+        "For '-gen', add the interthread contract the Julia or Python generator wrote for this "
+        "target (its <target>_julia_interthread.yml or <target>_python_interthread.yml)"),
+    cl::value_desc("file.yml"), cl::cat(Goby3ToolCategory));
+
 static cl::opt<std::string> Target("target",
                                    cl::desc("Specify target (binary) name for '-gen' action"),
                                    cl::value_desc("name"), cl::cat(Goby3ToolCategory));
@@ -135,7 +142,7 @@ int main(int argc, const char** argv)
         }
         clang::tooling::ClangTool Tool(SharedOptionsParser->getCompilations(),
                                        SharedOptionsParser->getSourcePathList());
-        return goby::clang::generate(Tool, OutDir, OutFile, Target);
+        return goby::clang::generate(Tool, OutDir, OutFile, Target, InterthreadManifest);
     }
     else if (Visualize)
     {

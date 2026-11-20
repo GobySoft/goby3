@@ -1,0 +1,5 @@
+# capacity and overflow are Julia's: the Python bus has no queue to bound
+application: "dynamic_groups"
+python_interthread:
+  subscribes:
+    - { thread: "Writer", group: "record", type: "object", capacity: 3 }

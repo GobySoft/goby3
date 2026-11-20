@@ -1,0 +1,7 @@
+# Julia and Python applications, whose interthread groups are carried in their own language
+deployment: languages
+platforms:
+  - name: usv
+    run:
+      - julia_tracker
+      - python_logger

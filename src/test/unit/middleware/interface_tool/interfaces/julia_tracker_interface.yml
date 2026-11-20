@@ -1,0 +1,36 @@
+# A Julia application as goby_clang_tool -gen -interthread-manifest writes it: the C++ glue's
+# layers, then the julia_interthread section from its interface.yml. The tracker's interthread
+# groups are carried between its Julia tasks, which are drawn as its threads.
+application: julia_tracker
+interprocess:
+  publishes:
+    - group: nav::fix
+      scheme: PROTOBUF
+      type: nav::protobuf::Fix
+      thread: JuliaTracker
+  subscribes:
+    - group: nav::raw
+      scheme: PROTOBUF
+      type: nav::protobuf::Raw
+      necessity: optional
+      thread: JuliaTracker
+interthread:
+  threads:
+    - name: JuliaTracker
+      known: true
+      publishes:
+        - group: nav::fix
+          scheme: PROTOBUF
+          type: nav::protobuf::Fix
+          inner: true
+      subscribes:
+        []
+julia_interthread:
+  publishes:
+    - {task: Estimator, group: track, type: nav.protobuf.Fix}
+    - {task: Estimator, group: estimate_alert, type: EstimateAlert}
+  subscribes:
+    # Goby.jl delivers by group alone, and checks at run time that Fix <: AbstractFix
+    - {task: Smoother, group: track, type: AbstractFix, necessity: required, capacity: 10, overflow: drop_oldest}
+    - {task: Main, group: estimate_alert, type: EstimateAlert, necessity: optional, capacity: 50, overflow: block}
+    - {task: Watchdog, group: heartbeat, type: Any, necessity: required, capacity: 1, overflow: error}

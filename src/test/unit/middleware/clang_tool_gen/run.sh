@@ -48,5 +48,29 @@ if [ "$(grep 'dynamic=true' "$work/entries" | grep -vc 'inner=true')" -ne 7 ]; t
     echo "FAILED: expected exactly 7 dynamic entries"; fail=1
 fi
 
+# A Julia or Python application's interthread never reaches its C++, so its generator writes a
+# manifest, which -gen adds to the interface file after the layers it read from the source
+for language in julia python; do
+    mkdir -p "$work/$language"
+    "$bin/goby_clang_tool" -gen -target dynamic_groups -outdir "$work/$language" -p "$build" \
+        -interthread-manifest "$dir/${language}_interthread.yml" \
+        "$dir/dynamic_groups.cpp" > "$work/gen.log" 2>&1 || { cat "$work/gen.log"; fail=1; continue; }
+    out="$work/$language/dynamic_groups_interface.yml"
+    grep -qx "${language}_interthread:" "$out" || { echo "FAILED: no ${language}_interthread section"; fail=1; }
+    # the layers read from the source are still there
+    grep -qx "interprocess:" "$out" || { echo "FAILED: ${language} manifest displaced the interprocess layer"; fail=1; }
+done
+grep -q "capacity: 10, overflow: drop_oldest" "$work/julia/dynamic_groups_interface.yml" ||
+    { echo "FAILED: the Julia subscription lost its queue settings"; fail=1; }
+
+# a manifest the interface tools could not read is refused rather than copied in
+mkdir -p "$work/bad"
+if "$bin/goby_clang_tool" -gen -target dynamic_groups -outdir "$work/bad" -p "$build" \
+       -interthread-manifest "$dir/bad_interthread.yml" "$dir/dynamic_groups.cpp" > "$work/bad.log" 2>&1; then
+    echo "FAILED: a Python manifest with capacity was accepted"; fail=1
+elif ! grep -q "unknown key 'python_interthread.subscribes.capacity'" "$work/bad.log"; then
+    echo "FAILED: the bad manifest was refused for the wrong reason"; cat "$work/bad.log"; fail=1
+fi
+
 [ $fail -eq 0 ] && echo "PASSED" || { echo "--- entries:"; cat "$work/entries"; }
 exit $fail

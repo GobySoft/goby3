@@ -1,0 +1,7 @@
+# As goby_gen_interface writes it for a Julia application
+application: "dynamic_groups"
+julia_interthread:
+  publishes:
+    - { task: "Estimator", group: "track", type: "nav.protobuf.Fix" }
+  subscribes:
+    - { task: "Smoother", group: "track", type: "Any", necessity: required, capacity: 10, overflow: drop_oldest }

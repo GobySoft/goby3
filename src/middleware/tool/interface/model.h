@@ -44,6 +44,7 @@
 #include <yaml-cpp/yaml.h>
 
 #include "goby/middleware/group.h"
+#include "goby/middleware/tool/interface/language_interthread.h"
 #include "goby/middleware/tool/interface/pubsub_entry.h"
 
 namespace goby
@@ -76,6 +77,8 @@ struct Issue
         std::string scheme;
         std::string type;
         std::string necessity;
+        // e.g. "capacity 10, overflow drop_oldest"
+        std::string delivery;
     };
 
     Severity severity{Severity::ERROR};
@@ -254,6 +257,45 @@ inline void Application::merge(const YAML::Node& yaml, PublishIndexer& indexer,
                        PubSubEntry(Layer::INTERTHREAD, Direction::SUBSCRIBE, s,
                                    thread.most_derived_name()),
                        indexer, binder);
+        }
+    }
+
+    // a Julia or Python application's tasks or threads, each drawn as a thread of it
+    for (const auto& language : language_interthreads())
+    {
+        auto section = yaml[language.section];
+        if (!section)
+            continue;
+
+        for (auto direction : {Direction::PUBLISH, Direction::SUBSCRIBE})
+        {
+            for (const auto& e :
+                 section[direction == Direction::PUBLISH ? "publishes" : "subscribes"])
+            {
+                auto thread_node = e[language.thread_key];
+                auto thread_name =
+                    thread_node ? thread_node.as<std::string>() : any_language_thread();
+                auto it = threads.find(thread_name);
+                if (it == threads.end())
+                    it = threads.emplace(thread_name, std::make_shared<Thread>(thread_name, true))
+                             .first;
+
+                auto necessity = e["necessity"]
+                                     ? necessity_from_name(e["necessity"].as<std::string>())
+                                     : goby::middleware::Necessity::OPTIONAL;
+                PubSubEntry entry(Layer::INTERTHREAD, direction, thread_name,
+                                  e["group"].as<std::string>(), language.scheme,
+                                  e["type"].as<std::string>(), true, necessity, false);
+                if (auto capacity = e["capacity"])
+                    entry.capacity = capacity.as<int>();
+                if (auto overflow = e["overflow"])
+                    entry.overflow = overflow.as<std::string>();
+
+                auto& thread = *it->second;
+                insert(direction == Direction::PUBLISH ? thread.interthread_publishes
+                                                       : thread.interthread_subscribes,
+                       entry, indexer, binder);
+            }
         }
     }
 

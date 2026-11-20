@@ -19,13 +19,23 @@ function(GOBY_EXPORT_INTERFACE TARGET YML_OUT_DIR STUB_OUT_DIR YML)
     endif()
   endforeach()  
   
+  # a Julia or Python application's interthread never reaches its C++, so its generator
+  # describes it in a manifest instead
+  get_target_property(INTERTHREAD_MANIFEST ${TARGET} GOBY_INTERTHREAD_MANIFEST)
+  set(INTERTHREAD_MANIFEST_ARGS)
+  if(INTERTHREAD_MANIFEST)
+    set(INTERTHREAD_MANIFEST_ARGS -interthread-manifest ${INTERTHREAD_MANIFEST})
+  else()
+    set(INTERTHREAD_MANIFEST)
+  endif()
+
   set(${YML} "${YML_OUT_DIR}/${TARGET}_interface.yml")
   add_custom_command(
     OUTPUT "${YML_OUT_DIR}/${TARGET}_interface.yml"
     COMMAND goby_clang_tool
-    ARGS -gen -target ${TARGET} -outdir ${YML_OUT_DIR} -p ${CMAKE_BINARY_DIR} ${ABS_TARGET_SOURCES}
+    ARGS -gen -target ${TARGET} -outdir ${YML_OUT_DIR} ${INTERTHREAD_MANIFEST_ARGS} -p ${CMAKE_BINARY_DIR} ${ABS_TARGET_SOURCES}
     COMMENT "Running goby_clang_tool (gen) on ${TARGET}"
-    DEPENDS ${ABS_TARGET_SOURCES} ${TARGET}
+    DEPENDS ${ABS_TARGET_SOURCES} ${TARGET} ${INTERTHREAD_MANIFEST}
     VERBATIM)
   
   set_source_files_properties(${${YML}} PROPERTIES GENERATED TRUE)

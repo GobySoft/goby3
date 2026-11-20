@@ -49,14 +49,15 @@
 #include <llvm/Support/raw_ostream.h>              // for raw_string_ostream
 #include <yaml-cpp/emitter.h>                      // for operator<<, Emitter
 
-#include "actions.h"                                     // for generate
-#include "goby/middleware/marshalling/interface.h"       // for MarshallingScheme
-#include "goby/middleware/tool/interface/pubsub_entry.h" // for Layer, PubSubEntry
-#include "goby/middleware/tool/interface/yaml_raii.h"    // for YMap, YSeq
-#include "goby/middleware/transport/interface.h"         // for Necessity, Necess...
-#include "clang/ASTMatchers/ASTMatchFinder.h"            // for MatchFinder::Matc...
-#include "clang/ASTMatchers/ASTMatchers.h"               // for hasName, callee
-#include "clang/Tooling/Tooling.h"                       // for newFrontendAction...
+#include "actions.h"                                             // for generate
+#include "goby/middleware/marshalling/interface.h"               // for MarshallingScheme
+#include "goby/middleware/tool/interface/language_interthread.h" // for LanguageInterthread
+#include "goby/middleware/tool/interface/pubsub_entry.h"         // for Layer, PubSubEntry
+#include "goby/middleware/tool/interface/yaml_raii.h"            // for YMap, YSeq
+#include "goby/middleware/transport/interface.h"                 // for Necessity, Necess...
+#include "clang/ASTMatchers/ASTMatchFinder.h"                    // for MatchFinder::Matc...
+#include "clang/ASTMatchers/ASTMatchers.h"                       // for hasName, callee
+#include "clang/Tooling/Tooling.h"                               // for newFrontendAction...
 
 using goby::middleware::tool::interface::Layer;
 using goby::middleware::tool::interface::PubSubEntry;
@@ -699,9 +700,61 @@ class PubSubAggregator : public ::clang::ast_matchers::MatchFinder::MatchCallbac
     std::map<std::string, std::set<std::string>> parents_;
 };
 
-int goby::clang::generate(::clang::tooling::ClangTool& Tool, std::string output_directory,
-                          std::string output_file, std::string target_name)
+namespace
 {
+// the one language section a manifest carries, or none for an application that declares no
+// interthread; exits on a manifest that is not one
+const goby::middleware::tool::interface::LanguageInterthread*
+load_interthread_manifest(const std::string& path, YAML::Node& manifest)
+{
+    using goby::middleware::tool::interface::language_interthreads;
+    auto fail = [&](const std::string& why)
+    {
+        std::cerr << "Invalid interthread manifest " << path << ": " << why << std::endl;
+        exit(EXIT_FAILURE);
+    };
+
+    try
+    {
+        manifest = YAML::LoadFile(path);
+    }
+    catch (const YAML::Exception& e)
+    {
+        fail(e.what());
+    }
+    if (!manifest.IsMap())
+        fail("it must be a mapping");
+
+    const goby::middleware::tool::interface::LanguageInterthread* found = nullptr;
+    for (const auto& kv : manifest)
+    {
+        auto key = kv.first.as<std::string>();
+        if (key == "application")
+            continue;
+        auto it = std::find_if(language_interthreads().begin(), language_interthreads().end(),
+                               [&](const auto& language) { return language.section == key; });
+        if (it == language_interthreads().end())
+            fail("unknown key '" + key + "'");
+        if (found)
+            fail("it has both " + found->section + " and " + key);
+        found = &*it;
+        auto problem = check_language_interthread(kv.second, *it);
+        if (!problem.empty())
+            fail(problem);
+    }
+    return found;
+}
+} // namespace
+
+int goby::clang::generate(::clang::tooling::ClangTool& Tool, std::string output_directory,
+                          std::string output_file, std::string target_name,
+                          std::string interthread_manifest)
+{
+    YAML::Node manifest;
+    const goby::middleware::tool::interface::LanguageInterthread* manifest_language =
+        interthread_manifest.empty() ? nullptr
+                                     : load_interthread_manifest(interthread_manifest, manifest);
+
     PubSubAggregator publish_aggregator, subscribe_aggregator;
     ::clang::ast_matchers::MatchFinder finder;
 
@@ -900,6 +953,12 @@ int goby::clang::generate(::clang::tooling::ClangTool& Tool, std::string output_
             {
                 emit_pub_sub(layer_map, {});
             }
+        }
+
+        if (manifest_language)
+        {
+            root_map.add_key(manifest_language->section);
+            yaml_out << manifest[manifest_language->section];
         }
     }
 
