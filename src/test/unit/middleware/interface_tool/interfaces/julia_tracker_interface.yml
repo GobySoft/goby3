@@ -1,13 +1,15 @@
 # A Julia application as goby_clang_tool -gen -interthread-manifest writes it: the C++ glue's
 # layers, then the julia_interthread section from its interface.yml. The tracker's interthread
-# groups are carried between its Julia tasks, which are drawn as its threads.
+# groups are carried between its Julia tasks, which are drawn as its threads. Its interface.yml
+# gives the nav::fix publication thread: Estimator, so -gen draws it there rather than on the
+# glue (JuliaTracker), which makes the call on Estimator's behalf.
 application: julia_tracker
 interprocess:
   publishes:
     - group: nav::fix
       scheme: PROTOBUF
       type: nav::protobuf::Fix
-      thread: JuliaTracker
+      thread: Estimator
   subscribes:
     - group: nav::raw
       scheme: PROTOBUF

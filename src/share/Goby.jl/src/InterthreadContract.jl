@@ -3,16 +3,17 @@
 # every INTERTHREAD publication and subscription is held to it.
 
 """
-    InterthreadContractError
+    InterfaceContractError
 
-Thrown when an INTERTHREAD publication or subscription disagrees with the contract declared in
-`interface.yml`, or when the contract itself cannot be satisfied.
+Thrown when a publication or subscription disagrees with the contract declared in
+`interface.yml`: an INTERTHREAD call it does not declare, or a call from a task other than the
+one an entry's `thread` names. Also thrown when the contract itself cannot be satisfied.
 """
-struct InterthreadContractError <: Exception
+struct InterfaceContractError <: Exception
     msg::String
 end
 
-Base.showerror(io::IO, e::InterthreadContractError) = print(io, "InterthreadContractError: ", e.msg)
+Base.showerror(io::IO, e::InterfaceContractError) = print(io, "InterfaceContractError: ", e.msg)
 
 const NECESSITIES = (:required, :recommended, :optional)
 const CONTRACT_PUBLISH_KEYS = (:group, :type)
@@ -74,7 +75,7 @@ and `overflow`.
 
 `goby_gen_julia` writes these calls from the `interthread:` section of `interface.yml`. Once any
 call is made, an INTERTHREAD publication or subscription the contract does not declare throws an
-[`InterthreadContractError`](@ref).
+[`InterfaceContractError`](@ref).
 """
 function interthread_contract(; task = nothing, publish = (), subscribe = ())
     lock(interthread_contract_lock) do
@@ -97,13 +98,13 @@ function resolve_contract_type(spec)
     for part in split(name, ".")
         symbol = Symbol(part)
         if !(value isa Module) || !isdefined(value, symbol)
-            throw(InterthreadContractError("type '$(spec)' in interface.yml is not defined: " *
+            throw(InterfaceContractError("type '$(spec)' in interface.yml is not defined: " *
                                            "define or include it before calling Goby.run"))
         end
         value = getfield(value, symbol)
     end
     value isa Type ||
-        throw(InterthreadContractError("'$(spec)' in interface.yml names a $(typeof(value)), not a type"))
+        throw(InterfaceContractError("'$(spec)' in interface.yml names a $(typeof(value)), not a type"))
     return value
 end
 
@@ -124,7 +125,7 @@ function resolve_interthread_contract!()
         for pub in interthread_contract_entries, sub in interthread_contract_entries
             pub.kind == :publish && sub.kind == :subscribe && pub.group == sub.group || continue
             if !(pub.type <: sub.type)
-                throw(InterthreadContractError(
+                throw(InterfaceContractError(
                     "on group \"$(pub.group)\", $(describe_task(pub.task)) publishes " *
                     "$(pub.type), which cannot be delivered to the $(sub.type) subscription of " *
                     "$(describe_task(sub.task))"))
@@ -144,12 +145,12 @@ matches_task(entry::ContractEntry, task::Symbol) = entry.task === nothing || ent
 function undeclared_error(kind::Symbol, task::Symbol, group::String, on_group)
     verb = kind == :publish ? "publishes" : "subscribes"
     if isempty(on_group)
-        return InterthreadContractError(
+        return InterfaceContractError(
             "task $(task) $(verb) on INTERTHREAD group \"$(group)\", which interface.yml does " *
             "not declare: add it under interthread: $(verb)")
     end
     declared = join(unique(describe_task(e.task) for e in on_group), ", ")
-    return InterthreadContractError(
+    return InterfaceContractError(
         "task $(task) $(verb) on INTERTHREAD group \"$(group)\", which interface.yml declares " *
         "only for $(declared): give the entry thread: $(task), or leave thread out")
 end
@@ -160,7 +161,7 @@ function check_interthread_publish(task::Symbol, group::String, msg)
     mine = filter(e -> matches_task(e, task), on_group)
     isempty(mine) && throw(undeclared_error(:publish, task, group, on_group))
     if !any(e -> msg isa e.type, mine)
-        throw(InterthreadContractError(
+        throw(InterfaceContractError(
             "task $(task) published a $(typeof(msg)) on \"$(group)\", which interface.yml " *
             "declares as $(join(unique(e.type for e in mine), " or "))"))
     end
@@ -177,14 +178,14 @@ function interthread_subscription_settings(task::Symbol, group::String, callback
     isempty(mine) && throw(undeclared_error(:subscribe, task, group, on_group))
 
     if capacity !== nothing || overflow !== nothing
-        throw(InterthreadContractError(
+        throw(InterfaceContractError(
             "the subscription of task $(task) to \"$(group)\" is declared in interface.yml, so " *
             "its capacity and overflow are set there rather than in Goby.subscribe"))
     end
 
     index = findfirst(e -> hasmethod(callback, Tuple{e.type}), mine)
     if index === nothing
-        throw(InterthreadContractError(
+        throw(InterfaceContractError(
             "$(callback) cannot take $(join(unique(e.type for e in mine), " or ")), which " *
             "interface.yml declares for the subscription of task $(task) to \"$(group)\""))
     end
@@ -213,3 +214,58 @@ One named tuple per INTERTHREAD subscription: `group`, `task`, `capacity`, `over
 number of messages `queued`, `delivered` and `dropped` so far.
 """
 interthread_stats() = MultiThread.interthread_stats()
+
+# The task each outer-layer call is declared for. The generated C++ already rejects a call
+# interface.yml does not declare, so this checks only which task makes a declared one.
+struct OuterLayerEntry
+    kind::Symbol
+    # nothing: any task
+    task::Union{Symbol,Nothing}
+    layer::Symbol
+    group::String
+    # the C++ glue matches on the message name without its scope, and so does this
+    type_name::String
+end
+
+const outer_layer_entries = OuterLayerEntry[]
+
+short_type_name(t) = String(last(split(replace(string(t), "::" => "."), ".")))
+
+"""
+    outer_layer_contract(; task = nothing, publish = (), subscribe = ())
+
+Declares that `task` makes these INTERPROCESS or INTERMODULE calls; each entry has `layer`
+(`:interprocess` or `:intermodule`), `group` and `type`. Another task making the same call
+throws an [`InterfaceContractError`](@ref). Written by `goby_gen_julia` for the entries of
+`interface.yml` that give a `thread`.
+"""
+function outer_layer_contract(; task = nothing, publish = (), subscribe = ())
+    lock(interthread_contract_lock) do
+        for (kind, entries) in ((:publish, publish), (:subscribe, subscribe))
+            for e in contract_entries_of(entries)
+                push!(outer_layer_entries,
+                      OuterLayerEntry(kind, task === nothing ? nothing : Symbol(task), Symbol(e.layer),
+                                      string(e.group), short_type_name(e.type)))
+            end
+        end
+    end
+    return nothing
+end
+
+const LAYER_SYMBOLS = (:interthread, :interprocess, :intermodule)
+layer_symbol(layer) = LAYER_SYMBOLS[Int32(layer) + 1]
+
+function check_outer_layer_call(kind::Symbol, task::Symbol, layer, group, type_name)
+    isempty(outer_layer_entries) && return
+    layer = layer_symbol(layer)
+    group = string(group)
+    on_call = filter(e -> e.kind == kind && e.layer == layer && e.group == group &&
+                          e.type_name == type_name, outer_layer_entries)
+    (isempty(on_call) || any(e -> e.task === nothing || e.task == task, on_call)) && return
+
+    verb = kind == :publish ? "publishes" : "subscribes to"
+    declared = join(unique(string(e.task) for e in on_call), ", ")
+    throw(InterfaceContractError(
+        "task $(task) $(verb) $(type_name) on $(layer) group \"$(group)\", which interface.yml " *
+        "declares only for $(declared): give the entry thread: $(task), or leave thread out"))
+end

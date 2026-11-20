@@ -35,7 +35,7 @@ import typing
 
 from . import _interthread, _runtime
 from . import time as goby_time
-from ._schemes import INTERTHREAD, PROTOBUF
+from ._schemes import INTERTHREAD, PROTOBUF, PubSubLayer
 
 
 class ConfigError(Exception):
@@ -170,6 +170,7 @@ class Transporter:
             return
 
         _check_message_type(type(message))
+        self._check_outer_layer_thread("publish", group, message.DESCRIPTOR.name)
         self._owner._goby_cxx_publish(
             self._layer,
             message.DESCRIPTOR.name,
@@ -222,6 +223,7 @@ class Transporter:
             return
 
         _check_message_type(message_type_)
+        self._check_outer_layer_thread("subscribe", group, message_type_.DESCRIPTOR.name)
 
         def _on_bytes(data):
             message = message_type_()
@@ -235,6 +237,13 @@ class Transporter:
             str(group),
             _on_bytes,
         )
+
+
+    def _check_outer_layer_thread(self, kind, group, type_name):
+        contract = _interthread.bus.outer_layer_contract
+        if contract is not None:
+            layer = PubSubLayer(self._layer).name.lower()
+            contract.check(self._owner, kind, layer, str(group), type_name)
 
 
 class ApplicationMixin:

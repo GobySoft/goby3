@@ -359,5 +359,9 @@ interthread:
 `Goby.run` resolves the type names and checks that each published type can be delivered to each
 subscription on its group. After that, an undeclared group, a message of another type, a call from
 another task, or a `capacity` or `overflow` passed to `Goby.subscribe` throws
-`Goby.InterthreadContractError`. A declared subscription that no task made in `start()` is
+`Goby.InterfaceContractError`. A declared subscription that no task made in `start()` is
 reported.
+
+An INTERPROCESS or INTERMODULE entry may name its task with `thread` as well. Only that task may
+then make the call, and `goby interface` draws it on that task rather than on the C++ application,
+which makes every outer-layer call on the tasks' behalf.

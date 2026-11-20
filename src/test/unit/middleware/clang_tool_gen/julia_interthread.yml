@@ -5,3 +5,7 @@ julia_interthread:
     - { task: "Estimator", group: "track", type: "nav.protobuf.Fix" }
   subscribes:
     - { task: "Smoother", group: "track", type: "Any", necessity: required, capacity: 10, overflow: drop_oldest }
+# the interprocess publication of groups::plain is made by the Reporter task; interface.yml names
+# the group by its C++ expression, which is not its runtime string (dynamic_test::plain)
+outer_threads:
+  - { layer: interprocess, direction: publish, thread: "Reporter", group: "groups::plain", type: "goby::test::middleware::protobuf::DynamicGroupsStatus" }

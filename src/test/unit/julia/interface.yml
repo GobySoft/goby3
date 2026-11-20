@@ -9,9 +9,11 @@ application:
 
 interprocess:
   publishes:
+    # only the Main task may publish this; goby_clang_tool draws it on Main
     - group: goby::test::julia::groups::tx
       scheme: PROTOBUF
       type: goby.test.julia.protobuf.CommsTx
+      thread: Main
   subscribes:
     - group: goby::test::julia::groups::rx
       scheme: PROTOBUF

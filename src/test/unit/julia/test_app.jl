@@ -101,6 +101,19 @@ const LIBRARY = joinpath(@__DIR__, "libgoby_test_julia_app.so")
                                   "necessity" => "required", "capacity" => 5,
                                   "overflow" => "drop_oldest")]
         @test length(manifest["julia_interthread"]["publishes"]) == 1
+
+        # the interprocess publication interface.yml ties to Main, for goby_clang_tool to draw there
+        @test manifest["outer_threads"] == [Dict("layer" => "interprocess", "direction" => "publish",
+                                                 "thread" => "Main",
+                                                 "group" => "goby::test::julia::groups::tx",
+                                                 "type" => "goby::test::julia::protobuf::CommsTx")]
+    end
+
+    @testset "outer-layer thread contract" begin
+        tx = GobyJuliaTestAppGoby.groups.tx
+        @test Goby.check_outer_layer_call(:publish, :Main, Goby.INTERPROCESS, tx, "CommsTx") === nothing
+        @test_throws Goby.InterfaceContractError Goby.check_outer_layer_call(
+            :publish, :Worker, Goby.INTERPROCESS, tx, "CommsTx")
     end
 
     # Subscribing on a layer the C++ side owns is registered twice: once as a callback to run,

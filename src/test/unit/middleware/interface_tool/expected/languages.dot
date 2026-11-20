@@ -21,7 +21,7 @@ digraph languages {
 			usv_nomodule_julia_tracker_Watchdog_no_publishers_red  
 usv_nomodule_julia_tracker_Watchdog_no_publishers_red->usv_nomodule_julia_tracker_Watchdog[fontsize=7,headlabel="T5",taillabel="T5",xlabel=<T5[heartbeat]>,color="red",style=bold,tooltip="T5: heartbeat | JULIA | Any",labeltooltip="T5: heartbeat | JULIA | Any",headtooltip="T5: heartbeat | JULIA | Any",penwidth=0.5,arrowhead=vee,arrowsize=0.3]
 		}
-		usv_nomodule_julia_tracker_JuliaTracker->usv_nomodule_python_logger_PythonLogger[fontsize=7,headlabel="P0",taillabel="P0",xlabel=<P0[fix]>,color="#104e8b",style=bold,tooltip="P0: nav::fix | PROTOBUF | nav::protobuf::Fix",labeltooltip="P0: nav::fix | PROTOBUF | nav::protobuf::Fix",headtooltip="P0: nav::fix | PROTOBUF | nav::protobuf::Fix",penwidth=0.5,arrowhead=vee,arrowsize=0.3]
+		usv_nomodule_julia_tracker_Estimator->usv_nomodule_python_logger_PythonLogger[fontsize=7,headlabel="P0",taillabel="P0",xlabel=<P0[fix]>,color="#104e8b",style=bold,tooltip="P0: nav::fix | PROTOBUF | nav::protobuf::Fix",labeltooltip="P0: nav::fix | PROTOBUF | nav::protobuf::Fix",headtooltip="P0: nav::fix | PROTOBUF | nav::protobuf::Fix",penwidth=0.5,arrowhead=vee,arrowsize=0.3]
 		subgraph cluster_2 {
 			label=<<b>python_logger</b>>
 			fontcolor="#104e8b"
@@ -40,9 +40,9 @@ usv_nomodule_python_logger_Writer_no_publishers__35_551a8b->usv_nomodule_python_
 usv_nomodule_julia_tracker_JuliaTracker_no_publishers__35_104e8b->usv_nomodule_julia_tracker_JuliaTracker[fontsize=7,headlabel="P1",taillabel="P1",xlabel=<P1[raw]>,color="#104e8b",style=solid,tooltip="P1: nav::raw | PROTOBUF | nav::protobuf::Raw",labeltooltip="P1: nav::raw | PROTOBUF | nav::protobuf::Raw",headtooltip="P1: nav::raw | PROTOBUF | nav::protobuf::Raw",penwidth=0.5,arrowhead=vee,arrowsize=0.3]
 	}
 	usv_nomodule_julia_tracker_Estimator
- [label=<<font color="#551a8b">Estimator</font><br/><font color="#551a8b" point-size="10">T1: </font><b><font point-size="10">track</font></b><br/><font point-size="6">JULIA</font><br/><font point-size="8">nav.protobuf.Fix</font><br/><font color="#551a8b" point-size="10">T2: </font><b><font point-size="10">estimate_alert</font></b><br/><font point-size="6">JULIA</font><br/><font point-size="8">EstimateAlert</font><br/>>,shape=box,style=solid]
+ [label=<<font color="#551a8b">Estimator</font><br/><font color="#551a8b" point-size="10">T1: </font><b><font point-size="10">track</font></b><br/><font point-size="6">JULIA</font><br/><font point-size="8">nav.protobuf.Fix</font><br/><font color="#551a8b" point-size="10">T2: </font><b><font point-size="10">estimate_alert</font></b><br/><font point-size="6">JULIA</font><br/><font point-size="8">EstimateAlert</font><br/><font color="#104e8b" point-size="10">P0: </font><b><font point-size="10">nav::fix</font></b><br/><font point-size="6">PROTOBUF</font><br/><font point-size="8">nav::protobuf::Fix</font><br/>>,shape=box,style=solid]
 	usv_nomodule_julia_tracker_JuliaTracker
- [label=<<font color="#551a8b">JuliaTracker</font><br/><font color="#104e8b" point-size="10">P0: </font><b><font point-size="10">nav::fix</font></b><br/><font point-size="6">PROTOBUF</font><br/><font point-size="8">nav::protobuf::Fix</font><br/>>,shape=box,style=solid]
+ [label=<<font color="#551a8b">JuliaTracker</font><br/>>,shape=box,style=solid]
 	usv_nomodule_julia_tracker_JuliaTracker_no_publishers__35_104e8b
  [label=<<font color="#104e8b" point-size="10">P1: </font><b><font point-size="10">nav::raw</font></b><br/><font point-size="6">PROTOBUF</font><br/><font point-size="8">nav::protobuf::Raw</font><br/>>,penwidth=0]
 	usv_nomodule_julia_tracker_Main

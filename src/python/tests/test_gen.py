@@ -431,11 +431,90 @@ class InterthreadContractTest(unittest.TestCase):
 """
         with self.assertRaises(gen.InterfaceError):
             parse_yaml(twice)
-        parse_yaml(INTERTHREAD_CONTRACT + """    - group: depth_alert
+        # depth_alert is declared for any thread, which already covers Logger
+        with self.assertRaisesRegex(gen.InterfaceError, "covers every thread"):
+            parse_yaml(INTERTHREAD_CONTRACT + """    - group: depth_alert
       scheme: NATIVE
       type: DepthAlert
       thread: Logger
 """)
+        parse_yaml(INTERTHREAD_CONTRACT + """    - group: nav
+      scheme: PROTOBUF
+      type: project.protobuf.NavigationReport
+      thread: Logger
+""")
+
+
+OUTER_THREADS = """
+application:
+  name: PythonDemo
+  cpp_type: goby::zeromq::SingleThreadApplication
+  config:
+    scheme: PROTOBUF
+    type: project.config.protobuf.PythonDemoConfig
+
+interprocess:
+  publishes:
+    - group: project::groups::nav
+      scheme: PROTOBUF
+      type: project.protobuf.NavigationReport
+      thread: Navigator
+    - group: project::groups::status
+      scheme: PROTOBUF
+      type: project.protobuf.Status
+  subscribes:
+    - group: project::groups::command
+      scheme: PROTOBUF
+      type: project.protobuf.Command
+      thread: Navigator
+      necessity: required
+    - group: project::groups::command
+      scheme: PROTOBUF
+      type: project.protobuf.Command
+      thread: Logger
+"""
+
+
+class OuterLayerThreadTest(unittest.TestCase):
+    """thread: on an interprocess or intermodule entry: the C++ handles the call once, the bus
+    checks which thread makes it, and goby_clang_tool draws it on that thread."""
+
+    def setUp(self):
+        self.interface = parse_yaml(OUTER_THREADS)
+
+    def test_the_cpp_has_one_branch_per_call_with_the_strongest_necessity(self):
+        cpp = gen.generate_cpp(self.interface, [], "_python_demo_goby", "interface.yml")
+        self.assertEqual(cpp.count("GOBY_PYTHON_IF_SUBSCRIPTION("), 1)
+        self.assertIn("project::protobuf::Command, REQUIRED)", cpp)
+        self.assertEqual(cpp.count("GOBY_PYTHON_IF_PUBLICATION("), 2)
+
+    def test_the_generated_module_declares_only_threaded_calls(self):
+        module = gen.generate_python(self.interface, "_python_demo_goby", [], "interface.yml")
+        compile(module, "python_demo_goby.py", "exec")
+        self.assertIn("goby.outer_layer_contract([", module)
+        self.assertIn('"group": "project::groups::nav", "type": "project::protobuf::NavigationReport", '
+                      '"thread": \'Navigator\'}', module)
+        # status names no thread, so any thread may publish it and nothing is checked
+        self.assertNotIn("project::groups::status", module.split("outer_layer_contract")[1])
+
+    def test_manifest(self):
+        import yaml
+
+        manifest = yaml.safe_load(gen.generate_manifest(self.interface, "demo", "x.yml"))
+        self.assertNotIn("python_interthread", manifest)
+        self.assertEqual(
+            manifest["outer_threads"],
+            [
+                {"layer": "interprocess", "direction": "publish", "thread": "Navigator",
+                 "group": "project::groups::nav", "type": "project::protobuf::NavigationReport"},
+                {"layer": "interprocess", "direction": "subscribe", "thread": "Navigator",
+                 "group": "project::groups::command", "type": "project::protobuf::Command",
+                 "necessity": "required"},
+                {"layer": "interprocess", "direction": "subscribe", "thread": "Logger",
+                 "group": "project::groups::command", "type": "project::protobuf::Command",
+                 "necessity": "optional"},
+            ],
+        )
 
 
 class ModuleNameTest(unittest.TestCase):

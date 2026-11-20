@@ -870,7 +870,7 @@ class ContractTest(unittest.TestCase):
         Specialised().interthread().publish("work", Message())
 
     def test_what_the_contract_does_not_declare_raises(self):
-        error = goby.InterthreadContractError
+        error = goby.InterfaceContractError
         with self.assertRaisesRegex(error, "does not declare"):
             self.app.interthread().publish("undeclared", Message())
         with self.assertRaisesRegex(error, "declares as"):
@@ -882,7 +882,7 @@ class ContractTest(unittest.TestCase):
         def on_other(message: OtherMessage):
             pass
 
-        with self.assertRaisesRegex(goby.InterthreadContractError, "cannot receive"):
+        with self.assertRaisesRegex(goby.InterfaceContractError, "cannot receive"):
             self.app.interthread().subscribe("work", on_other)
 
     def test_an_unknown_type_name_is_reported(self):
@@ -890,7 +890,7 @@ class ContractTest(unittest.TestCase):
             [{"kind": "publish", "group": "g", "type": "NoSuchType", "thread": None,
               "necessity": "optional"}]
         )
-        with self.assertRaisesRegex(goby.InterthreadContractError, "NoSuchType"):
+        with self.assertRaisesRegex(goby.InterfaceContractError, "NoSuchType"):
             _interthread.bus.contract.resolve()
 
     def test_subscriptions_nothing_made_are_reported(self):
@@ -907,3 +907,36 @@ class ContractTest(unittest.TestCase):
     def test_outer_layers_are_not_affected(self):
         self.app.interprocess().publish("anything", Message(b"payload"))
         self.assertEqual(len(self.app.published), 1)
+
+
+class OuterLayerContractTest(unittest.TestCase):
+    """An interprocess entry with thread: only that thread may make the call."""
+
+    def setUp(self):
+        self.original_bus = _interthread.bus
+        _interthread.bus = _interthread.Bus()
+        goby.outer_layer_contract(
+            [
+                {"kind": "publish", "layer": "interprocess", "group": "nav",
+                 "type": "project::protobuf::Message", "thread": "FakeApp"},
+                {"kind": "subscribe", "layer": "interprocess", "group": "command",
+                 "type": "project.protobuf.Message", "thread": "SomeThread"},
+            ]
+        )
+        self.app = FakeApp()
+
+    def tearDown(self):
+        _interthread.bus = self.original_bus
+
+    def test_the_declared_thread_may_make_the_call(self):
+        self.app.interprocess().publish("nav", Message(b"x"))
+        self.assertEqual(len(self.app.published), 1)
+
+    def test_another_thread_may_not(self):
+        with self.assertRaisesRegex(goby.InterfaceContractError, "only for SomeThread"):
+            self.app.interprocess().subscribe("command", Message, lambda message: None)
+        self.assertEqual(self.app.subscriptions, [])
+
+    def test_calls_the_contract_does_not_tie_to_a_thread_are_not_checked(self):
+        self.app.interprocess().publish("status", Message(b"x"))
+        self.app.interprocess().subscribe("nav", Message, lambda message: None)

@@ -10,7 +10,7 @@ Goby's groups, types and schemes are known at compile time, so the publish/subsc
 - One file per application: `application:`, then `interthread` (per thread, with `bases`), `interprocess`, `intermodule` and `intervehicle`, each with `publishes` and `subscribes`.
 - Each entry: `group`, `scheme`, `type`, `thread`; subscriptions add `necessity`; `inner: true` marks a publication repeated on an inner layer; `is_regex: true` marks a type-regex subscription.
 - Applications written in Python or Julia: run `-gen` on the generated glue target to get the same file.
-- Their interthread layer never reaches the glue: `-interthread-manifest` adds the `julia_interthread` or `python_interthread` section their generator writes from `interface.yml`, with each task or thread drawn as a thread of the application.
+- Their interthread layer never reaches the glue: `-interthread-manifest` adds the `julia_interthread` or `python_interthread` section their generator writes from `interface.yml`, with each task or thread drawn as a thread of the application. Its `outer_threads` draws each outer-layer call of the glue on the task or thread `interface.yml` gives it.
 
 ## Necessity
 

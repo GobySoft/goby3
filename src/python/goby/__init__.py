@@ -85,7 +85,12 @@ from ._application import (
     message_type,
     run,
 )
-from ._interthread import InterthreadContractError, Thread, interthread_contract
+from ._interthread import (
+    InterfaceContractError,
+    Thread,
+    interthread_contract,
+    outer_layer_contract,
+)
 from ._runtime import bind as _bind_extension
 from ._schemes import (
     ALL_SCHEMES,
@@ -114,7 +119,7 @@ __all__ = [
     "INTERMODULE",
     "INTERPROCESS",
     "INTERTHREAD",
-    "InterthreadContractError",
+    "InterfaceContractError",
     "JSON",
     "MAVLINK",
     "MarshallingScheme",
@@ -127,6 +132,7 @@ __all__ = [
     "glog",
     "interthread_contract",
     "message_type",
+    "outer_layer_contract",
     "run",
     "time",
 ]

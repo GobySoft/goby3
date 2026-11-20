@@ -20,8 +20,8 @@ usv: {
   class: platform
   julia_tracker: {
     class: application
-    Estimator: { class: thread; tooltip: "T1: track | JULIA | nav.protobuf.Fix\nT2: estimate_alert | JULIA | EstimateAlert" }
-    JuliaTracker: { class: thread; tooltip: "P0: nav::fix | PROTOBUF | nav::protobuf::Fix" }
+    Estimator: { class: thread; tooltip: "T1: track | JULIA | nav.protobuf.Fix\nT2: estimate_alert | JULIA | EstimateAlert\nP0: nav::fix | PROTOBUF | nav::protobuf::Fix" }
+    JuliaTracker: { class: thread }
     Main: { class: thread }
     Smoother: { class: thread }
     Watchdog: { class: thread }
@@ -38,7 +38,7 @@ usv: {
 }
 usv.julia_tracker.Estimator -> usv.julia_tracker.Main: "T2 [estimate_alert]" { class: interthread; tooltip: "T2: estimate_alert | JULIA | EstimateAlert" }
 usv.julia_tracker.Estimator -> usv.julia_tracker.Smoother: "T1 [track]" { class: [interthread; required]; tooltip: "T1: track | JULIA | nav.protobuf.Fix" }
-usv.julia_tracker.JuliaTracker -> usv.python_logger.PythonLogger: "P0 [fix]" { class: [interprocess; required]; tooltip: "P0: nav::fix | PROTOBUF | nav::protobuf::Fix" }
+usv.julia_tracker.Estimator -> usv.python_logger.PythonLogger: "P0 [fix]" { class: [interprocess; required]; tooltip: "P0: nav::fix | PROTOBUF | nav::protobuf::Fix" }
 usv.python_logger.Recorder -> usv.python_logger.Writer: "T3 [record]" { class: [interthread; required]; tooltip: "T3: record | PYTHON | logger_pb2.Record" }
 usv.python_logger.Recorder -> usv.python_logger.any_thread: "T4 [status]" { class: interthread; tooltip: "T4: status | PYTHON | RecorderStatus" }
 usv.julia_tracker.no_publisher -> usv.julia_tracker.Watchdog: "T5 [heartbeat]" { class: [interthread; required; unmet]; tooltip: "T5: heartbeat | JULIA | Any" }

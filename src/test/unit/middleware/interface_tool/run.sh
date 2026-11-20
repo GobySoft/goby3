@@ -83,6 +83,8 @@ expect_output "subscriber  usv/julia_tracker (Smoother)  JULIA AbstractFix  requ
 expect_output "subscriber  usv/python_logger (any thread)  PYTHON object"
 check 0 goby interface explain languages.yml track
 expect_output "track JULIA AbstractFix, required, capacity 10, overflow drop_oldest: met"
+check 0 goby interface explain languages.yml nav::fix
+expect_output "publication   usv/julia_tracker (Estimator) \[interprocess\] nav::fix"
 check 0 goby interface validate warning_only.yml
 expect_output "recommended-unmet"
 check 1 goby interface validate warning_only.yml --strict

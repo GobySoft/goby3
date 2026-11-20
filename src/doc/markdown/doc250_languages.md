@@ -74,6 +74,16 @@ when the application starts, so a misspelt one stops it there. A Julia subscript
 Without an `interthread:` section, interthread groups are any string and messages any value, as
 before, and `goby interface` shows none of the layer.
 
+The outer layers take `thread` too. The generated C++ makes every interprocess and intermodule
+call on the application's behalf, so without it `goby interface` draws them all on the C++ class.
+With it, the binding allows the call from that thread only, and the diagram draws it there:
+
+```yaml
+interprocess:
+  publishes:
+    - { group: groups::nav, scheme: PROTOBUF, type: project.protobuf.NavigationReport, thread: DepthWatcher }
+```
+
 ## Python
 
 The Python API is class-based, mirroring the C++ application model: the application is a class,

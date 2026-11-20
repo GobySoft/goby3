@@ -58,7 +58,8 @@
                     "$ref": "#/$defs/identifier"
                 },
                 "scheme": { "$ref": "#/$defs/scheme" },
-                "type": { "$ref": "#/$defs/identifier" }
+                "type": { "$ref": "#/$defs/identifier" },
+                "thread": { "$ref": "#/$defs/thread" }
             }
         },
         "subscription": {
@@ -72,6 +73,7 @@
                 },
                 "scheme": { "$ref": "#/$defs/scheme" },
                 "type": { "$ref": "#/$defs/identifier" },
+                "thread": { "$ref": "#/$defs/thread" },
                 "necessity": {
                     "description": "How important the subscription is to the application; checked by 'goby interface validate'",
                     "enum": ["required", "recommended", "optional"]
@@ -104,7 +106,7 @@
             "enum": ["PROTOBUF", "NATIVE"]
         },
         "thread": {
-            "description": "The thread that publishes or subscribes: a Julia task module's name (Main for the main task), or a Python Thread subclass's or application class's name. Without it, the entry applies to any thread.",
+            "description": "The thread that publishes or subscribes: a Julia task module's name (Main for the main task), or a Python Thread subclass's or application class's name. The binding enforces it, and goby interface draws the entry on that thread. Without it, the entry applies to any thread.",
             "type": "string",
             "pattern": "^[A-Za-z_][A-Za-z0-9_]*$"
         },

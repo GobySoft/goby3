@@ -100,6 +100,7 @@ Each entry may independently declare `publishes` and/or `subscribes`.
 | `scheme` | **Yes** | Marshalling scheme. Only `PROTOBUF` is currently supported. |
 | `type` | **Yes** | Protobuf message type. May be written with `.` scoping (`project.protobuf.MyMsg`) or C++ `::` scoping (`project::protobuf::MyMsg`); both are normalized to `::` in the generated C++. |
 | `necessity` | No | Subscriptions only: `required`, `recommended` or `optional` (the default). Passed to the generated `subscribe()`, so `goby_clang_tool -gen` records it and `goby interface validate` can check that a deployment provides a publisher. |
+| `thread` | No | The thread that makes the call: a Julia task module's name (`Main` for the main task), or a Python `Thread` subclass's or application class's name. The binding allows the call from that thread only, and `goby interface` draws it there rather than on the generated C++ class, which makes every outer-layer call on its behalf. Several threads may declare the same call; without `thread`, any thread may make it. |
 
 ### `interthread` entries
 
@@ -152,7 +153,7 @@ than generating code that silently does the wrong thing.
 | `interthread` declarations are enforced once present | yes | yes |
 | `scheme: PROTOBUF` | yes | yes |
 | `scheme: NATIVE` (interthread) | yes | yes |
-| interthread `thread` | yes | yes |
+| `thread` | yes | yes |
 | interthread `capacity` and `overflow` | yes | no |
 | multiple portals per layer (`alias`) | yes | yes |
 | generated module of group constants and accessors | yes | yes |
@@ -183,9 +184,10 @@ on, so an application names its groups rather than repeating the expression as a
 | language module | `<target>_goby.jl`, module `<name>Goby` | `<name_snake>_goby.py` |
 | interthread manifest | `<target>_julia_interthread.yml` | `<target>_python_interthread.yml` |
 
-The manifest is the declared `interthread` section as an interface file would hold it. The
-binding's CMake function passes it to `goby_clang_tool -gen -interthread-manifest`, which adds it
-to `<target>_interface.yml` beside what it read from the glue, so that `goby interface` sees the
+The manifest holds the declared `interthread` section as an interface file would hold it, and
+the thread each outer-layer entry names (`outer_threads`). The binding's CMake function passes it
+to `goby_clang_tool -gen -interthread-manifest`, which adds the first to `<target>_interface.yml`
+and draws each glue call on the thread the second names, so that `goby interface` sees the
 application's threads.
 
 ## Conformance corpus

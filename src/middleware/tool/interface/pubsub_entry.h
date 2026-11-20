@@ -179,6 +179,10 @@ struct PubSubEntry
     int capacity{0};
     std::string overflow;
 
+    // goby_clang_tool -gen only: the qualified name of the Group variable, which is how a Julia or
+    // Python interface.yml names the group
+    std::string group_var;
+
     /// \brief A dynamic group whose string goby_clang_tool could not determine
     bool unresolved() const { return dynamic && group == "*"; }
 

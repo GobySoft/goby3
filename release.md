@@ -6,12 +6,13 @@
 
 - Julia INTERTHREAD subscriptions each have a bounded queue: `Goby.subscribe(...; capacity, overflow)` with overflow `:block` (default), `:drop_oldest`, `:drop_newest` or `:error`. A full queue holds up only its own group's publishers, and `Goby.interthread_stats()` reports drops ([#485](https://github.com/GobySoft/goby3/issues/485)).
 - `interface.yml` may declare `interthread`: a Julia or Python application is then held to it, with `thread`, `scheme: NATIVE` for non-protobuf values, and (Julia) `capacity` and `overflow` ([#484](https://github.com/GobySoft/goby3/issues/484)).
+- An `interprocess` or `intermodule` entry may give `thread`: only that Julia task or Python thread may make the call ([#488](https://github.com/GobySoft/goby3/pull/488)).
 - The Julia generator no longer writes C++ for `interthread`, which Goby.jl carries between tasks.
 - INTERTHREAD in a Julia application run as a single task (`Goby.run(app)`) is now an error rather than silently undelivered.
 
 ### Interface tools
 
-- `goby_clang_tool -gen -interthread-manifest` adds a Julia or Python application's declared interthread to its interface file; `goby_add_julia_app()` and `goby_add_python_app()` write the manifest and pass it on. `goby interface` draws each task or thread and validates its subscriptions ([#484](https://github.com/GobySoft/goby3/issues/484)).
+- `goby_clang_tool -gen -interthread-manifest` adds a Julia or Python application's declared interthread to its interface file, and draws each outer-layer call on the thread its `interface.yml` gives; `goby_add_julia_app()` and `goby_add_python_app()` write the manifest and pass it on. `goby interface` draws each task or thread and validates its subscriptions ([#484](https://github.com/GobySoft/goby3/issues/484)).
 
 ### Bugs
 

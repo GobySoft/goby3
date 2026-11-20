@@ -17,6 +17,11 @@ using .MultiThread: InterthreadOverflowError, InterthreadDeadlockError
 
 is_interthread(layer) = Int32(layer) == Int32(Goby.INTERTHREAD)
 
+# the task that made a call, which for a publication handed over by another task is not this one
+current_task_name() = MultiThread.task_name(MultiThread.current_task_id())
+on_cxx_task() = Goby.is_multithreaded && MultiThread.cxx_task_id !== nothing &&
+                Threads.threadid() == MultiThread.cxx_task_id.id
+
 # main task Protobuf publish
 # TODO: add more schemes as additional publish functions
 """
@@ -28,6 +33,10 @@ On Goby.INTERTHREAD, a full subscription is handled by its overflow policy (see 
 """
 function publish(app, layer, group::String, msg::AbstractProtoBufMessage)
     is_interthread(layer) && !Goby.is_multithreaded && throw(MultiThread.interthread_needs_tasks_error())
+    # checked where the call is made: the C++ task republishes what other tasks hand it
+    if !is_interthread(layer) && !on_cxx_task()
+        check_outer_layer_call(:publish, current_task_name(), layer, group, string(nameof(typeof(msg))))
+    end
     if Goby.is_multithreaded && MultiThread.check_and_publish(app, layer, group, msg)
         return
     end
@@ -151,6 +160,8 @@ function subscribe(app, layer, group, callback::Function; scheme = Goby.NULL_SCH
     if inferred_scheme == Goby.NULL_SCHEME
         throw(ArgumentError("Could not infer scheme from callback argument for \"$(callback)\". Ensure you have the correct argument type for your callback defined or explicitly pass the scheme and type_name to subscribe"))
     end   
+
+    check_outer_layer_call(:subscribe, current_task_name(), layer, group, inferred_type_name)
 
     register_callback(layer_int, inferred_scheme, inferred_type_name, group, callback)
 

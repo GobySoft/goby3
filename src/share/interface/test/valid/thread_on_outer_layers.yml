@@ -1,0 +1,28 @@
+# The thread that makes each outer-layer call. Two threads may declare the same group, which the
+# generated C++ handles once; an entry without thread may be used from any thread.
+application:
+  name: OuterThreadsDemo
+  cpp_type: goby::zeromq::SingleThreadApplication
+  config:
+    scheme: PROTOBUF
+    type: project.config.protobuf.OuterThreadsDemoConfig
+
+interprocess:
+  publishes:
+    - group: project::groups::nav
+      scheme: PROTOBUF
+      type: project.protobuf.NavigationReport
+      thread: Navigator
+    - group: project::groups::status
+      scheme: PROTOBUF
+      type: project.protobuf.Status
+  subscribes:
+    - group: project::groups::command
+      scheme: PROTOBUF
+      type: project.protobuf.Command
+      thread: Navigator
+      necessity: required
+    - group: project::groups::command
+      scheme: PROTOBUF
+      type: project.protobuf.Command
+      thread: Logger

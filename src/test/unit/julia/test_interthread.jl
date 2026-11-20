@@ -221,7 +221,7 @@ end
     end
 
     @testset "what the contract does not declare throws" begin
-        E = Goby.InterthreadContractError
+        E = Goby.InterfaceContractError
         @test_throws E MT.publish_interthread(PUBLISHER, "undeclared", 1)
         @test_throws E MT.publish_interthread(PUBLISHER, "work", OtherWork())
         @test_throws E MT.publish_interthread(OTHER, "work", ExampleWork(2))
@@ -238,12 +238,12 @@ end
         try
             empty!(Goby.interthread_contract_entries)
             Goby.interthread_contract(publish = (group = "g", type = "NoSuchType"))
-            @test_throws Goby.InterthreadContractError Goby.resolve_interthread_contract!()
+            @test_throws Goby.InterfaceContractError Goby.resolve_interthread_contract!()
 
             empty!(Goby.interthread_contract_entries)
             Goby.interthread_contract(publish = (group = "g", type = "OtherWork"),
                                       subscribe = (group = "g", type = "ExampleWork"))
-            @test_throws Goby.InterthreadContractError Goby.resolve_interthread_contract!()
+            @test_throws Goby.InterfaceContractError Goby.resolve_interthread_contract!()
 
             @test_throws ArgumentError Goby.interthread_contract(
                 subscribe = (group = "g", type = "ExampleWork", overflow = :sometimes))
@@ -259,4 +259,27 @@ end
     @testset "an application run as one task cannot use INTERTHREAD" begin
         @test_throws ErrorException MT.check_single_task()
     end
+end
+
+# thread: on an interprocess or intermodule entry ties the call to that task. The generated C++
+# already rejects calls interface.yml does not declare, so only declared calls are checked.
+@testset "outer-layer threads" begin
+    interprocess = Int32(1)
+    Goby.outer_layer_contract(task = :PublisherTask,
+                              publish = [(layer = :interprocess, group = "groups::nav",
+                                          type = "goby3_examples::protobuf::NavigationReport")])
+    Goby.outer_layer_contract(subscribe = [(layer = :interprocess, group = "groups::status",
+                                            type = "project.protobuf.Status")])
+
+    # matched on the message name without its scope, as the C++ glue matches it
+    @test Goby.check_outer_layer_call(:publish, :PublisherTask, interprocess, "groups::nav",
+                                      "NavigationReport") === nothing
+    @test_throws Goby.InterfaceContractError Goby.check_outer_layer_call(
+        :publish, :ConsumerTask, interprocess, "groups::nav", "NavigationReport")
+    # an entry without thread lets any task make the call
+    @test Goby.check_outer_layer_call(:subscribe, :ConsumerTask, interprocess, "groups::status",
+                                      "Status") === nothing
+    # a call no entry ties to a task is left to the C++ glue
+    @test Goby.check_outer_layer_call(:subscribe, :ConsumerTask, interprocess, "groups::nav",
+                                      "NavigationReport") === nothing
 end

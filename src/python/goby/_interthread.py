@@ -106,8 +106,9 @@ class _Subscription:
         self.callback = callback
 
 
-class InterthreadContractError(Exception):
-    """An interthread publication or subscription disagrees with the contract in interface.yml."""
+class InterfaceContractError(Exception):
+    """A publication or subscription disagrees with the contract in interface.yml: an interthread
+    call it does not declare, or a call from a thread other than the one an entry names."""
 
 
 def _warn(text):
@@ -147,7 +148,7 @@ def _resolve_type(name):
         if isinstance(value, type):
             return value
 
-    raise InterthreadContractError(
+    raise InterfaceContractError(
         f"type '{name}' in interface.yml is not defined: define it in the application's main "
         f"module, give its import path, or pass the module that generates a protobuf message to "
         f"the generator with --proto-module"
@@ -189,12 +190,12 @@ class Contract:
         verb = "publishes" if kind == "publish" else "subscribes"
         who = type(owner).__name__
         if not on_group:
-            raise InterthreadContractError(
+            raise InterfaceContractError(
                 f"{who} {verb} on interthread group '{group}', which interface.yml does not "
                 f"declare: add it under interthread: {verb}"
             )
         declared = ", ".join(sorted({e["thread"] for e in on_group if e["thread"]}))
-        raise InterthreadContractError(
+        raise InterfaceContractError(
             f"{who} {verb} on interthread group '{group}', which interface.yml declares only for "
             f"{declared}: give the entry thread: {who}, or leave thread out"
         )
@@ -203,7 +204,7 @@ class Contract:
         mine = self._matching("publish", group, owner)
         if not any(isinstance(message, e["resolved"]) for e in mine):
             declared = " or ".join(sorted({e["type"] for e in mine}))
-            raise InterthreadContractError(
+            raise InterfaceContractError(
                 f"{type(owner).__name__} published a {type(message).__name__} on '{group}', "
                 f"which interface.yml declares as {declared}"
             )
@@ -218,7 +219,7 @@ class Contract:
                 return entry["resolved"]
 
         declared = " or ".join(sorted({e["type"] for e in mine}))
-        raise InterthreadContractError(
+        raise InterfaceContractError(
             f"a callback taking {getattr(message_type, '__name__', message_type)} cannot receive "
             f"{declared}, which interface.yml declares for the subscription of "
             f"{type(owner).__name__} to '{group}'"
@@ -235,6 +236,34 @@ class Contract:
             )
 
 
+class OuterLayerContract:
+    """The thread each outer-layer call is declared for. The generated C++ already rejects a call
+    interface.yml does not declare, so this checks only which thread makes a declared one."""
+
+    def __init__(self, entries):
+        # the C++ glue matches on the message name without its scope, and so does this
+        self._entries = [
+            dict(entry, type=entry["type"].replace("::", ".").split(".")[-1]) for entry in entries
+        ]
+
+    def check(self, owner, kind, layer, group, type_name):
+        on_call = [
+            e for e in self._entries
+            if e["kind"] == kind and e["layer"] == layer and e["group"] == group
+            and e["type"] == type_name
+        ]
+        names = _thread_names(owner)
+        if not on_call or any(e["thread"] is None or e["thread"] in names for e in on_call):
+            return
+        verb = "publishes" if kind == "publish" else "subscribes to"
+        declared = ", ".join(sorted({e["thread"] for e in on_call}))
+        raise InterfaceContractError(
+            f"{type(owner).__name__} {verb} {type_name} on {layer} group '{group}', which "
+            f"interface.yml declares only for {declared}: give the entry thread: "
+            f"{type(owner).__name__}, or leave thread out"
+        )
+
+
 class Bus:
     """Interthread publish/subscribe, shared by every thread of the process."""
 
@@ -242,6 +271,7 @@ class Bus:
         self._lock = threading.Lock()
         self._subscriptions = {}
         self.contract = None
+        self.outer_layer_contract = None
 
     def subscribe(self, group, message_type, callback, mailbox):
         with self._lock:
@@ -289,6 +319,17 @@ def interthread_contract(entries):
         or None for any thread) and ``necessity``
     """
     bus.contract = Contract(entries)
+
+
+def outer_layer_contract(entries):
+    """Declares which thread makes each outer-layer call. Called by the module generated from
+    interface.yml for the entries that give a thread.
+
+    :param entries: one mapping per declared call, with ``kind`` (``publish`` or ``subscribe``),
+        ``layer`` (``interprocess`` or ``intermodule``), ``group``, ``type`` and ``thread`` (a
+        class name, or None for any thread)
+    """
+    bus.outer_layer_contract = OuterLayerContract(entries)
 
 
 class _Construction:

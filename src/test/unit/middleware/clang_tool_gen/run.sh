@@ -63,6 +63,14 @@ done
 grep -q "capacity: 10, overflow: drop_oldest" "$work/julia/dynamic_groups_interface.yml" ||
     { echo "FAILED: the Julia subscription lost its queue settings"; fail=1; }
 
+# outer_threads draws a glue call on the thread that makes it, matching the group by its runtime
+# string or, as here, by the C++ expression interface.yml names it with; without the manifest the
+# call stays on the class that made it
+grep -A3 -m1 "^    - group: dynamic_test::plain$" "$work/julia/dynamic_groups_interface.yml" |
+    grep -q "thread: Reporter" || { echo "FAILED: groups::plain was not drawn on Reporter"; fail=1; }
+grep -A3 -m1 "^    - group: dynamic_test::plain$" "$work/python/dynamic_groups_interface.yml" |
+    grep -q "thread: Reporter" && { echo "FAILED: groups::plain moved without outer_threads"; fail=1; }
+
 # a manifest the interface tools could not read is refused rather than copied in
 mkdir -p "$work/bad"
 if "$bin/goby_clang_tool" -gen -target dynamic_groups -outdir "$work/bad" -p "$build" \
@@ -70,6 +78,13 @@ if "$bin/goby_clang_tool" -gen -target dynamic_groups -outdir "$work/bad" -p "$b
     echo "FAILED: a Python manifest with capacity was accepted"; fail=1
 elif ! grep -q "unknown key 'python_interthread.subscribes.capacity'" "$work/bad.log"; then
     echo "FAILED: the bad manifest was refused for the wrong reason"; cat "$work/bad.log"; fail=1
+fi
+
+if "$bin/goby_clang_tool" -gen -target dynamic_groups -outdir "$work/bad" -p "$build" \
+       -interthread-manifest "$dir/bad_outer_threads.yml" "$dir/dynamic_groups.cpp" > "$work/bad.log" 2>&1; then
+    echo "FAILED: outer_threads on interthread was accepted"; fail=1
+elif ! grep -q "it is interprocess or intermodule" "$work/bad.log"; then
+    echo "FAILED: the bad outer_threads was refused for the wrong reason"; cat "$work/bad.log"; fail=1
 fi
 
 [ $fail -eq 0 ] && echo "PASSED" || { echo "--- entries:"; cat "$work/entries"; }
