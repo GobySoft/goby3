@@ -71,7 +71,9 @@ class PythonDemo(SingleThreadApplication):
 ```
 
 The interthread layer is implemented in Python, so an interthread message is any Python object
-and an interthread group is any string. The outer layers belong to the C++ application, which
+and an interthread group is any string, unless `interface.yml` declares the layer: then each
+publication and subscription must match the declaration, and `goby interface` draws the threads.
+The outer layers belong to the C++ application, which
 lives on the main thread; a thread's publications and subscriptions are handed to it and
 delivered back. See `doc250_languages.md` for the details and the costs.
 

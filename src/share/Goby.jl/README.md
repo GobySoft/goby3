@@ -10,7 +10,9 @@ This package provides the ability to run Goby applications from the Julia langua
 |------|---------|
 | `src/Goby.jl` | **Main Julia module.** Wraps the CxxWrap'd C++ Goby application class and exposes `publish`, `subscribe`, `run`, `cfg`, and `read_cli_cfg` to Julia user code. |
 | `src/gen_goby.jl` | **Code generator.** Reads an `interface.yml` file and emits two files: a C++ source file containing the `publish`/`subscribe` glue code for all declared transport layers, and a Julia module holding the declared groups and one accessor per portal. Invoked at build time by CMake. |
-| `src/GobyMultiThread.jl` | `MultiThread` sub-module. Not directly included from user code. Implements interthread communication using Julia `Channel`s and `ThreadPools`, enabling multi-threaded Julia Goby apps where each task runs on a dedicated Julia thread. |
+| `src/GobyMultiThread.jl` | `MultiThread` sub-module. Not directly included from user code. Runs multi-threaded Julia Goby apps, where each task runs on a dedicated Julia thread (using `ThreadPools`), and hands outer-layer traffic to the task that owns the C++ application. |
+| `src/Interthread.jl` | INTERTHREAD delivery between tasks, included into `MultiThread`: each task's inbox, with one bounded queue per subscription and its overflow policy. |
+| `src/InterthreadContract.jl` | The INTERTHREAD contract declared in `interface.yml`, which every INTERTHREAD call is held to once declared. |
 | `src/pkg.jl` | Minimal helper script used by CMake to install/instantiate the Julia package dependencies (`Pkg.instantiate()`). |
 | `Project.toml` | Julia package manifest; declares dependencies (`CxxWrap`, `ProtoBuf`, `YAML`, `ThreadPools`) and package metadata. |
 
@@ -29,7 +31,7 @@ Thus, the Julia application author does not need to directly write any C++ code,
 | Key | Required | Description |
 |-----|----------|-------------|
 | `application` | **Yes** | Application metadata (see below). |
-| `interthread` | No | Interthread-layer publish/subscribe declarations. |
+| `interthread` | No | Interthread-layer declarations: the contract between the application's tasks (see "Declaring INTERTHREAD"). Nothing is generated in C++ for it. |
 | `interprocess` | No | Interprocess-layer publish/subscribe declarations. |
 | `intermodule` | No | Intermodule-layer publish/subscribe declarations. |
 
@@ -156,6 +158,10 @@ is left out rather than guessed at, and the expression still works as a string. 
 functions because the layer constants arrive with the application library, which is loaded after
 this file is included.
 
+When `interface.yml` declares `interthread`, the module also declares it to Goby.jl with one
+`Goby.interthread_contract(...)` call per task, and `goby_gen_interface` writes the same
+declaration to `<target>_julia_interthread.yml` for `goby_clang_tool -gen -interthread-manifest`.
+
 ---
 
 ## Build Flow
@@ -271,6 +277,7 @@ Goby.run(goby_app)
 | `Goby.subscribe(app, layer, group, callback)` | Subscribes to messages on `layer`/`group`; `callback` must accept a single argument of the expected protobuf type. |
 | `Goby.run(app)` | Starts the Goby event loop (blocking). Calls `start()` and then enters the C++ run loop, invoking `loop()` at `goby_cfg[:loop_frequency]` Hz. |
 | `Goby.run(app, Main, [TaskModuleA, …])` | Multi-threaded variant; each `TaskModule` is spawned on its own Julia thread. Requires `julia -t <N>` where N is at least the number of TaskModules plus 3 (e.g., -t 5 for an application with two TaskModules). |
+| `Goby.interthread_stats()` | One named tuple per INTERTHREAD subscription: `group`, `task`, `capacity`, `overflow`, and how many messages are `queued`, `delivered` and `dropped`. |
 
 ---
 
@@ -282,10 +289,10 @@ with `:loop_function` and `:loop_frequency` to have a function called periodical
 
 `Goby.publish` and `Goby.subscribe` work from any task, on any layer:
 
-* `INTERTHREAD` is implemented in Julia, carrying messages between tasks over `Channel`s. It
-  never reaches the C++ side, so an interthread group is a plain string chosen by the
-  application rather than a group declared in `interface.yml`, and an interthread message can be
-  any Julia value rather than only a protobuf message.
+* `INTERTHREAD` is implemented in Julia, carrying messages between tasks. It never reaches the
+  C++ side, so an interthread group is a plain string rather than a C++ group, and an interthread
+  message can be any Julia value rather than only a protobuf message. It needs task modules: in an
+  application run with `Goby.run(app)` alone, a publication or subscription is an error.
 * `INTERPROCESS` and `INTERMODULE` belong to the C++ application, which lives on one task. A
   publication from any other task is handed to that task over an interthread channel, and a
   subscription is registered there and its messages delivered back to the task that asked for
@@ -300,3 +307,57 @@ goby_cfg = Dict(:cxx_channel_check_frequency => 10)   # Hz, the default
 
 That rate bounds how long an interprocess publication from another task waits before it goes
 out, so raise it for latency-sensitive traffic.
+
+### Queues and overflow
+
+Each INTERTHREAD subscription queues messages for its task, up to `capacity` (50 by default).
+When the queue is full, `overflow` decides what a publication does:
+
+| `overflow` | |
+|---|---|
+| `:block` (default) | waits until the subscription has room |
+| `:drop_oldest` | replaces the oldest queued message |
+| `:drop_newest` | discards the new message |
+| `:error` | delivers to the other subscribers, then throws `Goby.InterthreadOverflowError` |
+
+```julia
+Goby.subscribe(app, Goby.INTERTHREAD, "work", handle; capacity = 100, overflow = :drop_oldest)
+```
+
+A full queue holds up only the publishers of its own group. A task publishing to its own full
+`:block` subscription would wait forever, so that throws `Goby.InterthreadDeadlockError` instead.
+A task takes one message from each of its subscriptions in turn, with its loop and C++ traffic
+among them, so a busy group does not starve a quiet one.
+
+A callback runs on its task's thread, so a slow one delays that task's other subscriptions and its
+`loop()`. Give a slow consumer a task module of its own:
+
+```julia
+module SlowConsumerTask
+using Goby
+handle(work) = (sleep(1); @info "processed" work)
+start() = Goby.subscribe(Main.app, Goby.INTERTHREAD, Main.WORK_GROUP, handle;
+                         capacity = 100, overflow = :drop_oldest)
+end
+```
+
+### Declaring INTERTHREAD
+
+Declared in `interface.yml`, INTERTHREAD becomes a contract that every publication and
+subscription is held to, and the tasks appear in `goby interface` diagrams:
+
+```yaml
+interthread:
+  publishes:
+    - { group: work, scheme: NATIVE, type: Work, thread: ProducerTask }
+  subscribes:
+    - { group: work, scheme: NATIVE, type: Work, thread: SlowConsumerTask,
+        capacity: 100, overflow: drop_oldest, necessity: required }
+```
+
+`thread` is the task module's name, or `Main`; `NATIVE` is any Julia type, named from `Main`.
+`Goby.run` resolves the type names and checks that each published type can be delivered to each
+subscription on its group. After that, an undeclared group, a message of another type, a call from
+another task, or a `capacity` or `overflow` passed to `Goby.subscribe` throws
+`Goby.InterthreadContractError`. A declared subscription that no task made in `start()` is
+reported.
